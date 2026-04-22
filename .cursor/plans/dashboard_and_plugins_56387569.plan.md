@@ -4,39 +4,63 @@ overview: Implement the Operational Readiness dashboard as a Svelte 5 + Flowbite
 todos:
   - id: align-docs
     content: Add ADR or Tier C note for Flowbite-svelte v2 + Tailwind bridge to ui-themes / ui-design-system; confirm apps/ui present in full repo.
-    status: pending
+    status: completed
   - id: flowbite-v2-bootstrap
     content: "Bootstrap apps/ui per official v2 getting started: tailwindcss v4, flowbite-svelte + flowbite, Flowbite CSS theme @import, @plugin flowbite/plugin (+ typography if used), correct @source paths to node_modules for class scanning, dark variant. Do not copy themesberg admin template. ADR-0017: self-host Inter/JetBrains instead of docs’ Google Fonts snippet."
-    status: pending
+    status: completed
   - id: specs-contracts
     content: Author or complete specs/ artefacts named in dashboard-plugin-blueprint + contracts.md (layout.schema.json, ui_dashboard_plugin.py, registry.json, event envelope / stream stubs if missing). CI must see these where enforced.
-    status: pending
+    status: completed
   - id: openapi-v1
     content: Define DHCP pools/clients/reservations, perf, discovery control DTOs in specs/api/openapi.yaml with Kea-agnostic field names; wire drift check.
-    status: pending
+    status: completed
   - id: mock-api
-    content: "Serve OpenAPI-faithful mocks for /api/v1 (and mock SSE or polling fallback): Vite dev proxy, MSW, or minimal FastAPI stub — so UI development never blocks on real Kea."
-    status: pending
+    content: "Serve OpenAPI-faithful mocks for /api/v1 (and mock SSE or polling fallback): Vite dev proxy, MSW, or minimal FastAPI stub — so UI development never blocks on real Kea. Use ISC Kea docs (KB + ARM API reference) only to inform realistic mock *semantics*; public DTOs remain Kea-agnostic."
+    status: completed
+  - id: kea-reference-docs
+    content: "Required persistence: add an **External references** (or **See also**) subsection in docs/architecture/kea-integration.md + architecture/kea-integration.md with links to ISC Kea API & sockets KB and Kea ARM API index; one sentence on adapter boundary vs public /api/v1. This is the canonical in-repo home for Kea wire/API docs."
+    status: completed
+  - id: pihole-reference-docs
+    content: "Required persistence: add Pi-hole API links in docs/architecture/future-considerations.md + architecture/future-considerations.md (or discovery.md pair if you prefer DNS adjacency there)—include docs.pi-hole.net/api and note that http://pi.hole/api/docs/ is version-accurate on an install. State clearly: separate client surface; not part of specs/api/openapi.yaml."
+    status: completed
   - id: data-gateway
-    content: "Implement DataGateway: HTTP client, SSE subscription, merge strategy for live tiles in apps/ui. Target mock endpoints first; swap URL/env for real API later."
-    status: pending
+    content: "Implement DataGateway: HTTP client, SSE subscription, merge strategy for live tiles in apps/ui. Done: relative `/api/v1` + EventSource. Still to do: `VITE_*` (or equivalent) base URL + optional auth headers for prod; document modes."
+    status: in_progress
   - id: dashboard-host
     content: Implement DashboardEditor/Host, DnD, layout save/load per layout.schema.json, plugin tile options.
-    status: pending
+    status: completed
   - id: plugins-dhcp
     content: Build DHCP pools (table vs single card), clients, static leases with Flowbite Table/Card; Lucide; responsive scroll.
-    status: pending
+    status: completed
   - id: plugin-discovery
     content: Build discovery header (last update, pause, badge, settings) + bind to API/events.
-    status: pending
+    status: completed
   - id: plugins-perf
     content: Build CPU (total vs per-core, gauge vs %), RAM, network (total vs per-adapter), disk (total vs per-volume) with shared gauge primitive.
-    status: pending
+    status: completed
   - id: admin-page
-    content: Add sectioned admin route and stub/real admin API calls with authZ.
-    status: pending
+    content: "Sectioned `#/admin` + health read via DataGateway. Still to do: privileged admin API routes, authZ enforcement (API + UI gating), Nebula/replication/discovery settings wired to real or mock services."
+    status: in_progress
   - id: tests
-    content: Vitest for gauge/options; Playwright for dnd and critical flows; contract tests for OpenAPI.
+    content: Vitest for gauge/options; Playwright for dnd and critical flows; Zod validation of mock fixtures vs OpenAPI; editor tile testids + layout-order e2e (full DnD reorder deferred — svelte-dnd-action + Playwright unreliable).
+    status: completed
+  - id: phase-b-bootstrap
+    content: "Merged to main: FastAPI `/api/v1` stub (in-memory state, OpenAPI-shaped JSON) + `kea-fabric-api` + pytest; Vite `dev:proxy` + `KEA_FABRIC_UI_PROXY_API` bypasses in-process mocks."
+    status: completed
+  - id: phase-b-mock-adapters
+    content: "Mock Kea + Nebula-sync shaped adapters (no live services): domain services in Python calling simulators; thin routers."
+    status: pending
+  - id: phase-b-prod-runtime
+    content: "Production-oriented runtime: long-lived SSE + heartbeat + clean disconnect; durable layout store (`KEA_FABRIC_DATA_DIR` or similar); structured logging."
+    status: pending
+  - id: phase-b-api-authz
+    content: "FastAPI authN/authZ on mutating and sensitive routes; OpenAPI `securitySchemes`; no reliance on `#/admin` as a trust boundary."
+    status: pending
+  - id: phase-b-docs-scripts
+    content: "Re-align docs/operator-demo.md and scripts/dev_serve_with_examples.sh with `kea-fabric-api` + `npm run dev:proxy`; README env summary."
+    status: pending
+  - id: phase-c-dashboard-grid
+    content: "Blocked until full Phase B is done and merged (see [.cursor/plans/phase_b_and_c_roadmap.plan.md](phase_b_and_c_roadmap.plan.md)): 12-col grid edit, per-tile live options, snap-to-cell DnD. Then branch `feat/phase-c-dashboard-grid` from `main`; do not merge Phase C until stabilized."
     status: pending
 isProject: false
 ---
@@ -45,7 +69,19 @@ isProject: false
 
 ## Status
 
-**Ready for review.** This plan is aligned with [docs/architecture/dashboard-plugin-blueprint.md](docs/architecture/dashboard-plugin-blueprint.md), [contracts.md](docs/architecture/contracts.md), [api.md](docs/architecture/api.md), [events.md](docs/architecture/events.md), [discovery.md](docs/architecture/discovery.md), [ui.md](docs/architecture/ui.md), and [ui-fonts.md](docs/architecture/ui-fonts.md). User-confirmed product choices: **Flowbite-svelte v2** + **Lucide**; **CPU total vs per-core**; **network total vs per-adapter**; **RAM** aggregate; **disk** by volume; Kea-agnostic DTOs.
+**Source of truth for remaining work:** the YAML `todos` in this file’s frontmatter (keep statuses updated whenever scope lands or changes — do not mark `completed` until acceptance criteria in the todo text are met).
+
+**Phase A (UI-first on mocks) — merged to `main`.** OpenAPI, Vite mock API + SSE, dashboard editor/host, DHCP/discovery/perf plugins, Vitest + Playwright. **Slice 7:** Zod on mock fixtures, editor tile testids, layout-order e2e (full DnD reorder e2e deferred).
+
+**Open / in progress:** **`data-gateway`** (prod base URL + auth wiring), **`admin-page`** (no API **authZ** yet; stubs only). **`phase-b-*` pending items:** mock Kea/Nebula adapters, production runtime (SSE + persistence), API authZ, docs/scripts realignment — see todo ids above. **`phase-b-bootstrap`** is the only Phase B slice marked **completed** today.
+
+**Phase B (bootstrap) — merged to `main`:** FastAPI **`/api/v1`** stub + **`kea-fabric-api`**; **`npm run dev:proxy`** + **`KEA_FABRIC_UI_PROXY_API=1`** for local UI → backend.
+
+**Sequencing (non-negotiable):** Finish **full Phase B** first — mock adapters, durable layout + production SSE, API authZ, DataGateway env, docs/scripts, expanded tests — per [phase_b_and_c_roadmap.plan.md](phase_b_and_c_roadmap.plan.md). **Do not start Phase C implementation** until those B items are **completed and merged**. A branch named `feat/phase-c-dashboard-grid` may exist early; keep it **idle** (or delete locally) until the gate is met. Phase C depends on **durable `PUT` layout** from B.
+
+**Phase C (after B):** 12-column grid, per-tile live options, snap-to-slot drag — **pending** until the gate above; **do not merge** Phase C to `main` until the interaction model is stable.
+
+**Ready for review** against [docs/architecture/dashboard-plugin-blueprint.md](docs/architecture/dashboard-plugin-blueprint.md), [contracts.md](docs/architecture/contracts.md), [api.md](docs/architecture/api.md), [events.md](docs/architecture/events.md), [discovery.md](docs/architecture/discovery.md), [ui.md](docs/architecture/ui.md), and [ui-fonts.md](docs/architecture/ui-fonts.md). Product choices: **Flowbite-svelte v2** + **Lucide**; **CPU total vs per-core**; **network total vs per-adapter**; **RAM** aggregate; **disk** by volume; Kea-agnostic DTOs.
 
 **Build order (imperative):** **UI and UX quality first.** Implement against **mocked data** on the public API contract (static JSON, MSW, or a thin mock server) so dnd, tiles, empty/error/loading states, and a11y are proven **before** investing in real Kea/Nebula integration. The **OpenAPI spec is the source of truth** for mocks and generated/ hand types—**fail fast** on contract mismatch in CI and in dev (e.g. Zod or openapi-typescript validation on responses). **Real backend** production of data is a **follow-on phase**; it must not block shell or plugin work.
 
@@ -102,6 +138,8 @@ For this workstream (and similarly scoped efforts):
 - **Live updates** — [docs/architecture/events.md](docs/architecture/events.md): event envelope + plan for `event_stream` (SSE/WS) contract; UI subscribes to namespaces for DHCP/discovery/perf rather than only polling.
 - **Discovery** — [docs/architecture/discovery.md](docs/architecture/discovery.md): `GET /api/v1/discovery/records` and discovery event contracts; n/w plugin header (pause, status, settings) is a view over that API + control endpoints.
 - **Nebula / Kea** — [docs/architecture/nebula-sync.md](docs/architecture/nebula-sync.md) and [docs/architecture/kea-integration.md](docs/architecture/kea-integration.md): **do not** leak Kea types in API DTOs; use stable resource names (`Pool`, `Lease`, `Reservation`, `DiscoveryScan`, `PerformanceSample`) and map from Kea/Nebula in the service layer. Replication topology can appear on admin/health later.
+- **Kea reference documentation** — ISC publishes authoritative material on the **Kea management API** (control sockets, direct HTTP listeners in Kea 3.0+, Control Agent, HA listeners, security): [Kea API and Control Sockets](https://kb.isc.org/docs/kea-api-sockets). Command-level detail: [Kea ARM — API reference](https://kea.readthedocs.io/en/stable/api.html). Use these when designing **adapters** and **realistic mocks** (Phase A); Kea Fabric’s public [specs/api/openapi.yaml](specs/api/openapi.yaml) remains the operator contract. Track surfacing these links in-repo via todo `kea-reference-docs`.
+- **Pi-hole API (later, optional)** — [Pi-hole API documentation](https://docs.pi-hole.net/api/#accessing-the-api-documentation) describes REST + JSON conventions, auth, and structured errors (`key` / `message` / `hint`). **Live OpenAPI-style docs** for the installed version are served at [http://pi.hole/api/docs/](http://pi.hole/api/docs/) on a Pi-hole host (hostname may vary). Useful for **adjacent DNS/blocklist operator flows** or lab mocks—not a substitute for Kea Fabric’s `/api/v1` contract. Track in-repo links via todo `pihole-reference-docs` when that scope opens.
 
 **Flowbite-svelte v2** is not yet named in Tier B/C UI ADRs; adding it implies **Tailwind** (v4 per Flowbite v2 docs) in `apps/ui`, theme tokens aligned with [docs/architecture/ui-themes.md](docs/architecture/ui-themes.md). Record a small **ADR or Tier C design note** when you introduce a third-party component stack so the “shell-owned primitives” rule in `ui-design-system.md` stays honest (wrapper layer + token bridge).
 
@@ -165,6 +203,34 @@ Add or extend **resource** groups under `/api/v1` (names illustrative — fold i
 **Write/admin** (for Settings buttons and future config): under `/api/v1/...` with policy checks; admin page sections call these.
 
 Regenerate or sync OpenAPI; keep [scripts/check_openapi_drift.py](.github/workflows/python.yml) green if the repo already enforces it.
+
+### Kea official documentation (for adapters and mock realism)
+
+ISC’s Kea documentation helps implementers understand **what Kea exposes** (HTTP POST + JSON command bodies, direct API vs Control Agent, security expectations) and **which commands exist** — without copying Kea’s wire format into the operator UI.
+
+| Resource | URL | Use in Kea Fabric |
+| --- | --- | --- |
+| Kea API and Control Sockets (KB) | [kb.isc.org/docs/kea-api-sockets](https://kb.isc.org/docs/kea-api-sockets) | Architecture of control sockets, Kea 3.0 **direct API** listeners, KCA deprecation path, HA dedicated listeners, hardening checklist. |
+| Kea ARM — API reference | [kea.readthedocs.io/en/stable/api.html](https://kea.readthedocs.io/en/stable/api.html) | Command catalogue and semantics for **adapter** mapping and for **informed mocks** (e.g. lease-like fields abstracted into Kea-agnostic DTOs). |
+
+**Boundary:** Phase B **service layer** translates between `specs/api/openapi.yaml` and Kea’s API; Phase A **mocks** may echo plausible shapes informed by the ARM, but **must still validate against OpenAPI**, not against Kea JSON verbatim.
+
+### Pi-hole API (optional, for later scope)
+
+Pi-hole exposes a **resource-oriented REST API** with predictable JSON success and error envelopes (see [Pi-hole API — overview](https://docs.pi-hole.net/api/#accessing-the-api-documentation)). Operators typically read **version-accurate** interactive docs from their own install at **`http://pi.hole/api/docs/`** (or the host’s configured name).
+
+| Resource | URL | Use in Kea Fabric |
+| --- | --- | --- |
+| Pi-hole API (published docs) | [docs.pi-hole.net/api](https://docs.pi-hole.net/api/#accessing-the-api-documentation) | Reference for HTTP verbs, JSON patterns, auth (`401` without key), and error shape when building **separate** integrations or homelab tooling alongside DHCP. |
+| Pi-hole API docs (local instance) | [http://pi.hole/api/docs/](http://pi.hole/api/docs/) | Matches the running Pi-hole version; preferred when prototyping clients against a real install. |
+
+**Boundary:** Kea Fabric’s canonical operator HTTP contract remains **`/api/v1`** in [specs/api/openapi.yaml](specs/api/openapi.yaml). Any Pi-hole client is an **additional** surface (adapter, sidecar UI, or future doc-linked workflow), not a merge into the Kea-agnostic public API.
+
+### Where these references must live (repo)
+
+- **Kea:** Tier B [docs/architecture/kea-integration.md](docs/architecture/kea-integration.md) (and root [architecture/kea-integration.md](architecture/kea-integration.md) mirror) — todo `kea-reference-docs`.
+- **Pi-hole:** Tier C / roadmap context [docs/architecture/future-considerations.md](docs/architecture/future-considerations.md) (and mirror) — todo `pihole-reference-docs`; alternatively co-list in [docs/architecture/discovery.md](docs/architecture/discovery.md) if DNS adjacency is the primary story.
+- **This plan file** remains a narrative index until those todos are closed; after that, architecture docs are the **source of truth** for bookmarks (plans can link to them).
 
 ## UI: stack and global shell
 

@@ -10,6 +10,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
 
+[project.scripts]
+kea-fabric-api = "kea_fabric.api.main:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8",
@@ -17,6 +20,9 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.11",
     "pyyaml>=6",
+    "fastapi>=0.115",
+    "httpx>=0.28",
+    "uvicorn[standard]>=0.32",
 ]
 docs = [
     "mkdocs>=1.6",

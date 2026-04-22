@@ -1,4 +1,6 @@
-import type { DisplayMode, HostControl } from "../api/types";
+import type { DisplayMode, HostControl, TileOptions } from "../api/types";
+
+export type { TileOptions };
 
 export interface DashboardTile {
   id: string;
@@ -6,6 +8,7 @@ export interface DashboardTile {
   hostControl: HostControl;
   displayMode: DisplayMode;
   region?: string;
+  options?: TileOptions;
 }
 
 export interface DashboardLayout {

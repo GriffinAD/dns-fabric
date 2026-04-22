@@ -35,6 +35,29 @@
           "region": {
             "type": "string",
             "description": "Optional host region key (e.g. primary-grid, status-zone)"
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Per-tile display options (performance plugin and shared toggles).",
+            "properties": {
+              "cpu_total": {
+                "type": "boolean",
+                "description": "When true, CPU is shown as a single aggregate gauge."
+              },
+              "network_by_adapter": {
+                "type": "boolean",
+                "description": "When true, network I/O is split per adapter."
+              },
+              "disk_by_volume": {
+                "type": "boolean",
+                "description": "When true, disk usage is split per volume/mount."
+              },
+              "display_style": {
+                "type": "string",
+                "enum": ["gauge", "percent_only"]
+              }
+            }
           }
         }
       }

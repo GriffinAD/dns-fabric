@@ -25,6 +25,15 @@ re-entry criteria, and touchpoint mapping.
 - [ ] Affected docs/ADRs listed per item.
 - [ ] Review cadence and ownership documented.
 
+## Adjacent operator surfaces (not in `/api/v1`)
+
+**Pi-hole** (optional, separate client): REST + JSON patterns and version-specific interactive docs are useful for DNS-adjacent or lab workflows alongside DHCP. These are **not** part of Kea Fabric’s canonical operator contract in [`specs/api/openapi.yaml`](../specs/api/openapi.yaml).
+
+| Resource | URL | Notes |
+| --- | --- | --- |
+| Pi-hole API (published) | [docs.pi-hole.net/api](https://docs.pi-hole.net/api/#accessing-the-api-documentation) | Auth, verbs, structured errors (`key` / `message` / `hint`). |
+| Pi-hole API docs (local install) | [http://pi.hole/api/docs/](http://pi.hole/api/docs/) | Matches the running Pi-hole version; use for prototyping against a real host (hostname may differ). |
+
 ## Current reserved themes
 
 - Signing/provenance pipeline.

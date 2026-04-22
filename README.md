@@ -20,6 +20,20 @@ uv sync --extra dev --locked
 bash scripts/check_app.sh
 ```
 
+## Operator API (local)
+
+```bash
+uv sync --extra dev --locked
+uv run kea-fabric-api
+```
+
+Listens on `http://127.0.0.1:8080`. Layout and other state persist under **`KEA_FABRIC_DATA_DIR`** (default `./.fabric-data`). Optional auth:
+
+- **`KEA_FABRIC_API_TOKEN`** — operator bearer; required on mutating routes when set.
+- **`KEA_FABRIC_API_VIEWER_TOKEN`** — read-only bearer; `PUT`/`POST` return 403.
+- **`KEA_FABRIC_SSE_INTERVAL_SEC`** — seconds between SSE heartbeats/data ticks (default `15`).
+- Tests may set **`KEA_FABRIC_SSE_CLOSE_AFTER_DATA_EVENTS`** to end the stream after N data events (not for production).
+
 ## Operator UI
 
 ```bash

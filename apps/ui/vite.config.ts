@@ -11,7 +11,6 @@ export default defineConfig({
       "/api": {
         target: "http://127.0.0.1:8080",
         changeOrigin: true,
-        bypass: (req) => (req.url?.startsWith("/api/v1") ? false : undefined),
       },
     },
   },
@@ -22,6 +21,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/lib/**/*.ts"],
+      exclude: ["src/lib/**/types.ts"],
       thresholds: {
         lines: 99,
         functions: 99,

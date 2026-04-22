@@ -10,10 +10,23 @@ export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayout = {
       hostControl: "single-panel",
       displayMode: "compact",
       region: "status-zone",
+      options: {
+        cpu_total: true,
+        network_by_adapter: false,
+        disk_by_volume: false,
+        display_style: "gauge",
+      },
     },
     {
       id: "tile-pools",
       pluginId: "dhcp.pools",
+      hostControl: "single-panel",
+      displayMode: "full",
+      region: "primary-grid",
+    },
+    {
+      id: "tile-discovery",
+      pluginId: "discovery.records",
       hostControl: "single-panel",
       displayMode: "full",
       region: "primary-grid",

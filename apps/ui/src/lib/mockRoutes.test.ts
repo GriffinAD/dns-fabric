@@ -4,6 +4,7 @@ import { mockRoutes } from "../mock/routes";
 
 /** Paths declared in specs/api/openapi.yaml (GET /api/v1 relative to server root). */
 const requiredPaths = [
+  "/api/v1/health",
   "/api/v1/meta",
   "/api/v1/plugins",
   "/api/v1/dhcp/pools",

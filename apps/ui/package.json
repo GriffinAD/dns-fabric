@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:proxy": "KEA_FABRIC_UI_PROXY_API=1 vite",
     "build": "vite build",
     "preview": "vite preview",
     "check:ui-types": "svelte-check",
@@ -25,9 +26,11 @@
     "lucide-svelte": "^1.0.1",
     "svelte": "^5.28.1",
     "svelte-check": "^4.1.6",
+    "svelte-dnd-action": "^0.9.61",
     "tailwindcss": "^4.2.4",
     "typescript": "^5.8.3",
     "vite": "^6.3.4",
-    "vitest": "^3.1.1"
+    "vitest": "^3.1.1",
+    "zod": "^3.25.76"
   }
 }

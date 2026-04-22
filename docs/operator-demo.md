@@ -1,7 +1,8 @@
 # Operator UI demo (local)
 
-Scripted path to run the Kea Fabric API with example plugins and the Vite operator
-shell. Suitable for walkthroughs and manual dashboard editor checks.
+Scripted path to run the Kea Fabric API (mock Kea/Nebula adapters, durable layout
+on disk) and the Vite operator shell. Suitable for walkthroughs and manual dashboard
+editor checks.
 
 ## Prerequisites
 
@@ -24,15 +25,22 @@ shell. Suitable for walkthroughs and manual dashboard editor checks.
 
 ## Run
 
-**Terminal A — API** (example plugins + writable data dir):
+**Terminal A — API** (mock DHCP/discovery/perf + Nebula summary; data under `KEA_FABRIC_DATA_DIR`):
 
 ```bash
 bash scripts/dev_serve_with_examples.sh
+# equivalent: uv run kea-fabric-api
 ```
 
-Listens on `http://127.0.0.1:8080` (`GET /api/v1/*`).
+Listens on `http://127.0.0.1:8080` (`/api/v1/*`).
 
-**Terminal B — operator shell** (proxies `/api` to 8080 per `apps/ui/vite.config.ts`):
+**Terminal B — operator shell** against the **real** API (skips in-process mocks; proxies `/api` to 8080):
+
+```bash
+npm --prefix apps/ui run dev:proxy
+```
+
+For **mock-only** UI (CI / default dev, no backend):
 
 ```bash
 npm --prefix apps/ui run dev
@@ -45,7 +53,20 @@ Open the URL Vite prints (default `http://localhost:5173`). Use the nav links:
 - **Dashboard** — drag layout hosts or dashboard-capable plugins onto the drop zone;
   use **Refresh runtime** if you change manifests on disk
 
+### Optional API auth (lab)
+
+If you set `KEA_FABRIC_API_TOKEN` before starting the API, add a **public** dev token
+to the UI (never commit real secrets):
+
+```bash
+# apps/ui/.env.local
+VITE_API_AUTH_TOKEN=same-value-as-KEA_FABRIC_API_TOKEN
+```
+
+`DataGateway` sends `Authorization: Bearer …` on fetch and `access_token=…` on SSE
+(`EventSource` cannot set headers).
+
 ## Stop
 
-Interrupt both terminals (`Ctrl+C`). No extra teardown is required for the default
-`.fabric-data` dir used by `dev_serve_with_examples.sh`.
+Interrupt both terminals (`Ctrl+C`). Layout files remain under **`KEA_FABRIC_DATA_DIR`**
+(default `.fabric-data` in the current working directory when you started the API).

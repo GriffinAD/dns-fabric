@@ -12,5 +12,7 @@ describe("DEFAULT_DASHBOARD_LAYOUT", () => {
       expect(t.hostControl).toBeTruthy();
       expect(t.displayMode).toMatch(/compact|full/);
     }
+    const perf = DEFAULT_DASHBOARD_LAYOUT.tiles.find((t) => t.pluginId === "perf.summary");
+    expect(perf?.options?.display_style).toBe("gauge");
   });
 });
