@@ -1,0 +1,47 @@
+---
+description: Post-gate operating mode — plan-mode for cross-cutting work; architecture-aligned implementation; REF_ONLY read-only.
+alwaysApply: true
+---
+
+# Operating mode (post documentation gates)
+
+The **Gate 1** and **Gate 2** architecture document sets are **`Accepted`**.
+Work now splits into **Rolling documentation** (Tier C and handbooks) and
+**implementation** (runtime code, packaging, CI beyond doc enforcement).
+
+## Defaults
+
+- **Plan mode** for multi-file or high-risk changes: use CreatePlan / plan files
+  under `/Users/griffin/.cursor/plans/` before large edits.
+- **Accepted docs and ADRs are authoritative.** Do not implement behaviour that
+  contradicts them without updating or superseding the relevant ADR and
+  architecture text.
+- **Documentation-only tasks:** prefer editing `**/*.md` and `**/*.mdc` (plus
+  doc frontmatter YAML). If a task is clearly docs-only, treat that as the
+  default scope.
+
+## Implementation (in scope)
+
+Product code, tests, packaging, and non-doc config are **in scope** when they
+execute the accepted architecture — not ad-hoc experiments that bypass
+governance. New subsystems or contract changes should trace to `docs/` and
+`specs/` updates in the same PR series when behaviour changes.
+
+## Exceptions
+
+- **Human override:** If the human explicitly asks to break from plan mode or
+  scope (e.g. emergency fix, spike), follow their instruction and keep commits
+  reviewable.
+- **CI/docs hygiene:** Small workflow or script changes that only enforce the
+  existing docs/specs bar are fine when requested by name.
+
+**`REF_ONLY/` snapshot imports:** Verbatim trees under `REF_ONLY/plugin-branch/`
+and `REF_ONLY/cicd-branch/`, plus generated `REF_ONLY/inventory.txt`, are
+read-only reference material (not product code). Do not edit imported files in
+place; follow `REF_ONLY/PROVENANCE.md` and `.cursor/rules/reference-material.mdc`.
+
+## Why (historical)
+
+Early in the project, Gate 1 required Tier A + core Tier B `Accepted` before
+runtime code. That gate is satisfied; the discipline remains — **trace changes to
+documented decisions**.

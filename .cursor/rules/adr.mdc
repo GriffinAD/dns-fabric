@@ -1,0 +1,47 @@
+---
+description: MADR template rules and status lifecycle for docs/adr/**.
+globs: docs/adr/**/*.md
+alwaysApply: false
+---
+
+# ADR conventions
+
+Every ADR uses **MADR** as seeded from `docs/_templates/ADR_TEMPLATE.md` and
+lives at `docs/adr/ADR-NNNN-<slug>.md` with a stable four-digit ID.
+
+## Required frontmatter
+
+```yaml
+title:            # "ADR-NNNN: <short decision title>"
+adr:              # NNNN
+status:           # Proposed | Accepted | Deferred | Superseded-by: ADR-XXXX | Future-Considered/Reserved
+date:             # YYYY-MM-DD
+owner:            # assignee name (or explicit unassigned marker in draft ADRs)
+peer_reviewer:    # assignee name (SHOULD differ from owner; solo maintainer may self-review)
+deciders:         # [names]
+# Required when status == Deferred:
+due_date:         # YYYY-MM-DD
+# Required when status == Future-Considered/Reserved:
+re_entry_criteria: # "<concrete trigger(s) that make this in-scope again>"
+touch_points:      # [docs/ADRs that would need to be revisited]
+```
+
+## Status rules
+
+- **Proposed** — draft; open for review.
+- **Accepted** — signed off by peer reviewer; Change Log names the reviewer.
+- **Deferred** — decision intentionally postponed. `owner` and `due_date`
+  fields MUST be set. A Deferred ADR without both fails review.
+- **Superseded-by** — another ADR replaces this one. Keep the file; update
+  status to `Superseded-by: ADR-XXXX` and add a forward link.
+- **Future-Considered/Reserved** — out of roadmap phases 1–5 scope but architecturally
+  real. `re_entry_criteria` and `touch_points` MUST be filled in and the ADR
+  MUST be listed in `docs/architecture/future-considerations.md`.
+
+## Required sections
+
+Status · Context · Decision drivers · Considered options · Decision outcome
+(positive + negative consequences) · Validation · Pros/cons per option ·
+Links · Change Log.
+
+Validation is non-optional: every `Accepted` ADR states what would falsify it.

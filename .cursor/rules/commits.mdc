@@ -1,0 +1,123 @@
+---
+description: Committer identity (GriffinAD) and DCO sign-off are mandatory for every commit in this repo.
+alwaysApply: true
+---
+
+# Commit identity and sign-off
+
+Every commit in this repo MUST be authored by **GriffinAD** with the paired
+email `nigel.surridge@btinternet.com`. This is the user's GitHub identity and
+their personal email — **not** the global git identity on this machine, which
+belongs to an unrelated work account.
+
+## Before every commit — verify
+
+Run these exact checks before invoking `git commit`:
+
+```bash
+test "$(git -C <repo-root> config --local user.name)"  = "GriffinAD"
+test "$(git -C <repo-root> config --local user.email)" = "nigel.surridge@btinternet.com"
+```
+
+If either check fails, **stop**. Do not commit. Do not silently fix by
+updating the global config. Report the mismatch to the human and ask.
+
+## Required sign-off (DCO, ADR-0025)
+
+Every commit MUST include a `Signed-off-by:` trailer matching the identity
+above. Use `-s` / `--signoff`:
+
+```bash
+git commit -s -m "<subject>"
+```
+
+The trailer looks exactly like:
+
+```
+Signed-off-by: GriffinAD <nigel.surridge@btinternet.com>
+```
+
+A commit without the trailer is a policy violation. Do not amend someone
+else's commits to add a trailer without asking.
+
+## No `Made-with: Cursor` trailer (unless the human opts in)
+
+Do **not** add a `Made-with: Cursor` line to commit messages. The
+`Signed-off-by:` trailer should be the **final** line of the message.
+
+If the Cursor IDE injects that line, strip it when amending, e.g.:
+
+```bash
+git -c core.hooksPath=/dev/null commit --amend -F /path/to/clean-message.txt
+```
+
+**Repo hook (recommended):** after clone, run once:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The versioned `.githooks/commit-msg` hook removes a trailing `Made-with: Cursor`
+line so `Signed-off-by:` stays last.
+
+## Do not touch the global config
+
+- `git config --global user.name` / `user.email` stay untouched.
+- The identity override is **repo-local only** (`git config --local ...`).
+- If an agent ever needs to re-set the local override (fresh clone, etc.),
+  it must ask the human first.
+
+## Message conventions (preferred; not enforced as blocking in current CI)
+
+- Conventional commit subjects: `feat:`, `fix:`, `docs:`, `chore:`,
+  `refactor:`, `test:`, `ci:`.
+- Subject ≤ 72 chars.
+- Body wraps at 72 cols.
+- `Signed-off-by:` trailer is the last line of the message (no `Made-with:` after it).
+
+## Phase delivery workflow
+
+For multi-step implementation phases, agents work in **ordered commits** on one
+phase branch (for example, `phase5`). Same verification before each commit:
+
+- `bash scripts/check_app.sh`
+- `npm run check:docs-text`
+- `uv run python scripts/check_release_artifacts.py`
+
+Commit each chunk with sign-off (`git commit -s`). Merge to `main` only when
+phase acceptance criteria are met.
+
+If a chunk is materially contentious (architecture/policy uncertainty or
+high-risk behavior), pause and ask the human before proceeding.
+
+### Stacked slices (multiple PRs in one phase)
+
+When a phase ships as **several slices** (e.g. observability → scheduler →
+discovery), treat them as **one linear branch**, not a braid of merges.
+
+**Do**
+
+- Put slices in **history order** on the same branch: first commit = first
+  slice, second = second slice, and so on (plus a final docs/ADR commit if
+  needed).
+- **Rebase** onto `main` to update the branch:  
+  `git fetch origin && git rebase origin/main`  
+  Resolve conflicts once; keep the branch **linear** (no merge commits from
+  `main` into the phase branch for routine updates).
+- Fold small follow-ups for an earlier slice into that slice with  
+  `git commit --fixup` + `git rebase -i --autosquash` **before** pushing, when
+  it keeps the story one-commit-per-slice.
+
+**Do not**
+
+- `git merge main` (or merge any integration branch) into the phase branch
+  repeatedly — that produces merge commits between slices and a hard-to-read
+  graph.
+- Merge sibling branches into each other to “stack” work — rebase the child
+  work onto the parent branch tip instead.
+- Rewrite published history (force-push) **without** explicit human approval —
+  default is one clean branch pushed once, or coordinated force-with-lease.
+
+If history is already messy, **stop** and ask the human before large cherry-pick
+or filter-branch recovery; prefer a documented one-time fix over repeated
+history surgery.

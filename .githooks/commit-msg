@@ -1,0 +1,8 @@
+#!/bin/sh
+# Strip IDE-injected trailers so Signed-off-by remains the final line (see .cursor/rules/commits.mdc).
+set -e
+msg="$1"
+[ -n "$msg" ] && [ -f "$msg" ] || exit 0
+tmp="${msg}.strip.$$"
+sed '/^Made-with: Cursor$/d' "$msg" > "$tmp"
+mv "$tmp" "$msg"

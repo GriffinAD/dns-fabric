@@ -1,0 +1,70 @@
+name: docs
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: docs-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          # cspell 10+ requires Node >=22.18 (see package.json engines).
+          node-version: "22"
+          cache: npm
+
+      - name: Install Node tooling (markdownlint-cli2, cspell)
+        run: npm install
+
+      - name: Markdown lint
+        run: bash scripts/check_markdownlint.sh
+
+      - name: Spellcheck
+        run: bash scripts/check_cspell.sh
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Install project + docs extras (locked)
+        run: uv sync --extra docs --locked
+
+      - name: Compile Python (scripts + specs/contracts stubs)
+        run: bash scripts/compile_python_tree.sh
+
+      - name: Validate specs (JSON, OpenAPI YAML, broker stubs)
+        run: uv run python scripts/validate_specs.py
+
+      - name: MkDocs strict build
+        run: uv run mkdocs build --strict
+
+      # Advisory only: broken external links must not block merges (network flakiness).
+      - name: Link check (advisory)
+        uses: lycheeverse/lychee-action@v2
+        with:
+          fail: false
+          failIfEmpty: false
+          args: >-
+            --verbose
+            --no-progress
+            README.md
+            AGENTS.md
+            "docs/**/*.md"
+            ".cursor/**/*.mdc"
+            "specs/**/*.md"
+
+      - name: Ensure git archive excludes REF_ONLY
+        run: bash scripts/check_git_archive_excludes_ref_only.sh

@@ -1,0 +1,43 @@
+---
+description: INV-<AREA>-<NAME> naming, block format, and mandatory indexing in invariants.md.
+globs: docs/architecture/**/*.md
+alwaysApply: false
+---
+
+# Invariant rule
+
+Every invariant in architecture docs uses this exact form and this exact ID
+shape. Use the block template at `docs/_templates/INVARIANT_BLOCK_TEMPLATE.md`.
+
+## ID format
+
+`INV-<AREA>-<NAME>`
+
+- `<AREA>` is one of: `CORE`, `PLUGIN`, `CONTRACT`, `EVENT`, `API`, `UI`,
+  `SEC`, `OBS`, `MARKET`, `KEA`, `NEBULA`, `SCHED`, `DISCO`, `DATA`, `CONFIG`,
+  `BROKER`, `PERF`, `REL`, `I18N`.
+- `<NAME>` is `SCREAMING_SNAKE_CASE`, describes the invariant (not its
+  enforcement). Good: `INV-DATA-ORM-BOUNDARY`. Bad: `INV-DATA-CI-CHECK-01`.
+
+## Block format
+
+```markdown
+### INV-<AREA>-<NAME>
+
+- **Statement:** <one declarative, falsifiable sentence.>
+- **Rationale:** <why the system depends on this property.>
+- **Enforcement:** <contract, type, policy, or CI check upholding it.>
+- **Test hook:** <the specific test that fails if it's violated.>
+- **Back-links:** <docs, ADRs, specs, or code paths that depend on it.>
+```
+
+## Indexing rule
+
+Every `INV-*` used anywhere in `docs/architecture/` MUST also appear in
+`docs/architecture/invariants.md`. A doc cannot flip to `Accepted` while it
+references an invariant that is not indexed.
+
+- IDs are unique across the entire repo (grep-check in CI).
+- If two docs need the same invariant, write it in the owning doc and link
+  from the other.
+- Renames use `Superseded-by:` style in the index entry; do not silently rename.

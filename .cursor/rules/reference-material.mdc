@@ -1,0 +1,49 @@
+---
+description: REF_ONLY/ is read-only reference material; edits go through LEDGER.md with mandatory Delta.
+globs: REF_ONLY/**/*
+alwaysApply: false
+---
+
+# REF_ONLY/ policy
+
+`REF_ONLY/` holds full snapshots of past code (currently: `origin/plugin`,
+`origin/CICD`) imported for reference. **Nothing here ships. Nothing here is
+imported by runtime code.**
+
+## Hard rules
+
+- **Do not edit** imported material in place. Treat `REF_ONLY/` as read-only.
+- Changes that affect what we use from a reference are captured in
+  `REF_ONLY/LEDGER.md` (short form) and `docs/architecture/reference-ledger.md`
+  (full-form, machine-checkable).
+- Every new import requires all three files in its subfolder:
+  - `PROVENANCE.md` — source repo, branch, SHA, date, licence.
+  - `README.md` — what's in the snapshot and why.
+  - `LEDGER.md` — short-form index of decisions about this snapshot.
+
+## Delta field (mandatory)
+
+Every row in `docs/architecture/reference-ledger.md` that records a port from
+`REF_ONLY/` MUST include a `Delta:` field of 1–3 sentences describing what
+changed versus the source and why. Verbatim copies are permitted only with:
+
+```
+Delta: copied verbatim, rationale: <one sentence>.
+```
+
+A row without `Delta:` fails CI.
+
+## CI exclusions
+
+`REF_ONLY/` must be excluded from all tooling output:
+
+- `pyproject.toml` / `hatch` / setuptools find+exclude
+- `MANIFEST.in`
+- `.dockerignore`, `.gitattributes` export-ignore
+- ruff / mypy / pytest / coverage configs
+- `mkdocs.yml` nav
+- GitHub Actions matrices
+- Docker / deb / rpm / arch / helm staging scripts
+
+A CI guard job fails the build if any tool output contains a `REF_ONLY/` path,
+or if `git archive` of the release tag contains any `REF_ONLY/` entry.

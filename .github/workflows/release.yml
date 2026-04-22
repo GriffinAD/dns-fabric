@@ -1,0 +1,59 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Run application gate
+        run: bash scripts/check_app.sh
+
+      - name: Verify release artifacts
+        run: uv run python scripts/check_release_artifacts.py
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz *.whl > SHA256SUMS.txt
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-dist
+          path: |
+            dist/*.tar.gz
+            dist/*.whl
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.whl
+            dist/SHA256SUMS.txt

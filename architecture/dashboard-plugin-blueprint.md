@@ -1,0 +1,239 @@
+---
+title: Dashboard Plugin Blueprint
+tier: C
+gate: Rolling
+owner: GriffinAD
+peer_reviewer: GriffinAD
+status: Accepted
+last_review: 2026-04-21
+adrs: [ADR-0016, ADR-0017, ADR-0045]
+invariants: []
+---
+
+<!-- markdownlint-disable MD025 -->
+# Dashboard Plugin Blueprint
+
+> **Tier C — Rolling.** Defines the plugin-composed dashboard editor and runtime
+> layout contracts for the Operational Readiness v1 track.
+
+## Scope
+
+This document defines the dashboard composition architecture for plugin-backed
+operator views:
+
+- Drag-and-drop dashboard editor for UI-capable plugins.
+- Host container controls (`single-panel`, `tab-control`, `vertical-stack`,
+  `split-grid` with percentage splits).
+- Plugin display contracts for `Compact` and `Full` modes.
+- Saved layout schema and migration behavior across releases.
+- Permission and conflict model for shared dashboards.
+
+This doc does not redefine design tokens or theme mechanics. Those remain in:
+`ui-design-system.md`, `ui-themes.md`, `ui-icons.md`, and `ui-fonts.md`.
+
+## System UI baseline (Item 1)
+
+The dashboard architecture inherits the platform UI baseline as mandatory input:
+
+- **Icon library baseline:** semantic icon IDs from the shell registry as
+  defined by `ui-icons.md` and ADR-0016.
+- **Font baseline:** shell-owned font stack and fallback policy as defined by
+  `ui-fonts.md` and ADR-0017.
+
+Dashboard plugins consume these baselines through shared UI contracts; they do
+not bundle alternate icon packs or custom font stacks at runtime.
+
+## Dashboard composition model
+
+The dashboard runtime is a host shell that renders plugin surfaces inside
+container controls selected by dashboard configuration.
+
+- `DashboardEditor` provides palette + layout editing.
+- `DashboardHost` resolves stored layout into active containers.
+- Containers expose drop targets and sizing behavior.
+- Plugins render according to host-provided context and capabilities.
+
+```mermaid
+flowchart TD
+    dashboardEditor[DashboardEditor]
+    pluginPalette[PluginPalette]
+    dashboardHost[DashboardHost]
+    singlePanelHost[SinglePanelHostControl]
+    tabControlHost[TabControlHostControl]
+    verticalStackHost[VerticalStackHostControl]
+    splitGridHost[SplitGridHostControl]
+    statusZone[StatusZone]
+    primaryGridZone[PrimaryGridZone]
+    secondaryGridZone[SecondaryGridZone]
+    dataGateway[DataGateway]
+
+    dashboardEditor --> pluginPalette
+    dashboardEditor --> dashboardHost
+    dashboardHost --> singlePanelHost
+    dashboardHost --> tabControlHost
+    dashboardHost --> verticalStackHost
+    dashboardHost --> splitGridHost
+
+    singlePanelHost --> statusZone
+    tabControlHost --> primaryGridZone
+    verticalStackHost --> secondaryGridZone
+    splitGridHost --> primaryGridZone
+    splitGridHost --> secondaryGridZone
+
+    statusZone --> statusPlugins[StatusAndPerfPlugins]
+    primaryGridZone --> poolsPlugin[DhcpPoolsGridPlugin]
+    primaryGridZone --> clientsPlugin[DhcpClientsGridPlugin]
+    secondaryGridZone --> staticLeasesPlugin[StaticLeasesGridPlugin]
+
+    dataGateway --> statusPlugins
+    dataGateway --> poolsPlugin
+    dataGateway --> clientsPlugin
+    dataGateway --> staticLeasesPlugin
+```
+
+## Plugin taxonomy (initial v1)
+
+- **Status/performance widgets** (top-of-dashboard cards).
+- **DHCP pools grid plugin**.
+- **DHCP clients grid plugin**.
+- **Static leases/reservations grid plugin**.
+
+Each UI-capable plugin declares host compatibility and sizing constraints before
+it can appear in the editor palette.
+
+## Editor and layout contracts
+
+### Editor behavior
+
+- Drag from plugin palette into valid host drop targets.
+- Reorder and resize where host/container allows.
+- Persist layout mutations only after validation.
+- Reject invalid drops with user-visible reason.
+
+### Host controls
+
+- `single-panel`: one plugin surface per container.
+- `tab-control`: multiple child surfaces with active tab state.
+- `vertical-stack`: ordered block stack with per-block sizing rules.
+- `split-grid`: cell matrix with percentage-based split definitions; supports
+  drag/drop fill per cell.
+
+### Reactive sizing and scaling
+
+A reactive UI is mandatory:
+
+- Container size changes propagate to plugin render context.
+- Split percentage updates are deterministic and persisted.
+- Plugins must support dynamic resize without full page reload.
+- Runtime must preserve usable states across viewport size classes.
+
+## Plugin UI mode contract
+
+UI-capable plugins must implement both modes:
+
+- **`Compact`**: a defined subset of `Full` data/actions for constrained
+  footprints.
+- **`Full`**: complete dataset and interaction surface for that plugin role.
+
+Required manifest metadata (`ui_dashboard` contract surface):
+
+- `allowed_host_controls`
+- `default_size_hint`
+- `min_size` / `max_size`
+- `compact_min_footprint` (minimum viable compact width/height)
+- `supports_compact` / `supports_full`
+
+Seeded machine-readable artifacts for this contract family:
+
+- `specs/dashboard/layout.schema.json`
+- `specs/contracts/ui_dashboard_plugin.py`
+
+### Optional `embed_path` (HTML surface)
+
+Plugins may declare `ui_dashboard.embed_path` pointing to a static HTML file inside the bundle.
+The API serves it at `GET /api/v1/plugins/{plugin_id}/dashboard/embed` for same-origin iframes in the shell.
+
+**Operator guidance**
+
+- Treat embed HTML as **public to anyone who can call the embed URL** when the process has **no**
+  `http_jwt_hs256_secret` configured: suitable for trusted dev bundles and non-sensitive copy.
+- When **`http_jwt_hs256_secret`** is set, the API advertises `dashboard_embed_auth: signed` on
+  `GET /api/v1/meta`. The shell must obtain a short-lived `eab` JWT via
+  `GET /api/v1/plugins/{id}/dashboard/embed-launch` (authenticated) and append it to the iframe URL.
+  Embeds must **not** ship secrets or PII in static files; use the parent shell for authenticated API work
+  and pass results via `postMessage` if needed.
+- Embed pages may resize the iframe by posting
+  `{ keaFabricDashboardEmbed: true, type: "resize", height: <px> }` to `parent`; the host clamps height.
+- Iframes use a restrictive `sandbox` (`allow-scripts` + `allow-same-origin` where needed for same-origin APIs).
+
+## State, permissions, and conflicts
+
+### Saved layout schema and migration
+
+- Dashboard layouts are stored as versioned schema payloads.
+- New releases provide forward migration for prior schema versions.
+- Migration failures produce non-destructive fallback rendering and audit logs.
+
+### Editor permissions
+
+- Any user can edit dashboards they own.
+- Admin users can edit all dashboards.
+- Authorization is evaluated before save/apply operations.
+
+### Shared-dashboard conflict model
+
+Initial strategy is **last-write-wins** for save conflicts to keep complexity
+low in v1. Future locking/merge models remain open.
+
+## Fault isolation and fallback behavior
+
+- A failing plugin must not crash host rendering.
+- Missing/disabled plugins render a placeholder tile with:
+  - plugin identifier
+  - unavailable reason
+  - suggested recovery action (install/enable/replace/remove)
+- Host preserves surrounding layout and continues rendering remaining plugins.
+
+## Acceptance criteria for Rolling close
+
+- [x] Dashboard editor host/container model documented for all v1 controls.
+- [x] Plugin contract fields for sizing, host compatibility, and mode support
+      are specified in architecture and backed by specs.
+- [x] `Compact`/`Full` mode behavior is defined for all initial v1 UI plugins
+      (uniform contract; per-plugin UX is manifest-driven).
+- [x] Layout schema versioning + migration policy is documented with fallback.
+- [x] Permission model reflects owner-edit/admin-edit-all behavior.
+- [x] Shared save conflict strategy (`last-write-wins`) is documented.
+- [x] Missing/disabled plugin placeholder and recovery path are documented.
+- [x] `ui.md` cross-links this doc as the dashboard editor/layout authority.
+- [x] All contracts referenced exist in `specs/` (or are created in paired work).
+- [x] Paired implementation and tests are merged for the accepted scope.
+
+### Implementation snapshot (shell)
+
+- Dashboard route in `apps/ui` implements palette + drop targets + nested host
+  drops; plugin palette reacts after `refreshAll` (Svelte 5 `$:` list).
+- Playwright e2e: `apps/ui/tests/dashboard-drag-drop.spec.ts` (stubbed
+  `GET /api/v1/plugins` with `ui_dashboard`).
+- Icon semantic ids: `specs/contracts/registry.json` + `KfIcon` (ADR-0016).
+- Self-hosted Latin fonts + preload: `apps/ui/src/main.ts` (ADR-0017).
+
+## Cross-refs
+
+- Tier B core: `ui.md`, `plugins.md`, `contracts.md`, `security.md`, `api.md`
+- Contract artifacts: `../../specs/dashboard/layout.schema.json`,
+  `../../specs/contracts/ui_dashboard_plugin.py`
+- Tier C UI baseline: `ui-design-system.md`, `ui-themes.md`, `ui-icons.md`,
+  `ui-fonts.md`, `performance.md`, `testing.md`
+- Sequencing context: `product-roadmap.md`
+- ADRs: `../adr/ADR-0016-ui-icons-lucide-registry.md`,
+  `../adr/ADR-0017-ui-fonts-self-hosted.md`,
+  `../adr/ADR-0045-operational-readiness-v1-definition.md`
+
+## Change Log
+
+| Date | Status | Reviewer | Notes |
+|---|---|---|---|
+| 2026-04-21 | Proposed | GriffinAD | Initial Tier C dashboard plugin blueprint with editor/layout, permissions, schema migration, Compact/Full modes, and fallback behavior. |
+| 2026-04-21 | Proposed | GriffinAD | Added seeded `specs/` contract artifacts for dashboard layout schema and UI plugin protocol stub. |
+| 2026-04-21 | Accepted | GriffinAD | Rolling acceptance closed; shell snapshot + e2e/registry/fonts cross-refs. |

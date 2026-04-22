@@ -1,0 +1,50 @@
+---
+description: Tier A / B / C conventions for docs/architecture/** — frontmatter, gates, status lifecycle.
+globs: docs/architecture/**/*.md
+alwaysApply: false
+---
+
+# Doc-tier conventions
+
+Gate 1 and Gate 2 **architecture** acceptance is complete; tier labels and
+this lifecycle still apply to **every future edit** under `docs/architecture/`.
+
+Every file under `docs/architecture/` is **Tier A**, **Tier B**, or **Tier C**
+and MUST declare its tier in frontmatter. Start from the matching skeleton
+under `docs/_templates/`.
+
+## Mandatory frontmatter
+
+```yaml
+title:           # string
+tier:            # A | B | C
+gate:            # 1 | 2 | Rolling  (Tier A = 1; Tier B = 1 or 2; Tier C = Rolling)
+owner:           # assignee name (or explicit unassigned marker in draft docs)
+peer_reviewer:   # assignee name (SHOULD differ from owner; solo maintainer may self-review)
+status:          # Proposed | Accepted | Deferred | Superseded-by
+last_review:     # YYYY-MM-DD
+adrs:            # [ADR-NNNN, ...]
+invariants:      # [INV-AREA-NAME, ...]
+```
+
+## Tier semantics
+
+- **Tier A — Gate 1.** Foundations: `README`, `glossary`, `principles`,
+  `overview`, `invariants`, `threat-model`. Other docs cite these.
+- **Tier B — Gate 1 or Gate 2.** Subsystems/domains. Gate 1 core set is named
+  in the architecture plan's `exit-criteria` todo.
+- **Tier C — Rolling.** Closes alongside the implementation phase that uses it.
+  A status flip to `Accepted` requires all acceptance criteria in the doc's
+  "Acceptance criteria for Rolling close" section to be checked.
+
+## Status lifecycle
+
+`Proposed` → (peer-reviewer sign-off + Change Log entry) → `Accepted`.
+`Superseded-by:` references another doc or ADR that replaces this one.
+No unassigned placeholder markers in an `Accepted` doc narrative (Change Log
+excepted). See `docs/architecture/DOC_STANDARDS.md`.
+
+## Change Log
+
+Every status flip writes a Change Log entry naming the reviewer. See
+`docs/_governance/REVIEWERS.md` for the exact format.

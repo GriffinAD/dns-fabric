@@ -1,0 +1,33 @@
+name: ui
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ui-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.18.0"
+
+      - name: Install UI dependencies
+        run: npm --prefix apps/ui ci
+
+      - name: Unit/component tests (Vitest + coverage)
+        run: npm run check:ui-unit
+
+      - name: Install Playwright browsers
+        run: npm --prefix apps/ui exec playwright install chromium --with-deps
+
+      - name: UI automation (Playwright)
+        run: npm run check:ui-e2e

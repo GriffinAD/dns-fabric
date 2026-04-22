@@ -1,0 +1,26 @@
+---
+description: Unit tests and CI gates are mandatory; new behaviour requires tests.
+alwaysApply: true
+---
+<!-- cspell:ignore Vitest -->
+
+# Testing and test automation
+
+## Non-negotiable
+
+Kea Fabric treats **automated tests and the Python CI gate as part of the definition of done**, not an extra step.
+
+## Rules for implementation work
+
+1. **New or changed behaviour** in `src/kea_fabric/` MUST include **tests** under `tests/` that exercise the change (happy path and meaningful failure/edge cases where relevant). Omitting tests requires an explicit human decision and a short justification in the PR (e.g. blocked on hardware-only integration).
+2. **Before finishing a task**, run `bash scripts/check_app.sh` from the repo root (or the equivalent steps: `uv sync --extra dev --locked`, `compile_python_tree.sh`, `ruff`, `mypy src tests`, `pytest` with coverage, `check_openapi_drift`, `validate_specs`, `uv build`). **Coverage:** the project **targets 100%** line coverage on `kea_fabric`; `tool.coverage.report.fail_under` is **99** (drops must not go below 99%). Prefer tests that restore coverage toward 100% when you touch code. If a change drops below 99%, add or extend tests until the gate passes. Fix all failures; do not rely on the user to run CI.
+3. **OpenAPI** — if HTTP routes or models change, regenerate `specs/api/openapi.yaml` (`uv run python scripts/export_openapi.py`) so `check_openapi_drift` passes.
+4. **REF_ONLY/** remains excluded from product test expectations; do not add tests that execute reference-only code as if it were shipped product.
+5. **UI testing stack** — for `apps/ui/` work, use **Vitest** for unit/component tests
+   and **Playwright** for UI automation/e2e tests.
+6. **Coverage standard** — maintain **90%+** coverage on testable code paths, with
+   a **target of 100%** when practical.
+
+## CI
+
+The **python** workflow (`.github/workflows/python.yml`) is the automation backstop. A change that cannot pass that workflow is not complete.
