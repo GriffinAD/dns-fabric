@@ -30,6 +30,23 @@ npm run check:ui-e2e
 
 See [docs/operator-demo.md](docs/operator-demo.md) for the full local demo path.
 
+## Git remotes
+
+| Remote | URL | Purpose |
+| --- | --- | --- |
+| **`origin`** | **`https://github.com/GriffinAD/kea-fabric.git`** | **Product** repository (this tree). |
+| **`poc`** | **`https://github.com/GriffinAD/kea-fabric-poc.git`** | Earlier PoC; optional `git fetch poc` for comparison. |
+
+Clone:
+
+```bash
+git clone https://github.com/GriffinAD/kea-fabric.git
+cd kea-fabric
+git remote add poc https://github.com/GriffinAD/kea-fabric-poc.git   # optional
+```
+
+See [docs/_governance/NAMING.md](docs/_governance/NAMING.md) for naming rules.
+
 ## Contributing
 
 - [AGENTS.md](AGENTS.md) — automation and repo conventions.

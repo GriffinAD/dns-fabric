@@ -3,7 +3,7 @@ title: Product Naming
 owner: GriffinAD
 peer_reviewer: GriffinAD
 status: Accepted
-last_review: 2026-04-19
+last_review: 2026-04-22
 ---
 
 # Product Naming
@@ -41,13 +41,25 @@ The Python import package is **`kea_fabric`** (underscore, PEP 8).
 ## Namespace reservation checklist
 
 Sanity-check performed 2026-04-19. Primary namespaces remain available except
-the user repo now created under `GriffinAD/kea-fabric`:
+the GitHub repositories below.
+
+**Git hosting (product vs PoC):**
+
+| | GitHub slug | Role |
+| --- | --- | --- |
+| **Product** | **`GriffinAD/kea-fabric`** | Canonical repository for this tree. **`origin`** → **`https://github.com/GriffinAD/kea-fabric.git`**. |
+| **PoC** | **`GriffinAD/kea-fabric-poc`** | Earlier line of work; keep for history. Optional remote **`poc`** → **`https://github.com/GriffinAD/kea-fabric-poc.git`**. |
+
+Creating **`kea-fabric`** as its own repository **replaces** any old GitHub redirect
+that sent **`…/kea-fabric`** to the PoC repo — the product URL now resolves to this
+repository (private repos return 404 to unauthenticated web clients).
 
 - [ ] PyPI `kea-fabric` (verified 404 — available)
 - [ ] npm `kea-fabric` (verified 404 — available)
 - [ ] Docker Hub `kea-fabric` (verified empty — available)
 - [ ] Docker Hub `keafabric` (defensive reservation — available)
-- [x] GitHub repo `GriffinAD/kea-fabric` (created 2026-04-19, private)
+- [x] GitHub repo `GriffinAD/kea-fabric-poc` (PoC; private)
+- [x] GitHub repo `GriffinAD/kea-fabric` (product; private)
 - [ ] GitHub org `kea-fabric` (verified 404 — available; still unreserved)
 - [ ] GitHub org `keafabric` (defensive reservation — available; still unreserved)
 - [ ] Read the Docs `kea-fabric` (verified 404 — available)
@@ -78,4 +90,5 @@ credentials and is tracked as a frontmatter todo on the architecture plan.
 | Date | Status | Reviewer | Notes |
 |---|---|---|---|
 | 2026-04-19 | Accepted | GriffinAD | Initial draft; namespace sanity-check recorded. |
-| 2026-04-19 | Accepted | GriffinAD | Checked off `GriffinAD/kea-fabric` repo creation; org reservations remain pending. |
+| 2026-04-19 | Accepted | GriffinAD | Checked off `GriffinAD/kea-fabric-poc` (PoC). |
+| 2026-04-22 | Accepted | GriffinAD | **`GriffinAD/kea-fabric`** product repo created; **`origin`** / docs / MkDocs point here; **`poc`** = **`kea-fabric-poc`** — separate repos (prior redirect from old name no longer applies to Git). |
