@@ -22,6 +22,8 @@
   import TileSettingsOverlay from "./lib/dashboard/TileSettingsOverlay.svelte";
   import type { DashboardLayout, DashboardTile } from "./lib/dashboard/types";
   import { UI_VERSION } from "./lib/uiVersion";
+  import ThemeControls from "./lib/theme/ThemeControls.svelte";
+  import { loadThemePreferences, resyncDocumentThemeFromStorage } from "./lib/theme/themeStorage";
 
   let plugins = $state<PluginEntry[]>([]);
   let layout = $state<DashboardLayout>(initialDashboardLayout());
@@ -71,6 +73,14 @@
     syncRouteFromHash();
     window.addEventListener("hashchange", syncRouteFromHash);
 
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onColorScheme = () => {
+      if (loadThemePreferences().mode === "system") {
+        resyncDocumentThemeFromStorage();
+      }
+    };
+    mq.addEventListener("change", onColorScheme);
+
     void gateway
       .listPlugins()
       .then((r) => {
@@ -94,6 +104,7 @@
 
     return () => {
       window.removeEventListener("hashchange", syncRouteFromHash);
+      mq.removeEventListener("change", onColorScheme);
       unsub();
     };
   });
@@ -167,7 +178,7 @@
 
 <main class="min-h-screen bg-gray-50 p-8 dark:bg-gray-900">
   <div class="mx-auto flex max-w-6xl flex-col gap-6">
-    <header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <header class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div>
         <h1 class="flex items-center gap-2 text-2xl font-semibold text-gray-900 dark:text-white">
           <House class="h-8 w-8 shrink-0" aria-hidden="true" />
@@ -177,17 +188,21 @@
           Operator shell ({UI_VERSION}). Flowbite Svelte v2 + mocked <code class="font-mono text-sm">/api/v1</code>.
         </p>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <Button type="button" color="alternative" class="inline-flex items-center gap-2" onclick={goHome}>
-          <House class="h-4 w-4" aria-hidden="true" />
-          Dashboard
-        </Button>
-        <Button type="button" class="inline-flex items-center gap-2" onclick={goAdmin}>
-          <Settings class="h-4 w-4" aria-hidden="true" />
-          Admin
-        </Button>
+      <div class="flex w-full min-w-0 flex-col items-stretch gap-4 sm:max-w-md lg:w-auto lg:max-w-none lg:flex-1 lg:flex-row lg:items-end lg:justify-end">
+        <ThemeControls />
       </div>
     </header>
+
+    <div class="flex flex-wrap gap-2">
+      <Button type="button" color="alternative" class="inline-flex items-center gap-2" onclick={goHome}>
+        <House class="h-4 w-4" aria-hidden="true" />
+        Dashboard
+      </Button>
+      <Button type="button" class="inline-flex items-center gap-2" onclick={goAdmin}>
+        <Settings class="h-4 w-4" aria-hidden="true" />
+        Admin
+      </Button>
+    </div>
 
     {#if route === "admin"}
       <AdminPage {gateway} />
