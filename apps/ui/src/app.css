@@ -1,8 +1,32 @@
-:root {
-  font-family: system-ui, sans-serif;
-  line-height: 1.5;
-}
+/* Self-hosted Latin subsets per docs/architecture/ui-fonts.md (no Google Fonts CDN). */
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/jetbrains-mono/latin-400.css";
 
-body {
-  margin: 0;
+@import "tailwindcss";
+@import "../node_modules/flowbite-svelte/dist/theme-selector/themes/default.css";
+
+@plugin "flowbite/plugin";
+@plugin "flowbite-typography";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source "../node_modules/flowbite-svelte/dist";
+
+@layer base {
+  html {
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+  }
+
+  /* disable chrome cancel button (Flowbite doc) */
+  input[type="search"]::-webkit-search-cancel-button {
+    display: none;
+  }
 }
