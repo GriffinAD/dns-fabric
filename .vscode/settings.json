@@ -4,6 +4,10 @@
   "python.testing.pytestArgs": ["tests"],
   "python.testing.pytestEnabled": true,
   "python.testing.unittestEnabled": false,
+  // Vitest: needs the Vitest extension (vitest.explorer) + `npm ci` in apps/ui.
+  // Playwright: needs Playwright Test for VSCode (ms-playwright.playwright); use Testing gear to select apps/ui/playwright.config.ts if needed.
+  // Pytest: Python extension — tests/ (the "Python Tests" tree).
   "vitest.rootConfig": "${workspaceFolder}/apps/ui/vite.config.ts",
-  "vitest.vitestPackagePath": "${workspaceFolder}/apps/ui/package.json"
+  "vitest.vitestPackagePath": "${workspaceFolder}/apps/ui/node_modules/vitest/package.json",
+  "vitest.logLevel": "verbose"
 }

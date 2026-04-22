@@ -218,6 +218,19 @@ low in v1. Future locking/merge models remain open.
 - Icon semantic ids: `specs/contracts/registry.json` + `KfIcon` (ADR-0016).
 - Self-hosted Latin fonts + preload: `apps/ui/src/main.ts` (ADR-0017).
 
+## Twelve-column grid placement (Phase C)
+
+Implemented in `apps/ui` (`gridPlacement.ts`, `DashboardHost.svelte`, `DashboardEditor.svelte`) and persisted via `tile.grid` in `specs/dashboard/layout.schema.json`.
+
+- **Widths:** `perf.summary` uses **12** columns; other dashboard plugins use **6** (`tileColSpan`).
+- **Editor DnD:** `svelte-dnd-action` reorders tiles. Children use **`grid-column: span N` only** (CSS auto-placement in row order) so drag/FLIP animations stay stable; **fixed** `grid-row` / `grid-column` lines are not applied to draggable nodes.
+- **Persistence:** `packTilesToGrid` assigns non-overlapping `{ col, row, colSpan, rowSpan }` for API validation and hints; geometry matches auto-flow for the current packing rules.
+- **Reflow / collision (v1):** **Order-based packing** — changing tile order recomputes cells. Free-form snap-to-cell, push, and swap policies are **out of scope** for this slice; last-write-wins on `PUT` layout remains the conflict rule.
+
+### Tile settings in edit mode
+
+Operators can change **display mode**, **host control** (from the plugin manifest `allowed_host_controls`), and **performance tile options** (`cpu_total`, `network_by_adapter`, `disk_by_volume`, `display_style`) inline in the editor. **localStorage** updates immediately; **`PUT /api/v1/dashboards/{id}/layout`** is **debounced** (~400 ms) to batch rapid toggles. Leaving edit mode (Dashboard tab) **flushes** a final PUT so the server matches the latest layout.
+
 ## Cross-refs
 
 - Tier B core: `ui.md`, `plugins.md`, `contracts.md`, `security.md`, `api.md`
@@ -238,3 +251,4 @@ low in v1. Future locking/merge models remain open.
 | 2026-04-21 | Proposed | GriffinAD | Initial Tier C dashboard plugin blueprint with editor/layout, permissions, schema migration, Compact/Full modes, and fallback behavior. |
 | 2026-04-21 | Proposed | GriffinAD | Added seeded `specs/` contract artifacts for dashboard layout schema and UI plugin protocol stub. |
 | 2026-04-21 | Accepted | GriffinAD | Rolling acceptance closed; shell snapshot + e2e/registry/fonts cross-refs. |
+| 2026-04-22 | Accepted | GriffinAD | Phase C grid + edit-mode semantics: span-only editor grid, packing rules, debounced layout PUT. |

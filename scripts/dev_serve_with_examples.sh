@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Local API for operator UI (docs/operator-demo.md). Replace when `kea-fabric serve` exists.
+# Local operator API for docs/operator-demo.md (mock Kea/Nebula; durable layout under KEA_FABRIC_DATA_DIR).
 set -euo pipefail
-echo "Bootstrap: API entrypoint not implemented yet. See docs/operator-demo.md." >&2
-exit 1
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+exec uv run kea-fabric-api

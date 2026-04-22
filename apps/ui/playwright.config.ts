@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // *.e2e.ts avoids overlap with Vitest's **/*.{test,spec}.ts when tools scan the repo root.
+  testMatch: "**/*.e2e.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

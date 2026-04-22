@@ -1,4 +1,14 @@
-import type { DisplayMode, HostControl } from "../api/types";
+import type { DisplayMode, HostControl, TileOptions } from "../api/types";
+
+export type { TileOptions };
+
+/** 12-column grid placement (optional; Phase C editor). */
+export interface GridPlacement {
+  col: number;
+  row: number;
+  colSpan: number;
+  rowSpan: number;
+}
 
 export interface DashboardTile {
   id: string;
@@ -6,6 +16,8 @@ export interface DashboardTile {
   hostControl: HostControl;
   displayMode: DisplayMode;
   region?: string;
+  grid?: GridPlacement;
+  options?: TileOptions;
 }
 
 export interface DashboardLayout {

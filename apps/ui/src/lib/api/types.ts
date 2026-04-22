@@ -4,6 +4,17 @@ export type HostControl = "single-panel" | "tab-control" | "vertical-stack" | "s
 
 export type DisplayMode = "compact" | "full";
 
+export type TileDisplayStyle = "gauge" | "percent_only";
+
+export interface TileOptions {
+  cpu_total?: boolean;
+  network_by_adapter?: boolean;
+  disk_by_volume?: boolean;
+  display_style?: TileDisplayStyle;
+  /** Max dashboard columns for this perf tile; gauges wrap inside when count exceeds this (1–12). */
+  perf_max_cols?: number;
+}
+
 export interface MetaResponse {
   api_version: string;
   service: string;
@@ -31,6 +42,12 @@ export interface PluginListResponse {
   items: PluginEntry[];
 }
 
+export interface HealthResponse {
+  status: "ok" | "degraded" | "down";
+  checked_at: string;
+  dependencies?: { name: string; status: "ok" | "degraded" | "down"; detail?: string | null }[];
+}
+
 export interface DhcpPool {
   id: string;
   subnet_cidr: string;
@@ -49,7 +66,13 @@ export interface DhcpClient {
   assigned_address: string;
   pool_id: string;
   hostname?: string | null;
+  client_category?: string | null;
+  vendor_name?: string | null;
+  scan_status?: string | null;
+  lease_started_at?: string | null;
   lease_expires_at?: string | null;
+  subnet_cidr?: string | null;
+  services?: string[];
 }
 
 export interface DhcpClientListResponse {
@@ -61,6 +84,11 @@ export interface DhcpReservation {
   hardware_address: string;
   reserved_address: string;
   hostname?: string | null;
+  category?: string | null;
+  subnet_cidr?: string | null;
+  vendor_name?: string | null;
+  scan_status?: string | null;
+  services?: string[];
 }
 
 export interface DhcpReservationListResponse {
@@ -79,11 +107,39 @@ export interface DiscoveryRecordListResponse {
   items: DiscoveryRecord[];
 }
 
+export interface DiscoveryScanResponse {
+  state: "idle" | "running" | "paused";
+  updated_at: string;
+  record_count?: number | null;
+}
+
+export interface NetworkAdapterSample {
+  name: string;
+  in_mbps: number;
+  out_mbps: number;
+}
+
+export interface DiskVolumeSample {
+  label: string;
+  used_percent: number;
+}
+
 export interface PerfSummaryResponse {
   cpu_percent_total: number;
+  cpu_core_percent?: number[];
   memory_used_percent: number;
+  memory_used_bytes?: number | null;
+  memory_total_bytes?: number | null;
   network_in_mbps?: number | null;
   network_out_mbps?: number | null;
+  network_adapters?: NetworkAdapterSample[];
   disk_used_percent?: number | null;
+  disk_volumes?: DiskVolumeSample[];
   collected_at: string;
+}
+
+export interface FabricEvent {
+  topic: string;
+  occurred_at: string;
+  payload: Record<string, unknown>;
 }

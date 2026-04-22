@@ -8,7 +8,34 @@ info:
 servers:
   - url: /api/v1
     description: Relative to the operator origin
+security:
+  - BearerAuth: []
 paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Liveness and dependency summary for admin surfaces
+      tags: [Admin]
+      security: []
+      responses:
+        "200":
+          description: Health snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /admin/replication/summary:
+    get:
+      operationId: getNebulaReplicationSummary
+      summary: Read-only Nebula replication observation (mock in Phase B)
+      tags: [Admin]
+      responses:
+        "200":
+          description: Replication posture snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NebulaReplicationSummary"
   /meta:
     get:
       operationId: getMeta
@@ -33,11 +60,103 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PluginListResponse"
+  /dashboards/{dashboardId}/layout:
+    get:
+      operationId: getDashboardLayout
+      summary: Saved dashboard layout for the operator shell
+      tags: [Dashboard]
+      parameters:
+        - $ref: "#/components/parameters/DashboardId"
+      responses:
+        "200":
+          description: Layout document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardLayout"
+    put:
+      operationId: putDashboardLayout
+      summary: Replace dashboard layout (last-write-wins; validate against layout schema server-side)
+      tags: [Dashboard]
+      parameters:
+        - $ref: "#/components/parameters/DashboardId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DashboardLayout"
+      responses:
+        "204":
+          description: Layout accepted
+        "400":
+          description: Invalid layout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      operationId: resetDashboardLayout
+      summary: Restore dashboard layout from dashboard-layouts.orig.json (read-only baseline on disk)
+      tags: [Dashboard]
+      parameters:
+        - $ref: "#/components/parameters/DashboardId"
+      responses:
+        "200":
+          description: Layout after reset (same shape as GET layout)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardLayout"
+        "400":
+          description: Baseline file exists but layout for this id is invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Baseline file missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /events/stream:
+    get:
+      operationId: streamFabricEvents
+      summary: Server-sent events for live dashboard tiles (namespaced topics)
+      tags: [Events]
+      parameters:
+        - name: access_token
+          in: query
+          required: false
+          description: >
+            Dev escape hatch when browsers cannot set Authorization on EventSource;
+            must match configured API token when auth is enabled.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: >
+            SSE stream (`text/event-stream`). Each event carries a JSON body matching FabricEvent.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: |
+                  data: {"topic":"fabric.perf.updated","occurred_at":"2026-04-22T10:05:01Z","payload":{}}
+
+                  data: {"topic":"fabric.discovery.updated","occurred_at":"2026-04-22T10:05:02Z","payload":{}}
+
   /dhcp/pools:
     get:
       operationId: listDhcpPools
       summary: DHCP address pools (Kea-agnostic DTO)
       tags: [DHCP]
+      parameters:
+        - $ref: "#/components/parameters/ListLimit"
+        - $ref: "#/components/parameters/ListCursor"
+        - $ref: "#/components/parameters/ListSort"
+        - $ref: "#/components/parameters/ListFilter"
       responses:
         "200":
           description: Pool collection
@@ -50,6 +169,11 @@ paths:
       operationId: listDhcpClients
       summary: Active DHCP clients (Kea-agnostic DTO)
       tags: [DHCP]
+      parameters:
+        - $ref: "#/components/parameters/ListLimit"
+        - $ref: "#/components/parameters/ListCursor"
+        - $ref: "#/components/parameters/ListSort"
+        - $ref: "#/components/parameters/ListFilter"
       responses:
         "200":
           description: Client collection
@@ -62,6 +186,11 @@ paths:
       operationId: listDhcpReservations
       summary: Static reservations / fixed assignments
       tags: [DHCP]
+      parameters:
+        - $ref: "#/components/parameters/ListLimit"
+        - $ref: "#/components/parameters/ListCursor"
+        - $ref: "#/components/parameters/ListSort"
+        - $ref: "#/components/parameters/ListFilter"
       responses:
         "200":
           description: Reservation collection
@@ -74,6 +203,11 @@ paths:
       operationId: listDiscoveryRecords
       summary: Discovery snapshot (normalized records)
       tags: [Discovery]
+      parameters:
+        - $ref: "#/components/parameters/ListLimit"
+        - $ref: "#/components/parameters/ListCursor"
+        - $ref: "#/components/parameters/ListSort"
+        - $ref: "#/components/parameters/ListFilter"
       responses:
         "200":
           description: Discovery records
@@ -81,6 +215,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DiscoveryRecordListResponse"
+  /discovery/scan:
+    get:
+      operationId: getDiscoveryScan
+      summary: Discovery scan status for toolbar and controls
+      tags: [Discovery]
+      responses:
+        "200":
+          description: Scan status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryScanResponse"
+  /discovery/scan/pause:
+    post:
+      operationId: pauseDiscoveryScan
+      summary: Pause or resume an active discovery scan (idempotent)
+      tags: [Discovery]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscoveryPauseRequest"
+      responses:
+        "200":
+          description: Updated scan status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryScanResponse"
   /perf/summary:
     get:
       operationId: getPerfSummary
@@ -94,7 +258,216 @@ paths:
               schema:
                 $ref: "#/components/schemas/PerfSummaryResponse"
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: >
+        When `KEA_FABRIC_API_TOKEN` / `KEA_FABRIC_API_VIEWER_TOKEN` are set, send
+        `Authorization: Bearer <token>`. Viewer token allows reads only; operator allows writes.
+  parameters:
+    DashboardId:
+      name: dashboardId
+      in: path
+      required: true
+      schema:
+        type: string
+    ListLimit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+    ListCursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+    ListSort:
+      name: sort
+      in: query
+      required: false
+      schema:
+        type: string
+        description: Server-defined sort key (e.g. assigned_address:asc)
+    ListFilter:
+      name: filter
+      in: query
+      required: false
+      schema:
+        type: string
+        description: Opaque filter expression evaluated server-side
   schemas:
+    NebulaReplicationSummary:
+      type: object
+      additionalProperties: false
+      required: [status, observed_at]
+      properties:
+        status:
+          type: string
+          enum: [healthy, lagging, disconnected, unknown]
+        observed_at:
+          type: string
+          format: date-time
+        partner_id:
+          type: string
+          nullable: true
+        detail:
+          type: string
+          nullable: true
+    ProblemDetails:
+      type: object
+      additionalProperties: true
+      description: RFC 7807-style problem (fields may vary)
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status, checked_at]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, down]
+        checked_at:
+          type: string
+          format: date-time
+        dependencies:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, status]
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+                enum: [ok, degraded, down]
+              detail:
+                type: string
+                nullable: true
+    FabricEvent:
+      type: object
+      additionalProperties: false
+      required: [topic, occurred_at, payload]
+      properties:
+        topic:
+          type: string
+          description: Namespaced topic (e.g. fabric.perf.updated)
+        occurred_at:
+          type: string
+          format: date-time
+        payload:
+          type: object
+          additionalProperties: true
+    TileOptions:
+      type: object
+      additionalProperties: false
+      properties:
+        cpu_total:
+          type: boolean
+          description: When true, CPU is shown as a single aggregate gauge.
+        network_by_adapter:
+          type: boolean
+        disk_by_volume:
+          type: boolean
+        display_style:
+          type: string
+          enum: [gauge, percent_only]
+        perf_max_cols:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: >
+            Max dashboard columns for a performance tile; extra gauges wrap inside the tile.
+    GridPlacement:
+      type: object
+      additionalProperties: false
+      required: [col, row, colSpan, rowSpan]
+      description: >
+        12-column grid cell. Server validates col + colSpan <= 12 when present.
+      properties:
+        col:
+          type: integer
+          minimum: 0
+          maximum: 11
+        row:
+          type: integer
+          minimum: 0
+        colSpan:
+          type: integer
+          minimum: 1
+          maximum: 12
+        rowSpan:
+          type: integer
+          minimum: 1
+    DashboardTile:
+      type: object
+      additionalProperties: false
+      required: [id, pluginId, hostControl, displayMode]
+      properties:
+        id:
+          type: string
+        pluginId:
+          type: string
+        hostControl:
+          type: string
+          enum: [single-panel, tab-control, vertical-stack, split-grid]
+        displayMode:
+          type: string
+          enum: [compact, full]
+        region:
+          type: string
+          nullable: true
+        grid:
+          $ref: "#/components/schemas/GridPlacement"
+        options:
+          $ref: "#/components/schemas/TileOptions"
+    DashboardLayout:
+      type: object
+      additionalProperties: false
+      required: [version, tiles]
+      properties:
+        version:
+          type: integer
+          minimum: 1
+        tiles:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardTile"
+    DiscoveryPauseRequest:
+      type: object
+      additionalProperties: false
+      required: [paused]
+      properties:
+        paused:
+          type: boolean
+    DiscoveryScanResponse:
+      type: object
+      additionalProperties: false
+      required: [state, updated_at]
+      properties:
+        state:
+          type: string
+          enum: [idle, running, paused]
+        updated_at:
+          type: string
+          format: date-time
+        record_count:
+          type: integer
+          minimum: 0
+          nullable: true
     MetaResponse:
       type: object
       additionalProperties: false
@@ -211,10 +584,32 @@ components:
         hostname:
           type: string
           nullable: true
+        client_category:
+          type: string
+          nullable: true
+          description: UI category for icon mapping (e.g. workstation, infra)
+        vendor_name:
+          type: string
+          nullable: true
+        scan_status:
+          type: string
+          nullable: true
+        lease_started_at:
+          type: string
+          format: date-time
+          nullable: true
         lease_expires_at:
           type: string
           format: date-time
           nullable: true
+        subnet_cidr:
+          type: string
+          nullable: true
+        services:
+          type: array
+          items:
+            type: string
+          description: Logical service tags (e.g. ssh, mdns)
     DhcpClientListResponse:
       type: object
       additionalProperties: false
@@ -238,6 +633,23 @@ components:
         hostname:
           type: string
           nullable: true
+        category:
+          type: string
+          nullable: true
+          description: Reservation category badge (e.g. STATIC)
+        subnet_cidr:
+          type: string
+          nullable: true
+        vendor_name:
+          type: string
+          nullable: true
+        scan_status:
+          type: string
+          nullable: true
+        services:
+          type: array
+          items:
+            type: string
     DhcpReservationListResponse:
       type: object
       additionalProperties: false
@@ -277,6 +689,31 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DiscoveryRecord"
+    NetworkAdapterSample:
+      type: object
+      additionalProperties: false
+      required: [name, in_mbps, out_mbps]
+      properties:
+        name:
+          type: string
+        in_mbps:
+          type: number
+          format: float
+        out_mbps:
+          type: number
+          format: float
+    DiskVolumeSample:
+      type: object
+      additionalProperties: false
+      required: [label, used_percent]
+      properties:
+        label:
+          type: string
+        used_percent:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
     PerfSummaryResponse:
       type: object
       additionalProperties: false
@@ -290,11 +727,25 @@ components:
           format: float
           minimum: 0
           maximum: 100
+        cpu_core_percent:
+          type: array
+          items:
+            type: number
+            format: float
+          description: Optional per-core utilization percentages (0–100 each)
         memory_used_percent:
           type: number
           format: float
           minimum: 0
           maximum: 100
+        memory_used_bytes:
+          type: integer
+          format: int64
+          nullable: true
+        memory_total_bytes:
+          type: integer
+          format: int64
+          nullable: true
         network_in_mbps:
           type: number
           format: float
@@ -303,10 +754,18 @@ components:
           type: number
           format: float
           nullable: true
+        network_adapters:
+          type: array
+          items:
+            $ref: "#/components/schemas/NetworkAdapterSample"
         disk_used_percent:
           type: number
           format: float
           nullable: true
+        disk_volumes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiskVolumeSample"
         collected_at:
           type: string
           format: date-time

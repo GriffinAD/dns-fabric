@@ -12,5 +12,12 @@ describe("DEFAULT_DASHBOARD_LAYOUT", () => {
       expect(t.hostControl).toBeTruthy();
       expect(t.displayMode).toMatch(/compact|full/);
     }
+    const ram = DEFAULT_DASHBOARD_LAYOUT.tiles.find((t) => t.pluginId === "perf.ram");
+    expect(ram?.options?.display_style).toBe("gauge");
+    expect(ram?.grid?.colSpan).toBe(2);
+    const clients = DEFAULT_DASHBOARD_LAYOUT.tiles.find((t) => t.pluginId === "dhcp.clients");
+    expect(clients?.grid?.colSpan).toBe(3);
+    const reservations = DEFAULT_DASHBOARD_LAYOUT.tiles.find((t) => t.pluginId === "dhcp.reservations");
+    expect(reservations?.grid?.colSpan).toBe(12);
   });
 });

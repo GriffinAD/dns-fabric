@@ -59,6 +59,15 @@ flowchart LR
     R --> O
 ```
 
+## External references
+
+Authoritative ISC documentation for **adapter and mock design** (Phase B services and Phase A realistic fixtures). Kea Fabric’s operator HTTP contract remains [`specs/api/openapi.yaml`](../../specs/api/openapi.yaml) (`/api/v1`); wire formats below inform **private** Kea clients only, not public DTOs.
+
+| Resource | URL | Notes |
+| --- | --- | --- |
+| Kea API and Control Sockets (KB) | [kb.isc.org/docs/kea-api-sockets](https://kb.isc.org/docs/kea-api-sockets) | Control sockets, Kea 3.0+ direct HTTP API, Control Agent, HA listeners, hardening. |
+| Kea ARM — API reference | [kea.readthedocs.io/en/stable/api.html](https://kea.readthedocs.io/en/stable/api.html) | Command catalogue and semantics for mapping to Kea-agnostic resources. |
+
 ## Cross-refs
 
 - `overview.md`
