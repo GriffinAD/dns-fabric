@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "vitest.explorer",
+    "ms-playwright.playwright"
+  ]
+}
