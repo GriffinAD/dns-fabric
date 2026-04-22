@@ -6,7 +6,7 @@ owner: GriffinAD
 peer_reviewer: GriffinAD
 status: Accepted
 last_review: 2026-04-21
-adrs: [ADR-0016, ADR-0017, ADR-0045]
+adrs: [ADR-0016, ADR-0017, ADR-0045, ADR-0046]
 invariants: []
 ---
 
@@ -228,7 +228,8 @@ low in v1. Future locking/merge models remain open.
 - Sequencing context: `product-roadmap.md`
 - ADRs: `../adr/ADR-0016-ui-icons-lucide-registry.md`,
   `../adr/ADR-0017-ui-fonts-self-hosted.md`,
-  `../adr/ADR-0045-operational-readiness-v1-definition.md`
+  `../adr/ADR-0045-operational-readiness-v1-definition.md`,
+  `../adr/ADR-0046-operator-ui-flowbite-tailwind.md`
 
 ## Change Log
 
