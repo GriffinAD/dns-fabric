@@ -36,7 +36,7 @@ controls, and OpenAPI publication requirements.
 
 | Contract | Artefact | Notes |
 | --- | --- | --- |
-| REST OpenAPI spec | `specs/api/openapi.yaml` (planned) | Canonical API contract. |
+| REST OpenAPI spec | `specs/api/openapi.yaml` | Canonical `/api/v1` contract (hand-maintained until export drift checks). |
 | Error format contract | `specs/api/problem.schema.json` (planned) | RFC 7807 mapping. |
 
 ## Invariants

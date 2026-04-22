@@ -3,7 +3,310 @@ info:
   title: Kea Fabric API
   version: "1.0.0"
   description: >
-    Versioned HTTP API for Kea Fabric. Hand-maintained during bootstrap;
-    wire scripts/export_openapi.py when the FastAPI application lands.
-paths: {}
-components: {}
+    Versioned HTTP API for Kea Fabric operator surfaces. DTOs use DHCP-neutral
+    field names at the boundary (no Kea-specific types in public schemas).
+servers:
+  - url: /api/v1
+    description: Relative to the operator origin
+paths:
+  /meta:
+    get:
+      operationId: getMeta
+      summary: Runtime metadata for the shell
+      tags: [Meta]
+      responses:
+        "200":
+          description: Metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetaResponse"
+  /plugins:
+    get:
+      operationId: listPlugins
+      summary: Installed plugins with optional dashboard manifest
+      tags: [Plugins]
+      responses:
+        "200":
+          description: Plugin list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PluginListResponse"
+  /dhcp/pools:
+    get:
+      operationId: listDhcpPools
+      summary: DHCP address pools (Kea-agnostic DTO)
+      tags: [DHCP]
+      responses:
+        "200":
+          description: Pool collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DhcpPoolListResponse"
+  /dhcp/clients:
+    get:
+      operationId: listDhcpClients
+      summary: Active DHCP clients (Kea-agnostic DTO)
+      tags: [DHCP]
+      responses:
+        "200":
+          description: Client collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DhcpClientListResponse"
+  /dhcp/reservations:
+    get:
+      operationId: listDhcpReservations
+      summary: Static reservations / fixed assignments
+      tags: [DHCP]
+      responses:
+        "200":
+          description: Reservation collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DhcpReservationListResponse"
+  /discovery/records:
+    get:
+      operationId: listDiscoveryRecords
+      summary: Discovery snapshot (normalized records)
+      tags: [Discovery]
+      responses:
+        "200":
+          description: Discovery records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryRecordListResponse"
+  /perf/summary:
+    get:
+      operationId: getPerfSummary
+      summary: Aggregate host performance snapshot for dashboard cards
+      tags: [Performance]
+      responses:
+        "200":
+          description: Performance summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PerfSummaryResponse"
+components:
+  schemas:
+    MetaResponse:
+      type: object
+      additionalProperties: false
+      required: [api_version, service]
+      properties:
+        api_version:
+          type: string
+          example: "1.0.0"
+        service:
+          type: string
+          example: kea-fabric
+        dashboard_embed_auth:
+          type: string
+          enum: [none, signed]
+          description: Whether embed surfaces require a launch token
+    UiDashboardManifest:
+      type: object
+      additionalProperties: false
+      required:
+        - allowed_host_controls
+        - default_size_hint
+        - supports_compact
+        - supports_full
+      properties:
+        allowed_host_controls:
+          type: array
+          items:
+            type: string
+            enum:
+              - single-panel
+              - tab-control
+              - vertical-stack
+              - split-grid
+        default_size_hint:
+          type: string
+        min_size:
+          type: string
+          nullable: true
+        max_size:
+          type: string
+          nullable: true
+        compact_min_footprint:
+          type: string
+          nullable: true
+        supports_compact:
+          type: boolean
+        supports_full:
+          type: boolean
+    PluginEntry:
+      type: object
+      additionalProperties: false
+      required: [id, name, enabled]
+      properties:
+        id:
+          type: string
+          description: Stable plugin identifier (e.g. dhcp.pools)
+        name:
+          type: string
+        enabled:
+          type: boolean
+        ui_dashboard:
+          $ref: "#/components/schemas/UiDashboardManifest"
+    PluginListResponse:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PluginEntry"
+    DhcpPool:
+      type: object
+      additionalProperties: false
+      required: [id, subnet_cidr, range_start, range_end]
+      properties:
+        id:
+          type: string
+        subnet_cidr:
+          type: string
+          description: Subnet in CIDR notation
+        range_start:
+          type: string
+          description: First address in pool (inclusive)
+        range_end:
+          type: string
+          description: Last address in pool (inclusive)
+        dns_domain:
+          type: string
+          nullable: true
+    DhcpPoolListResponse:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DhcpPool"
+    DhcpClient:
+      type: object
+      additionalProperties: false
+      required: [id, hardware_address, assigned_address, pool_id]
+      properties:
+        id:
+          type: string
+        hardware_address:
+          type: string
+          description: Client MAC or stable L2 identifier
+        assigned_address:
+          type: string
+        pool_id:
+          type: string
+        hostname:
+          type: string
+          nullable: true
+        lease_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+    DhcpClientListResponse:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DhcpClient"
+    DhcpReservation:
+      type: object
+      additionalProperties: false
+      required: [id, hardware_address, reserved_address]
+      properties:
+        id:
+          type: string
+        hardware_address:
+          type: string
+        reserved_address:
+          type: string
+        hostname:
+          type: string
+          nullable: true
+    DhcpReservationListResponse:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DhcpReservation"
+    DiscoveryRecord:
+      type: object
+      additionalProperties: false
+      required: [id, last_seen_at, state]
+      properties:
+        id:
+          type: string
+        last_seen_at:
+          type: string
+          format: date-time
+        state:
+          type: string
+          enum: [active, stale, lost]
+        addresses:
+          type: array
+          items:
+            type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+    DiscoveryRecordListResponse:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoveryRecord"
+    PerfSummaryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - cpu_percent_total
+        - memory_used_percent
+        - collected_at
+      properties:
+        cpu_percent_total:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        memory_used_percent:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        network_in_mbps:
+          type: number
+          format: float
+          nullable: true
+        network_out_mbps:
+          type: number
+          format: float
+          nullable: true
+        disk_used_percent:
+          type: number
+          format: float
+          nullable: true
+        collected_at:
+          type: string
+          format: date-time
