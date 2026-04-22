@@ -63,6 +63,11 @@
         >{label}</span
       >
     </div>
+  {:else if mini}
+    <!-- e.g. RAM: card has h3 but no in-gauge label; reserve same top band as labeled mini gauges -->
+    <div class="w-full shrink-0 {divider}" aria-hidden="true">
+      <div class="h-[0.7rem] w-full"></div>
+    </div>
   {/if}
   <div class="flex shrink-0 justify-center">
     <svg
