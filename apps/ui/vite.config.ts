@@ -2,13 +2,16 @@ import tailwindcss from "@tailwindcss/vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vitest/config";
 
+import { mockApiPlugin } from "./vite-plugin-mock-api";
+
 export default defineConfig({
-  plugins: [tailwindcss(), svelte()],
+  plugins: [tailwindcss(), mockApiPlugin(), svelte()],
   server: {
     proxy: {
       "/api": {
         target: "http://127.0.0.1:8080",
         changeOrigin: true,
+        bypass: (req) => (req.url?.startsWith("/api/v1") ? false : undefined),
       },
     },
   },
