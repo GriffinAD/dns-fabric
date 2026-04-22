@@ -4,6 +4,29 @@
 @import "@fontsource/jetbrains-mono/latin-400.css";
 
 @import "tailwindcss";
+
+/*
+ * Flowbite’s theme references `--color-primary-*`, but Tailwind v4’s default
+ * palette does not define `primary` — only named scales (e.g. `blue`). Without
+ * a bridge, `bg-brand` / `text-fg-brand` can resolve to invalid colors (broken
+ * brand buttons, especially in light mode). Map the default shell accent to
+ * blue to match the “Default (blue)” control; `html[data-color-preset="emerald"]`
+ * below overrides for the emerald preset.
+ */
+@theme {
+  --color-primary-50: var(--color-blue-50);
+  --color-primary-100: var(--color-blue-100);
+  --color-primary-200: var(--color-blue-200);
+  --color-primary-300: var(--color-blue-300);
+  --color-primary-400: var(--color-blue-400);
+  --color-primary-500: var(--color-blue-500);
+  --color-primary-600: var(--color-blue-600);
+  --color-primary-700: var(--color-blue-700);
+  --color-primary-800: var(--color-blue-800);
+  --color-primary-900: var(--color-blue-900);
+  --color-primary-950: var(--color-blue-950);
+}
+
 @import "../node_modules/flowbite-svelte/dist/theme-selector/themes/default.css";
 
 @plugin "flowbite/plugin";
