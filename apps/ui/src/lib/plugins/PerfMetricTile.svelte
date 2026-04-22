@@ -60,7 +60,7 @@
   });
 
   const gaugeGridStyle = $derived(
-    `grid-template-columns: repeat(${layoutMeta.gaugeCols}, minmax(0, 1fr)); justify-items: center; align-items: start;`,
+    `grid-template-columns: repeat(${layoutMeta.gaugeCols}, minmax(0, 1fr)); justify-items: center; align-items: stretch;`,
   );
 
   /** Wide intratile grid: stretch gauges into cells. Single-gauge tiles use one intratile column + fixed mini. */
