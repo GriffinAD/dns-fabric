@@ -62,6 +62,7 @@ Conventions are enforced by [`.cursor/rules/adr.mdc`](../../.cursor/rules/adr.md
 | ADR-0044 | [phase-9b-observability-scheduler-discovery-runtime-complete](ADR-0044-phase-9b-observability-scheduler-discovery-runtime-complete.md) |
 | ADR-0045 | [operational-readiness-v1-definition](ADR-0045-operational-readiness-v1-definition.md) |
 | ADR-0046 | [operator-ui-flowbite-tailwind](ADR-0046-operator-ui-flowbite-tailwind.md) |
+| ADR-0047 | [operator-ui-charts-flowbite-plugin](ADR-0047-operator-ui-charts-flowbite-plugin.md) |
 
 Regenerate from `scripts/generate_adrs.py --force` if filenames change.
 
@@ -69,7 +70,7 @@ Regenerate from `scripts/generate_adrs.py --force` if filenames change.
 
 | Status | Baseline status |
 | --- | --- |
-| Accepted | 0001–0008, 0010, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0046 (0043: Phase 9b stacked PR plan; 0044: Phase 9b runtime closure; 0046: Flowbite Svelte v2 + Tailwind v4 stack). |
+| Accepted | 0001–0008, 0010, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0046, 0047 (0043: Phase 9b stacked PR plan; 0044: Phase 9b runtime closure; 0046: Flowbite Svelte v2 + Tailwind v4 stack; 0047: data charts via Flowbite Svelte chart plugin + bespoke SVG where appropriate). |
 | Proposed | 0045 (Operational Readiness v1 — definition and sequencing) |
 | Deferred (owner + due-date) | 0011 (Nebula Sync specifics, Phase 4); 0030 (Kea Fabric state replication, Phase 3 prototype-comparison) |
 | Future-Considered / Reserved | 0009, 0019, plus alternate paths: remote plugin-catalog distribution (from 0013) and continuous nightly release channel (from 0020) |

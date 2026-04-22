@@ -6,7 +6,7 @@ owner: GriffinAD
 peer_reviewer: GriffinAD
 status: Accepted
 last_review: 2026-04-22
-adrs: []
+adrs: [ADR-0046, ADR-0047]
 invariants: []
 ---
 
@@ -96,6 +96,8 @@ Implementation: `gaugeArcSegmentsForFill` in
 
 - `ui.md`
 - `ui-design-system.md`
+- `../adr/ADR-0047-operator-ui-charts-flowbite-plugin.md` (chart theming and
+  engine choice; tokens apply to chart surfaces)
 - `ui-icons.md`
 - `i18n.md`
 
@@ -106,3 +108,4 @@ Implementation: `gaugeArcSegmentsForFill` in
 | 2026-04-19 | Proposed | GriffinAD | Initial Tier C UI themes architecture draft. |
 | 2026-04-19 | Accepted | GriffinAD | Self-review; Tier C Rolling baseline acceptance (doc gates closed). |
 | 2026-04-22 | Accepted | GriffinAD | Documented storage schema, `data-color-preset`, gauge bands, plugin rules. |
+| 2026-04-22 | Accepted | GriffinAD | Cross-ref ADR-0047 (data charts + themed surfaces). |

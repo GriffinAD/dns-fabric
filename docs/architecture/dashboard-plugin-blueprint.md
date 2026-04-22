@@ -6,7 +6,7 @@ owner: GriffinAD
 peer_reviewer: GriffinAD
 status: Accepted
 last_review: 2026-04-21
-adrs: [ADR-0016, ADR-0017, ADR-0045, ADR-0046]
+adrs: [ADR-0016, ADR-0017, ADR-0045, ADR-0046, ADR-0047]
 invariants: []
 ---
 
@@ -242,7 +242,8 @@ Operators can change **display mode**, **host control** (from the plugin manifes
 - ADRs: `../adr/ADR-0016-ui-icons-lucide-registry.md`,
   `../adr/ADR-0017-ui-fonts-self-hosted.md`,
   `../adr/ADR-0045-operational-readiness-v1-definition.md`,
-  `../adr/ADR-0046-operator-ui-flowbite-tailwind.md`
+  `../adr/ADR-0046-operator-ui-flowbite-tailwind.md`,
+  `../adr/ADR-0047-operator-ui-charts-flowbite-plugin.md`
 
 ## Change Log
 
@@ -252,3 +253,4 @@ Operators can change **display mode**, **host control** (from the plugin manifes
 | 2026-04-21 | Proposed | GriffinAD | Added seeded `specs/` contract artifacts for dashboard layout schema and UI plugin protocol stub. |
 | 2026-04-21 | Accepted | GriffinAD | Rolling acceptance closed; shell snapshot + e2e/registry/fonts cross-refs. |
 | 2026-04-22 | Accepted | GriffinAD | Phase C grid + edit-mode semantics: span-only editor grid, packing rules, debounced layout PUT. |
+| 2026-04-22 | Accepted | GriffinAD | Cross-ref ADR-0047 (charts: Flowbite Svelte plugin + bespoke SVG). |

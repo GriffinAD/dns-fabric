@@ -6,7 +6,7 @@ owner: GriffinAD
 peer_reviewer: GriffinAD
 status: Accepted
 last_review: 2026-04-22
-adrs: [ADR-0046]
+adrs: [ADR-0046, ADR-0047]
 invariants: []
 ---
 
@@ -36,10 +36,13 @@ defined in `dashboard-plugin-blueprint.md`.
 
 **Component primitives:** the operator shell uses **Flowbite Svelte v2** on
 **Tailwind CSS v4** for buttons, tables, tabs, and other shell chrome (ADR-0046).
-Semantic **icons** stay **Lucide** via the registry (ADR-0016); **fonts** stay
-self-hosted (ADR-0017). Third-party components are a **primitive layer**;
-shell tokens and themes in `ui-design-system.md` / `ui-themes.md` remain the
-styling authority where they intentionally override vendor defaults.
+**Data charts** (line, area, bar, and similar) standardize on the **Flowbite
+Svelte chart plugin**; small bespoke **SVG** readouts (for example gauges) stay
+in-product where a chart library is unnecessary (ADR-0047). Semantic **icons**
+stay **Lucide** via the registry (ADR-0016); **fonts** stay self-hosted
+(ADR-0017). Third-party components are a **primitive layer**; shell tokens and
+themes in `ui-design-system.md` / `ui-themes.md` remain the styling authority
+where they intentionally override vendor defaults.
 
 ## Contracts consumed
 
@@ -96,3 +99,4 @@ flowchart LR
 | 2026-04-20 | Accepted | GriffinAD | Testing stack requirement captured: Vitest for unit/component testing and Playwright for UI automation. |
 | 2026-04-21 | Accepted | GriffinAD | Added boundary note pointing dashboard editor/layout authority to `dashboard-plugin-blueprint.md`. |
 | 2026-04-22 | Accepted | GriffinAD | Linked ADR-0046 (Flowbite Svelte v2 + Tailwind v4 primitive stack). |
+| 2026-04-22 | Accepted | GriffinAD | Linked ADR-0047 (charts: Flowbite Svelte chart plugin + bespoke SVG). |
