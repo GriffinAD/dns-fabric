@@ -1,5 +1,6 @@
 <script lang="ts">
   import { describeSemicircleArc } from "./gaugeMath";
+  import { gaugeProgressStrokeClass } from "./gaugeThresholds";
 
   let {
     label = undefined,
@@ -38,6 +39,7 @@
    */
   const showProgress = $derived(safePercent > 0);
   const progressDash = $derived(`${safePercent} 100`);
+  const progressStrokeClass = $derived(gaugeProgressStrokeClass(safePercent));
 </script>
 
 <div
@@ -60,7 +62,7 @@
     >
   {/if}
   <svg
-    class="block shrink-0 overflow-visible"
+    class="block shrink-0 overflow-visible [shape-rendering:geometricPrecision]"
     width={w}
     height={h}
     viewBox={`0 0 ${w} ${h}`}
@@ -79,7 +81,7 @@
         d={track}
         pathLength="100"
         fill="none"
-        class="stroke-neutral-900 dark:stroke-neutral-100"
+        class={progressStrokeClass}
         stroke-width={stroke}
         stroke-linecap="round"
         stroke-dasharray={progressDash}
