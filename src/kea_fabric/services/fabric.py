@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from typing import Any
 
 from fastapi import HTTPException
@@ -130,6 +131,57 @@ class FabricService:
             )
         assert isinstance(body, dict)
         self._layout_store.set(dashboard_id, body)
+
+    def reset_layout_from_orig(self, dashboard_id: str) -> dict[str, Any]:
+        """Replace the live layout from read-only ``dashboard-layouts.orig.json``."""
+        orig_path = self._settings.data_dir / "dashboard-layouts.orig.json"
+        if not orig_path.is_file():
+            hint = (
+                f"Expected {orig_path}. "
+                "Set KEA_FABRIC_DATA_DIR to the directory that contains "
+                "dashboard-layouts.orig.json (next to dashboard-layouts.json)."
+            )
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "title": "baseline layout file not found",
+                    "status": 404,
+                    "detail": hint,
+                },
+            )
+        try:
+            raw = json.loads(orig_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "title": "baseline layout file is not valid JSON",
+                    "status": 500,
+                },
+            )
+        if not isinstance(raw, dict):
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "title": "baseline layout file must be a JSON object",
+                    "status": 500,
+                },
+            )
+        layout = raw.get(dashboard_id)
+        layout_ok = isinstance(layout, dict) and layout_validate.is_dashboard_layout(
+            layout,
+        )
+        if not layout_ok:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "title": "Invalid or missing layout in baseline file",
+                    "status": 400,
+                },
+            )
+        assert isinstance(layout, dict)
+        self._layout_store.set(dashboard_id, layout)
+        return copy.deepcopy(layout)
 
     def nebula_replication_summary(self) -> dict[str, object]:
         return self._nebula.replication_summary()

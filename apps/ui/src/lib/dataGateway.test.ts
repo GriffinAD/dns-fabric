@@ -102,6 +102,39 @@ describe("DataGateway", () => {
     });
   });
 
+  it("resetDashboardLayout sends POST and returns layout JSON", async () => {
+    const body: DashboardLayout = { version: 1, tiles: [] };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(body),
+      }),
+    );
+    const gw = new DataGateway("");
+    const out = await gw.resetDashboardLayout("default");
+    expect(out).toEqual(body);
+    expect(fetch).toHaveBeenCalledWith("/api/v1/dashboards/default/layout/reset", {
+      method: "POST",
+      headers: {},
+    });
+  });
+
+  it("resetDashboardLayout throws when POST is not OK", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+      }),
+    );
+    const gw = new DataGateway("");
+    await expect(gw.resetDashboardLayout("default")).rejects.toThrow(
+      /POST \/api\/v1\/dashboards\/default\/layout\/reset failed: 404/,
+    );
+  });
+
   it("pauseDiscoveryScan posts body", async () => {
     vi.stubGlobal(
       "fetch",

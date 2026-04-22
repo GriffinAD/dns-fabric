@@ -1,4 +1,9 @@
-"""JSON file store for dashboard layouts (per dashboard id)."""
+"""JSON file store for dashboard layouts (per dashboard id).
+
+Writes only ``dashboard-layouts.json`` (the path passed to the store).
+Baseline snapshots live in ``dashboard-layouts.orig.json`` and are never
+written by this module; see ``FabricService.reset_layout_from_orig``.
+"""
 
 from __future__ import annotations
 

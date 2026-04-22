@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Iterator
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -232,6 +233,53 @@ def test_perf_mock_error(client: TestClient) -> None:
     assert r.status_code == 503
 
 
+def test_layout_validate_grid_bounds() -> None:
+    from kea_fabric.api.layout_validate import is_dashboard_layout
+
+    def layout_with_grid(grid: object) -> object:
+        return {
+            "version": 1,
+            "tiles": [
+                {
+                    "id": "a",
+                    "pluginId": "p",
+                    "hostControl": "single-panel",
+                    "displayMode": "full",
+                    "grid": grid,
+                },
+            ],
+        }
+
+    assert is_dashboard_layout(
+        layout_with_grid({"col": 0, "row": 0, "colSpan": 12, "rowSpan": 1}),
+    )
+    assert is_dashboard_layout(
+        layout_with_grid({"col": 6, "row": 0, "colSpan": 6, "rowSpan": 2}),
+    )
+    assert not is_dashboard_layout(
+        layout_with_grid({"col": 6, "row": 0, "colSpan": 7, "rowSpan": 1}),
+    )
+    assert not is_dashboard_layout(
+        layout_with_grid({"col": 0, "row": 0, "colSpan": 12}),
+    )
+    assert not is_dashboard_layout(
+        layout_with_grid({"col": 0, "row": -1, "colSpan": 1, "rowSpan": 1}),
+    )
+    assert not is_dashboard_layout(
+        layout_with_grid({"col": 0, "row": 0, "colSpan": 1, "rowSpan": 0}),
+    )
+    assert not is_dashboard_layout(
+        layout_with_grid({"col": 0, "row": 0, "colSpan": 1, "rowSpan": 13}),
+    )
+    assert is_dashboard_layout(
+        layout_with_grid({"col": 0, "row": 500, "colSpan": 1, "rowSpan": 1}),
+    )
+    assert not is_dashboard_layout(
+        layout_with_grid({"col": "0", "row": 0, "colSpan": 1, "rowSpan": 1}),
+    )
+    assert not is_dashboard_layout(layout_with_grid("nope"))
+
+
 def test_layout_validate_host_and_plugin() -> None:
     from kea_fabric.api.layout_validate import is_dashboard_layout
 
@@ -355,6 +403,166 @@ def test_viewer_can_read_not_write(tmp_path: Path) -> None:
     state.reset_stub_state()
 
 
+def test_layout_reset_from_orig_copies_to_live(tmp_path: Path) -> None:
+    state.reset_stub_state()
+    baseline = {
+        "default": {
+            "version": 1,
+            "tiles": [
+                {
+                    "id": "from-orig",
+                    "pluginId": "dhcp.pools",
+                    "hostControl": "single-panel",
+                    "displayMode": "full",
+                },
+            ],
+        },
+    }
+
+    orig_path = tmp_path / "dashboard-layouts.orig.json"
+    orig_path.write_text(json.dumps(baseline, indent=2), encoding="utf-8")
+    orig_snapshot = orig_path.read_bytes()
+    live_path = tmp_path / "dashboard-layouts.json"
+    live_path.write_text(
+        json.dumps(
+            {
+                "default": {
+                    "version": 1,
+                    "tiles": [
+                        {
+                            "id": "old-live",
+                            "pluginId": "dhcp.clients",
+                            "hostControl": "single-panel",
+                            "displayMode": "full",
+                        },
+                    ],
+                },
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    settings = ApiSettings(data_dir=tmp_path, sse_interval_seconds=0.05)
+    with TestClient(create_app(settings=settings)) as c:
+        r = c.post("/api/v1/dashboards/default/layout/reset")
+        assert r.status_code == 200
+        assert r.json()["tiles"][0]["id"] == "from-orig"
+        r2 = c.get("/api/v1/dashboards/default/layout")
+        assert r2.status_code == 200
+        assert r2.json()["tiles"][0]["id"] == "from-orig"
+    assert orig_path.read_bytes() == orig_snapshot
+    state.reset_stub_state()
+
+
+def test_layout_reset_from_orig_missing_file(client: TestClient) -> None:
+    r = client.post("/api/v1/dashboards/default/layout/reset")
+    assert r.status_code == 404
+
+
+def test_layout_reset_from_orig_invalid_json(tmp_path: Path) -> None:
+    state.reset_stub_state()
+    (tmp_path / "dashboard-layouts.orig.json").write_text(
+        "{not-json",
+        encoding="utf-8",
+    )
+    settings = ApiSettings(data_dir=tmp_path, sse_interval_seconds=0.05)
+    with TestClient(create_app(settings=settings)) as c:
+        r = c.post("/api/v1/dashboards/default/layout/reset")
+        assert r.status_code == 500
+        assert r.json()["detail"]["title"] == "baseline layout file is not valid JSON"
+    state.reset_stub_state()
+
+
+def test_layout_reset_from_orig_json_not_object(tmp_path: Path) -> None:
+    state.reset_stub_state()
+    (tmp_path / "dashboard-layouts.orig.json").write_text(
+        json.dumps(["not", "an", "object"]),
+        encoding="utf-8",
+    )
+    settings = ApiSettings(data_dir=tmp_path, sse_interval_seconds=0.05)
+    with TestClient(create_app(settings=settings)) as c:
+        r = c.post("/api/v1/dashboards/default/layout/reset")
+        assert r.status_code == 500
+        assert r.json()["detail"]["title"] == (
+            "baseline layout file must be a JSON object"
+        )
+    state.reset_stub_state()
+
+
+def test_layout_reset_from_orig_missing_or_invalid_dashboard(tmp_path: Path) -> None:
+    state.reset_stub_state()
+    (tmp_path / "dashboard-layouts.orig.json").write_text(
+        json.dumps(
+            {
+                "other": {
+                    "version": 1,
+                    "tiles": [
+                        {
+                            "id": "t1",
+                            "pluginId": "dhcp.pools",
+                            "hostControl": "single-panel",
+                            "displayMode": "full",
+                        },
+                    ],
+                },
+                "default": {"version": 1, "tiles": [{}]},
+            },
+        ),
+        encoding="utf-8",
+    )
+    settings = ApiSettings(data_dir=tmp_path, sse_interval_seconds=0.05)
+    with TestClient(create_app(settings=settings)) as c:
+        r = c.post("/api/v1/dashboards/default/layout/reset")
+        assert r.status_code == 400
+        assert r.json()["detail"]["title"] == (
+            "Invalid or missing layout in baseline file"
+        )
+    state.reset_stub_state()
+
+
+def test_layout_reset_forbidden_for_viewer(tmp_path: Path) -> None:
+    state.reset_stub_state()
+
+    orig_path = tmp_path / "dashboard-layouts.orig.json"
+    orig_path.write_text(
+        json.dumps(
+            {
+                "default": {
+                    "version": 1,
+                    "tiles": [
+                        {
+                            "id": "t1",
+                            "pluginId": "dhcp.pools",
+                            "hostControl": "single-panel",
+                            "displayMode": "full",
+                        },
+                    ],
+                },
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    settings = ApiSettings(
+        data_dir=tmp_path,
+        api_token="op",
+        viewer_token="vi",
+        sse_interval_seconds=0.05,
+    )
+    with TestClient(create_app(settings=settings)) as c:
+        r = c.post(
+            "/api/v1/dashboards/default/layout/reset",
+            headers=_auth_headers("vi"),
+        )
+        assert r.status_code == 403
+        r2 = c.post(
+            "/api/v1/dashboards/default/layout/reset",
+            headers=_auth_headers("op"),
+        )
+        assert r2.status_code == 200
+    state.reset_stub_state()
+
+
 def test_access_token_query_param_auth(tmp_path: Path) -> None:
     state.reset_stub_state()
     settings = ApiSettings(
@@ -425,8 +633,6 @@ def test_get_settings_and_fabric_service_helpers(tmp_path: Path) -> None:
 
 
 def test_layout_store_malformed_file(tmp_path: Path) -> None:
-    import json
-
     from kea_fabric.persistence.layout_store import JsonLayoutStore
 
     p = tmp_path / "bad.json"
@@ -501,6 +707,60 @@ def test_settings_from_env_reads_non_empty_token(
     monkeypatch.setenv("KEA_FABRIC_API_TOKEN", "secret")
     s = ApiSettings.from_env()
     assert s.api_token == "secret"
+
+
+def test_settings_from_env_discovers_repo_fabric_data_from_nested_cwd(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Starting the API from a subdirectory still finds ``repo/.fabric-data``."""
+    monkeypatch.delenv("KEA_FABRIC_DATA_DIR", raising=False)
+    repo = tmp_path / "repo"
+    data = repo / ".fabric-data"
+    data.mkdir(parents=True)
+    (data / "dashboard-layouts.orig.json").write_text(
+        '{"default":{"version":1,"tiles":[]}}',
+        encoding="utf-8",
+    )
+    nested = repo / "apps" / "ui"
+    nested.mkdir(parents=True)
+    monkeypatch.chdir(nested)
+    s = ApiSettings.from_env()
+    assert s.data_dir == data.resolve()
+
+
+def test_settings_from_env_discovers_via_live_layout_only(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """``.fabric-data`` is chosen when only ``dashboard-layouts.json`` exists."""
+    monkeypatch.delenv("KEA_FABRIC_DATA_DIR", raising=False)
+    repo = tmp_path / "repo"
+    data = repo / ".fabric-data"
+    data.mkdir(parents=True)
+    (data / "dashboard-layouts.json").write_text(
+        '{"default":{"version":1,"tiles":[]}}',
+        encoding="utf-8",
+    )
+    nested = repo / "deep" / "nested"
+    nested.mkdir(parents=True)
+    monkeypatch.chdir(nested)
+    s = ApiSettings.from_env()
+    assert s.data_dir == data.resolve()
+
+
+def test_settings_resolved_data_dir_fallback_when_no_layout_files(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Empty ``.fabric-data`` dirs are skipped; cwd ``.fabric-data`` is the fallback."""
+    monkeypatch.delenv("KEA_FABRIC_DATA_DIR", raising=False)
+    work = tmp_path / "proj" / "src"
+    work.mkdir(parents=True)
+    (work / ".fabric-data").mkdir()
+    monkeypatch.chdir(work)
+    s = ApiSettings.from_env()
+    assert s.data_dir == (work / ".fabric-data").resolve()
 
 
 def test_layout_store_clear_dashboard_missing_file(tmp_path: Path) -> None:

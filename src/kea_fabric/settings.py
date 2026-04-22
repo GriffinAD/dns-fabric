@@ -14,6 +14,23 @@ def _env_str(name: str) -> str | None:
     return raw
 
 
+def _resolved_data_dir() -> Path:
+    """Resolve ``.fabric-data`` when ``KEA_FABRIC_DATA_DIR`` is unset (walk parents)."""
+    raw = os.environ.get("KEA_FABRIC_DATA_DIR")
+    if raw is not None and raw.strip() != "":
+        return Path(raw).expanduser().resolve()
+    start = Path.cwd().resolve()
+    for base in [start, *list(start.parents)[:24]]:
+        d = base / ".fabric-data"
+        if not d.is_dir():
+            continue
+        has_live = (d / "dashboard-layouts.json").is_file()
+        has_orig = (d / "dashboard-layouts.orig.json").is_file()
+        if has_live or has_orig:
+            return d.resolve()
+    return (start / ".fabric-data").resolve()
+
+
 @dataclass(frozen=True, slots=True)
 class ApiSettings:
     """API process settings. Construct via `from_env` or pass explicitly in tests."""
@@ -29,10 +46,9 @@ class ApiSettings:
 
     @classmethod
     def from_env(cls) -> ApiSettings:
-        raw_dir = os.environ.get("KEA_FABRIC_DATA_DIR", ".fabric-data")
         sse_raw = os.environ.get("KEA_FABRIC_SSE_INTERVAL_SEC", "15")
         return cls(
-            data_dir=Path(raw_dir).expanduser().resolve(),
+            data_dir=_resolved_data_dir(),
             api_token=_env_str("KEA_FABRIC_API_TOKEN"),
             viewer_token=_env_str("KEA_FABRIC_API_VIEWER_TOKEN"),
             sse_interval_seconds=float(sse_raw),

@@ -11,6 +11,8 @@ export interface TileOptions {
   network_by_adapter?: boolean;
   disk_by_volume?: boolean;
   display_style?: TileDisplayStyle;
+  /** Max dashboard columns for this perf tile; gauges wrap inside when count exceeds this (1–12). */
+  perf_max_cols?: number;
 }
 
 export interface MetaResponse {

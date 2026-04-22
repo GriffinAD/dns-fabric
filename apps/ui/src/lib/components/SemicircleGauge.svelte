@@ -1,36 +1,100 @@
 <script lang="ts">
-  import { describeSemicircleArc, describeSemicircleProgress } from "./gaugeMath";
+  import { describeSemicircleArc } from "./gaugeMath";
 
   let {
-    label,
+    label = undefined,
     percent,
     sublabel,
     compact = false,
+    mini = false,
+    miniFillCell = false,
   }: {
-    label: string;
+    label?: string;
     percent: number;
     sublabel?: string;
     compact?: boolean;
+    mini?: boolean;
+    miniFillCell?: boolean;
   } = $props();
 
-  const w = $derived(compact ? 120 : 160);
-  const h = $derived(compact ? 70 : 90);
+  const w = $derived(mini ? 76 : compact ? 120 : 160);
+  const h = $derived(mini ? 46 : compact ? 70 : 90);
   const cx = $derived(w / 2);
-  const cy = $derived(h - 8);
-  const r = $derived(compact ? 48 : 64);
+  const cy = $derived(h - (mini ? 6 : 8));
+  const r = $derived(mini ? 30 : compact ? 48 : 64);
+  const stroke = $derived(mini ? 5 : 8);
+
+  const safePercent = $derived.by(() => {
+    const n = Number(percent);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.min(100, n));
+  });
 
   const track = $derived(describeSemicircleArc(cx, cy, r));
-  const arc = $derived(describeSemicircleProgress(cx, cy, r, percent));
+  /**
+   * A second `A` command with a computed end point does not always pick the same
+   * elliptical-arc branch as the full track in every UA → progress “lifts off” the gray arc.
+   * Reuse the exact same `d` and trim with dasharray + pathLength (see SVG pathLength).
+   */
+  const showProgress = $derived(safePercent > 0);
+  const progressDash = $derived(`${safePercent} 100`);
 </script>
 
-<div class="flex flex-col items-center gap-1" data-testid="semicircle-gauge">
-  <span class="text-xs font-medium text-gray-600 dark:text-gray-300">{label}</span>
-  <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
-    <path d={track} fill="none" stroke="currentColor" class="text-gray-200 dark:text-gray-700" stroke-width="8" stroke-linecap="round" />
-    <path d={arc} fill="none" stroke="currentColor" class="text-primary-600 dark:text-primary-400" stroke-width="8" stroke-linecap="round" />
+<div
+  class="flex flex-col items-center gap-0.5 {mini && miniFillCell
+    ? 'w-full min-w-0'
+    : mini
+      ? 'w-auto max-w-[4.75rem] shrink-0'
+      : ''}"
+  data-testid="semicircle-gauge"
+  aria-label={label ? undefined : `Gauge ${safePercent.toFixed(1)} percent`}
+>
+  {#if label}
+    <span
+      class="truncate text-center font-medium text-gray-600 dark:text-gray-300 {mini
+        ? miniFillCell
+          ? 'w-full max-w-full text-[10px] uppercase tracking-wide'
+          : 'max-w-[4.75rem] text-[10px] uppercase tracking-wide'
+        : 'max-w-[5.5rem] text-xs'}"
+      >{label}</span
+    >
+  {/if}
+  <svg
+    class="block shrink-0 overflow-visible"
+    width={w}
+    height={h}
+    viewBox={`0 0 ${w} ${h}`}
+    aria-hidden="true"
+  >
+    <path
+      d={track}
+      pathLength="100"
+      fill="none"
+      class="stroke-gray-300 dark:stroke-gray-600"
+      stroke-width={stroke}
+      stroke-linecap="round"
+    />
+    {#if showProgress}
+      <path
+        d={track}
+        pathLength="100"
+        fill="none"
+        class="stroke-neutral-900 dark:stroke-neutral-100"
+        stroke-width={stroke}
+        stroke-linecap="round"
+        stroke-dasharray={progressDash}
+      />
+    {/if}
   </svg>
-  <span class="font-mono text-sm text-gray-900 dark:text-white">{percent.toFixed(1)}%</span>
+  <span class="font-mono text-gray-900 dark:text-white {mini ? 'text-xs' : 'text-sm'}"
+    >{safePercent.toFixed(1)}%</span
+  >
   {#if sublabel}
-    <span class="text-xs text-gray-500 dark:text-gray-400">{sublabel}</span>
+    <span
+      class="max-w-[6rem] break-words text-center text-gray-500 dark:text-gray-400 {mini
+        ? 'text-[10px] leading-tight'
+        : 'text-xs'}"
+      >{sublabel}</span
+    >
   {/if}
 </div>

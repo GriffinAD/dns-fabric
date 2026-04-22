@@ -21,7 +21,6 @@
   const byAdapter = $derived(Boolean(opts?.network_by_adapter));
   const byVolume = $derived(Boolean(opts?.disk_by_volume));
   const percentOnly = $derived(opts?.display_style === "percent_only");
-  const compact = $derived(tile.displayMode === "compact");
 
   onMount(() => {
     void gateway
@@ -39,7 +38,7 @@
   );
 </script>
 
-<Card class="h-full overflow-auto">
+<Card size="xl" class="h-full overflow-auto">
   {#snippet children()}
     <div class="p-4">
       <h3 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">Performance</h3>
@@ -54,18 +53,18 @@
           <li>Disk: {(summary.disk_used_percent ?? 0).toFixed(1)}%</li>
         </ul>
       {:else}
-        <div class="flex flex-wrap gap-6 justify-center" data-testid="perf-gauges">
+        <div class="flex flex-wrap gap-2 justify-center" data-testid="perf-gauges">
           {#if cpuTotal}
-            <SemicircleGauge label="CPU" percent={cpuDisplay} compact={compact} />
+            <SemicircleGauge label="CPU" percent={cpuDisplay} mini />
           {:else}
             {#each summary.cpu_core_percent ?? [cpuDisplay] as pct, i (i)}
-              <SemicircleGauge label="Core {i}" percent={pct} compact={true} />
+              <SemicircleGauge label="Core {i}" percent={pct} mini />
             {/each}
           {/if}
           <SemicircleGauge
             label="RAM"
             percent={summary.memory_used_percent}
-            compact={compact}
+            mini
             sublabel={summary.memory_total_bytes != null && summary.memory_used_bytes != null
               ? `${(summary.memory_used_bytes / 1e9).toFixed(1)} / ${(summary.memory_total_bytes / 1e9).toFixed(1)} GiB`
               : undefined}
@@ -75,7 +74,7 @@
               <SemicircleGauge
                 label={a.name}
                 percent={Math.min(100, (a.in_mbps + a.out_mbps) * 2)}
-                compact={true}
+                mini
                 sublabel={`↓${a.in_mbps.toFixed(1)} ↑${a.out_mbps.toFixed(1)} Mb/s`}
               />
             {/each}
@@ -83,16 +82,16 @@
             <SemicircleGauge
               label="Network"
               percent={Math.min(100, ((summary.network_in_mbps ?? 0) + (summary.network_out_mbps ?? 0)) * 2)}
-              compact={compact}
+              mini
               sublabel={`↓${(summary.network_in_mbps ?? 0).toFixed(1)} ↑${(summary.network_out_mbps ?? 0).toFixed(1)} Mb/s`}
             />
           {/if}
           {#if byVolume && summary.disk_volumes?.length}
-            {#each summary.disk_volumes as v (v.label)}
-              <SemicircleGauge label={v.label} percent={v.used_percent} compact={true} />
+            {#each summary.disk_volumes as v, i (`${i}-${v.label}`)}
+              <SemicircleGauge label={v.label} percent={v.used_percent} mini />
             {/each}
           {:else}
-            <SemicircleGauge label="Disk" percent={summary.disk_used_percent ?? 0} compact={compact} />
+            <SemicircleGauge label="Disk" percent={summary.disk_used_percent ?? 0} mini />
           {/if}
         </div>
       {/if}

@@ -6,6 +6,26 @@ _HOST = frozenset({"single-panel", "tab-control", "vertical-stack", "split-grid"
 _DISPLAY = frozenset({"compact", "full"})
 
 
+def _valid_grid_cell(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    g = value
+    try:
+        col = g["col"]
+        row = g["row"]
+        cspan = g["colSpan"]
+        rspan = g["rowSpan"]
+    except KeyError:
+        return False
+    if not all(isinstance(x, int) for x in (col, row, cspan, rspan)):
+        return False
+    if not (0 <= col <= 11 and 1 <= cspan <= 12 and col + cspan <= 12):
+        return False
+    if row < 0 or rspan < 1 or rspan > 12:
+        return False
+    return True
+
+
 def is_dashboard_layout(value: object) -> bool:
     if not isinstance(value, dict):
         return False
@@ -29,5 +49,8 @@ def is_dashboard_layout(value: object) -> bool:
         if not isinstance(hc, str) or hc not in _HOST:
             return False
         if not isinstance(dm, str) or dm not in _DISPLAY:
+            return False
+        grid = tile.get("grid")
+        if grid is not None and not _valid_grid_cell(grid):
             return False
     return True

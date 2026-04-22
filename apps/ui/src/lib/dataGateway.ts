@@ -90,6 +90,21 @@ export class DataGateway {
     return this.putJson(`/api/v1/dashboards/${encodeURIComponent(dashboardId)}/layout`, layout);
   }
 
+  /** Restores layout from ``dashboard-layouts.orig.json`` (server never writes that file). */
+  resetDashboardLayout(dashboardId: string): Promise<DashboardLayout> {
+    const path = `/api/v1/dashboards/${encodeURIComponent(dashboardId)}/layout/reset`;
+    return (async () => {
+      const res = await fetch(this.url(path), {
+        method: "POST",
+        headers: { ...this.authHeaders() },
+      });
+      if (!res.ok) {
+        throw new Error(`POST ${path} failed: ${res.status} ${res.statusText}`);
+      }
+      return res.json() as Promise<DashboardLayout>;
+    })();
+  }
+
   listDhcpPools(): Promise<DhcpPoolListResponse> {
     return this.getJson<DhcpPoolListResponse>("/api/v1/dhcp/pools");
   }

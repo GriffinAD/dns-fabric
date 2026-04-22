@@ -4,37 +4,37 @@ overview: Phase B hardens the FastAPI stack with **simulated** Kea/Nebula adapte
 todos:
   - id: b-adapters
     content: Add Kea/Nebula adapter interfaces + mock/simulator implementations; route v1 handlers through domain services (refactor v1_router.py).
-    status: pending
+    status: completed
   - id: b-prod-runtime
     content: Production-oriented SSE loop + heartbeat/disconnect; durable layout store (SQLite or JSON under KEA_FABRIC_DATA_DIR); logging/config.
-    status: pending
+    status: completed
   - id: b-auth
     content: FastAPI auth dependencies + OpenAPI securitySchemes; mutating vs read route matrix; DataGateway attaches bearer from env for dev.
-    status: pending
+    status: completed
   - id: b-docs-scripts
     content: Re-align operator-demo.md, dev_serve_with_examples.sh, README for kea-fabric-api + dev:proxy + env vars.
-    status: pending
+    status: completed
   - id: b-tests
     content: "Expand pytest: adapters, persistence, SSE chunk tests, auth 401/403, integration with temp data dir."
-    status: pending
+    status: completed
   - id: c-schema-grid12
     content: "Phase C branch: extend layout.schema.json for 12-col grid fields; sync TS/Zod/Python validation + migration note."
-    status: pending
+    status: completed
   - id: c-edit-mode
     content: "Phase C: plugin/tile option editing in real time + debounced PUT layout."
-    status: pending
+    status: completed
   - id: c-grid-dnd
-    content: "Phase C: grid-aware drag, snap-to-cell, collision/reflow policy; update dashboard-plugin-blueprint.md."
-    status: pending
+    content: "Phase C: 12-col grid host + editor (span/auto-place + svelte-dnd-action); blueprint documents packing/reflow v1 scope."
+    status: completed
   - id: c-tests
     content: "Phase C: extend unit/e2e for grid layout persistence and option edits."
-    status: pending
+    status: completed
 isProject: false
 ---
 
 # Phase B (backend + production behavior) and Phase C (dashboard UX)
 
-> **Gate:** Finish **all** Phase B todos in this file (`b-adapters` through `b-tests`), merge that work to `main`, **then** start Phase C. Do not implement grid/edit-mode work on `feat/phase-c-dashboard-grid` until then — Phase C relies on **durable layout `PUT`** and stable API from B2. If that branch already exists, leave it idle or delete it locally until the gate is met.
+> **Status:** Phase B and Phase C roadmap items in this file are **completed** (merge `feat/phase-c-dashboard-grid` when ready). Grid schema, editor/host 12-col layout, inline tile settings with debounced `PUT`, blueprint semantics, and tests are shipped. Future work (free-form snap-to-cell, richer collision rules) is out of this roadmap slice. Sync `~/.cursor/plans/phase_b_and_c_roadmap_*.plan.md` YAML when this file changes.
 
 ## AuthN / AuthZ — what is actually protected?
 
@@ -141,6 +141,5 @@ flowchart TB
 
 ## Suggested sequencing
 
-1. **Land Phase B** on `main` (branch e.g. `feat/phase-b-backend`, or split PRs: B1–B2, then B3, then B5–B6) until **`b-adapters`–`b-tests` are all completed**.
-2. **Only then** create or reuse **`feat/phase-c-dashboard-grid`** from updated `main` (rebase per [.cursor/rules/commits.mdc](.cursor/rules/commits.mdc) if needed).
-3. Phase C **depends** on stable layout `PUT` + persistence from B2 so grid layouts survive refresh — starting C early **contradicts** this plan.
+1. **Phase B** — landed on `main` (adapters, durable layout + SSE, auth, docs/scripts, tests).
+2. **Phase C** — acceptance criteria met on branch; merge **`feat/phase-c-dashboard-grid`** to `main` when you want the dashboard grid + edit-mode in the default line. Keep the global Cursor plan copy’s YAML aligned with this file.

@@ -7,10 +7,20 @@
   import AdminPage from "./lib/admin/AdminPage.svelte";
   import type { PluginEntry } from "./lib/api/types";
   import { DataGateway } from "./lib/dataGateway";
-  import DashboardEditor from "./lib/dashboard/DashboardEditor.svelte";
   import DashboardHost from "./lib/dashboard/DashboardHost.svelte";
-  import { initialDashboardLayout, saveDashboardLayout } from "./lib/dashboard/layoutStorage";
-  import type { DashboardLayout } from "./lib/dashboard/types";
+  import {
+    clampGridColSpan,
+    clampGridRowSpan,
+    layoutWithGrid,
+    tileColSpan,
+  } from "./lib/dashboard/gridPlacement";
+  import {
+    initialDashboardLayout,
+    parseDashboardLayout,
+    saveDashboardLayout,
+  } from "./lib/dashboard/layoutStorage";
+  import TileSettingsOverlay from "./lib/dashboard/TileSettingsOverlay.svelte";
+  import type { DashboardLayout, DashboardTile } from "./lib/dashboard/types";
   import { UI_VERSION } from "./lib/uiVersion";
 
   let plugins = $state<PluginEntry[]>([]);
@@ -19,6 +29,7 @@
   let loadError = $state<string | null>(null);
   let liveCpuPercent = $state<number | null>(null);
   let route = $state<"home" | "admin">("home");
+  let settingsTile = $state<DashboardTile | null>(null);
 
   const gateway = new DataGateway();
 
@@ -34,6 +45,26 @@
   function goAdmin() {
     window.location.hash = "#/admin";
     route = "admin";
+  }
+
+  function openTileSettings(tile: DashboardTile) {
+    settingsTile = tile;
+  }
+
+  function closeTileSettings() {
+    settingsTile = null;
+  }
+
+  function saveTileFromOverlay(updated: DashboardTile) {
+    applyLayoutStructure({
+      ...layout,
+      tiles: layout.tiles.map((t) => (t.id === updated.id ? updated : t)),
+    });
+    closeTileSettings();
+  }
+
+  function selectDashboardView() {
+    editorOpen = false;
   }
 
   onMount(() => {
@@ -81,13 +112,56 @@
         },
       ],
     };
-    applyLayout(next);
+    applyLayoutStructure(next);
   }
 
-  function applyLayout(next: DashboardLayout) {
-    layout = next;
-    saveDashboardLayout(next);
-    void gateway.putDashboardLayout("default", next).catch(() => {});
+  function applyLayoutStructure(next: DashboardLayout) {
+    const normalized = layoutWithGrid(next);
+    layout = normalized;
+    saveDashboardLayout(normalized);
+    void gateway.putDashboardLayout("default", normalized).catch(() => {});
+  }
+
+  async function resetLayoutToBaseline() {
+    loadError = null;
+    try {
+      const raw = await gateway.resetDashboardLayout("default");
+      const parsed = parseDashboardLayout(raw);
+      if (!parsed) {
+        loadError = "Reset returned an invalid layout.";
+        return;
+      }
+      applyLayoutStructure(parsed);
+    } catch (e: unknown) {
+      loadError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  function onPerfTileGridHint(tileId: string, hint: { colSpan: number; rowSpan: number }) {
+    const cs = clampGridColSpan(hint.colSpan);
+    const rs = clampGridRowSpan(hint.rowSpan);
+    const t = layout.tiles.find((x) => x.id === tileId);
+    if (!t) return;
+    const prevCs = t.grid?.colSpan ?? tileColSpan(t);
+    const prevRs = t.grid?.rowSpan ?? 1;
+    if (prevCs === cs && prevRs === rs) return;
+    const g = t.grid;
+    applyLayoutStructure({
+      ...layout,
+      tiles: layout.tiles.map((x) =>
+        x.id === tileId
+          ? {
+              ...x,
+              grid: {
+                col: g?.col ?? 0,
+                row: g?.row ?? 0,
+                colSpan: cs,
+                rowSpan: rs,
+              },
+            }
+          : x,
+      ),
+    });
   }
 </script>
 
@@ -118,21 +192,49 @@
     {#if route === "admin"}
       <AdminPage {gateway} />
     {:else}
-      <div class="flex flex-wrap gap-2" role="tablist" aria-label="Dashboard mode">
-        <Button type="button" color={editorOpen ? "alternative" : "brand"} onclick={() => (editorOpen = false)}>
+      <div class="flex flex-wrap items-center gap-2" role="tablist" aria-label="Dashboard mode">
+        <Button type="button" color={editorOpen ? "alternative" : "brand"} onclick={selectDashboardView}>
           Dashboard
         </Button>
         <Button type="button" color={editorOpen ? "brand" : "alternative"} onclick={() => (editorOpen = true)}>
           Edit layout
         </Button>
+        {#if editorOpen}
+          <Button
+            type="button"
+            color="danger"
+            class="outline"
+            aria-label="Reset dashboard layout to saved baseline"
+            onclick={resetLayoutToBaseline}
+          >
+            Reset
+          </Button>
+        {/if}
       </div>
 
       {#if loadError}
         <p class="text-red-600 dark:text-red-400" role="alert">{loadError}</p>
-      {:else if editorOpen}
-        <DashboardEditor {plugins} {layout} onAddTile={addTile} onLayoutChange={applyLayout} />
       {:else}
-        <DashboardHost {layout} {gateway} {liveCpuPercent} />
+        <DashboardHost
+          {layout}
+          {gateway}
+          {liveCpuPercent}
+          {plugins}
+          editLayout={editorOpen}
+          onAddTile={addTile}
+          onLayoutStructureChange={applyLayoutStructure}
+          onEditTile={openTileSettings}
+          onPerfTileGridHint={onPerfTileGridHint}
+        />
+      {/if}
+
+      {#if settingsTile}
+        <TileSettingsOverlay
+          tile={settingsTile}
+          {plugins}
+          onClose={closeTileSettings}
+          onSave={saveTileFromOverlay}
+        />
       {/if}
     {/if}
   </div>

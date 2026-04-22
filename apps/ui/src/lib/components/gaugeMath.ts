@@ -1,25 +1,13 @@
-/** Semicircle gauge geometry: arc from 180° to 0° (top half), percent 0–100. */
-
-export function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number): { x: number; y: number } {
-  const rad = ((angleDeg - 90) * Math.PI) / 180;
-  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-}
-
-/** Returns SVG path d for semicircle arc from left (180°) to right (0°). */
-export function describeSemicircleArc(cx: number, cy: number, r: number): string {
-  const start = polarToCartesian(cx, cy, r, 180);
-  const end = polarToCartesian(cx, cy, r, 0);
-  return `M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`;
-}
-
 /**
- * Arc covering `percent` of the semicircle (0 = none, 100 = full half-circle).
+ * Upper semicircle in SVG (∩): chord from (cx−r, cy) to (cx+r, cy), bulge toward smaller y.
+ * Chord sits low in the mini viewBox; the arc fits above it without clipping.
  */
-export function describeSemicircleProgress(cx: number, cy: number, r: number, percent: number): string {
-  const p = Math.max(0, Math.min(100, percent));
-  const endAngle = 180 - (p / 100) * 180;
-  const start = polarToCartesian(cx, cy, r, 180);
-  const end = polarToCartesian(cx, cy, r, endAngle);
-  const largeArc = p > 50 ? 1 : 0;
-  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+
+/** Full track along the upper semicircle (bulge toward smaller y). Sweep must be 1 here — sweep 0 draws the lower “U”. */
+export function describeSemicircleArc(cx: number, cy: number, r: number): string {
+  const x0 = cx - r;
+  const y0 = cy;
+  const x1 = cx + r;
+  const y1 = cy;
+  return `M ${x0} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y1}`;
 }

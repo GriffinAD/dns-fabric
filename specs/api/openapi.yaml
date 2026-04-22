@@ -95,6 +95,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+    post:
+      operationId: resetDashboardLayout
+      summary: Restore dashboard layout from dashboard-layouts.orig.json (read-only baseline on disk)
+      tags: [Dashboard]
+      parameters:
+        - $ref: "#/components/parameters/DashboardId"
+      responses:
+        "200":
+          description: Layout after reset (same shape as GET layout)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardLayout"
+        "400":
+          description: Baseline file exists but layout for this id is invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Baseline file missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /events/stream:
     get:
       operationId: streamFabricEvents
@@ -360,6 +385,33 @@ components:
         display_style:
           type: string
           enum: [gauge, percent_only]
+        perf_max_cols:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: >
+            Max dashboard columns for a performance tile; extra gauges wrap inside the tile.
+    GridPlacement:
+      type: object
+      additionalProperties: false
+      required: [col, row, colSpan, rowSpan]
+      description: >
+        12-column grid cell. Server validates col + colSpan <= 12 when present.
+      properties:
+        col:
+          type: integer
+          minimum: 0
+          maximum: 11
+        row:
+          type: integer
+          minimum: 0
+        colSpan:
+          type: integer
+          minimum: 1
+          maximum: 12
+        rowSpan:
+          type: integer
+          minimum: 1
     DashboardTile:
       type: object
       additionalProperties: false
@@ -378,6 +430,8 @@ components:
         region:
           type: string
           nullable: true
+        grid:
+          $ref: "#/components/schemas/GridPlacement"
         options:
           $ref: "#/components/schemas/TileOptions"
     DashboardLayout:

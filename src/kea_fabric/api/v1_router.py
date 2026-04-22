@@ -145,6 +145,16 @@ async def put_layout(
     return Response(status_code=204)
 
 
+@router.post("/dashboards/{dashboard_id}/layout/reset")
+def reset_layout(
+    dashboard_id: str,
+    __op: Annotated[AuthRole, Depends(require_operator)],
+    svc: Annotated[FabricService, Depends(get_fabric_service)],
+) -> dict[str, Any]:
+    """Restore layout from read-only ``dashboard-layouts.orig.json`` on disk."""
+    return svc.reset_layout_from_orig(dashboard_id)
+
+
 @router.get("/events/stream")
 async def stream_events(
     request: Request,

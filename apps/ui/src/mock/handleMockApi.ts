@@ -1,8 +1,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-import type { DashboardLayout } from "../lib/dashboard/types";
+import { parseDashboardLayout } from "../lib/dashboard/layoutStorage";
 import { baseFixtures } from "./fixtures";
 import { getDiscoveryScan, getSavedLayout, nextPerfTick, setDiscoveryPaused, setSavedLayout } from "./state";
+
+const _mockDir = dirname(fileURLToPath(import.meta.url));
+/** Repo-root ``.fabric-data/dashboard-layouts.orig.json`` (read-only; never written by the mock). */
+const BASELINE_LAYOUTS_FILE = join(_mockDir, "../../../../.fabric-data/dashboard-layouts.orig.json");
 
 const listPaths = new Set([
   "/api/v1/dhcp/pools",
@@ -24,19 +31,6 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify(body));
-}
-
-function isDashboardLayout(value: unknown): value is DashboardLayout {
-  if (!value || typeof value !== "object") return false;
-  const v = value as Record<string, unknown>;
-  if (typeof v.version !== "number" || !Array.isArray(v.tiles)) return false;
-  for (const t of v.tiles) {
-    if (!t || typeof t !== "object") return false;
-    const tile = t as Record<string, unknown>;
-    if (typeof tile.id !== "string" || typeof tile.pluginId !== "string") return false;
-    if (typeof tile.hostControl !== "string" || typeof tile.displayMode !== "string") return false;
-  }
-  return true;
 }
 
 /**
@@ -106,6 +100,33 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
     return true;
   }
 
+  const resetMatch = pathOnly.match(/^\/api\/v1\/dashboards\/([^/]+)\/layout\/reset$/);
+  if (method === "POST" && resetMatch) {
+    const dashboardId = resetMatch[1]!;
+    if (!existsSync(BASELINE_LAYOUTS_FILE)) {
+      sendJson(res, 404, { title: "baseline layout file not found", status: 404 });
+      return true;
+    }
+    try {
+      const all = JSON.parse(readFileSync(BASELINE_LAYOUTS_FILE, "utf8")) as unknown;
+      if (!all || typeof all !== "object" || Array.isArray(all)) {
+        sendJson(res, 500, { title: "baseline layout file must be a JSON object", status: 500 });
+        return true;
+      }
+      const rawLayout = (all as Record<string, unknown>)[dashboardId];
+      const layout = parseDashboardLayout(rawLayout);
+      if (!layout) {
+        sendJson(res, 400, { title: "Invalid or missing layout in baseline file", status: 400 });
+        return true;
+      }
+      setSavedLayout(layout);
+      sendJson(res, 200, layout);
+    } catch {
+      sendJson(res, 500, { title: "baseline layout file is not valid JSON", status: 500 });
+    }
+    return true;
+  }
+
   const layoutMatch = pathOnly.match(/^\/api\/v1\/dashboards\/([^/]+)\/layout$/);
   if (layoutMatch) {
     if (method === "GET") {
@@ -121,11 +142,12 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
       try {
         const rawBody = await readBody(req);
         const parsed = JSON.parse(rawBody) as unknown;
-        if (!isDashboardLayout(parsed)) {
+        const layout = parseDashboardLayout(parsed);
+        if (!layout) {
           sendJson(res, 400, { title: "Invalid layout", status: 400 });
           return true;
         }
-        setSavedLayout(parsed);
+        setSavedLayout(layout);
         res.statusCode = 204;
         res.end();
       } catch {

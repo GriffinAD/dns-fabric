@@ -31,7 +31,7 @@
   });
 </script>
 
-<Card class="h-full max-h-[480px] overflow-auto">
+<Card size="xl" class="h-full max-h-[480px] overflow-auto">
   {#snippet children()}
     <div class="p-4">
       <h3 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">DHCP clients</h3>

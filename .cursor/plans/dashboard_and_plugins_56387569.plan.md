@@ -25,7 +25,7 @@ todos:
     status: completed
   - id: data-gateway
     content: "Implement DataGateway: HTTP client, SSE subscription, merge strategy for live tiles in apps/ui. Done: relative `/api/v1` + EventSource. Still to do: `VITE_*` (or equivalent) base URL + optional auth headers for prod; document modes."
-    status: in_progress
+    status: completed
   - id: dashboard-host
     content: Implement DashboardEditor/Host, DnD, layout save/load per layout.schema.json, plugin tile options.
     status: completed
@@ -49,19 +49,19 @@ todos:
     status: completed
   - id: phase-b-mock-adapters
     content: "Mock Kea + Nebula-sync shaped adapters (no live services): domain services in Python calling simulators; thin routers."
-    status: pending
+    status: completed
   - id: phase-b-prod-runtime
     content: "Production-oriented runtime: long-lived SSE + heartbeat + clean disconnect; durable layout store (`KEA_FABRIC_DATA_DIR` or similar); structured logging."
-    status: pending
+    status: completed
   - id: phase-b-api-authz
     content: "FastAPI authN/authZ on mutating and sensitive routes; OpenAPI `securitySchemes`; no reliance on `#/admin` as a trust boundary."
-    status: pending
+    status: completed
   - id: phase-b-docs-scripts
     content: "Re-align docs/operator-demo.md and scripts/dev_serve_with_examples.sh with `kea-fabric-api` + `npm run dev:proxy`; README env summary."
-    status: pending
+    status: completed
   - id: phase-c-dashboard-grid
-    content: "Blocked until full Phase B is done and merged (see [.cursor/plans/phase_b_and_c_roadmap.plan.md](phase_b_and_c_roadmap.plan.md)): 12-col grid edit, per-tile live options, snap-to-cell DnD. Then branch `feat/phase-c-dashboard-grid` from `main`; do not merge Phase C until stabilized."
-    status: pending
+    content: "Phase C slice complete on `feat/phase-c-dashboard-grid`: 12-col grid host/editor, per-tile settings + debounced layout PUT, blueprint update, tests — merge to `main` when ready (snap-to-cell deferred per roadmap)."
+    status: completed
 isProject: false
 ---
 

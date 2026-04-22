@@ -1,10 +1,42 @@
 import { DEFAULT_DASHBOARD_LAYOUT } from "./defaultLayout";
+import { layoutWithGrid } from "./gridPlacement";
 import type { DashboardLayout, DashboardTile } from "./types";
 
 const STORAGE_KEY = "kea-fabric-dashboard-layout";
 
+/** Removed from layouts on load (replaced by split perf.* tiles; old localStorage still had this). */
+const LEGACY_PLUGIN_IDS = new Set(["perf.summary"]);
+
 const HOST_CONTROLS = new Set(["single-panel", "tab-control", "vertical-stack", "split-grid"]);
 const DISPLAY_MODES = new Set(["compact", "full"]);
+
+function validGridCell(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const g = value as Record<string, unknown>;
+  const col = g.col;
+  const row = g.row;
+  const cspan = g.colSpan;
+  const rspan = g.rowSpan;
+  if (
+    typeof col !== "number" ||
+    typeof row !== "number" ||
+    typeof cspan !== "number" ||
+    typeof rspan !== "number"
+  ) {
+    return false;
+  }
+  if (
+    !Number.isInteger(col) ||
+    !Number.isInteger(row) ||
+    !Number.isInteger(cspan) ||
+    !Number.isInteger(rspan)
+  ) {
+    return false;
+  }
+  if (!(col >= 0 && col <= 11 && cspan >= 1 && cspan <= 12 && col + cspan <= 12)) return false;
+  if (row < 0 || rspan < 1 || rspan > 12) return false;
+  return true;
+}
 
 function isTileOptions(value: unknown): boolean {
   if (value === undefined) return true;
@@ -14,6 +46,10 @@ function isTileOptions(value: unknown): boolean {
   if (o.network_by_adapter !== undefined && typeof o.network_by_adapter !== "boolean") return false;
   if (o.disk_by_volume !== undefined && typeof o.disk_by_volume !== "boolean") return false;
   if (o.display_style !== undefined && o.display_style !== "gauge" && o.display_style !== "percent_only") return false;
+  if (o.perf_max_cols !== undefined) {
+    if (typeof o.perf_max_cols !== "number" || !Number.isInteger(o.perf_max_cols)) return false;
+    if (o.perf_max_cols < 1 || o.perf_max_cols > 12) return false;
+  }
   return true;
 }
 
@@ -25,6 +61,7 @@ function isTile(value: unknown): value is DashboardTile {
   if (typeof t.hostControl !== "string" || !HOST_CONTROLS.has(t.hostControl)) return false;
   if (typeof t.displayMode !== "string" || !DISPLAY_MODES.has(t.displayMode)) return false;
   if (t.region !== undefined && typeof t.region !== "string") return false;
+  if (t.grid !== undefined && t.grid !== null && !validGridCell(t.grid)) return false;
   if (!isTileOptions(t.options)) return false;
   return true;
 }
@@ -58,6 +95,49 @@ export function saveDashboardLayout(layout: DashboardLayout): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
 }
 
+function newMergedTileId(pluginId: string): string {
+  const slug = pluginId.replace(/[^a-z0-9]+/gi, "-");
+  return `tile-${slug}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/** Append any default-layout plugins missing from a saved layout (e.g. after new tiles ship). */
+export function mergeMissingDefaultPlugins(layout: DashboardLayout): DashboardLayout {
+  const present = new Set(layout.tiles.map((t) => t.pluginId));
+  const additions: DashboardTile[] = [];
+  for (const def of DEFAULT_DASHBOARD_LAYOUT.tiles) {
+    if (!present.has(def.pluginId)) {
+      additions.push({
+        ...structuredClone(def),
+        id: newMergedTileId(def.pluginId),
+      });
+    }
+  }
+  if (additions.length === 0) return layout;
+  return { ...layout, tiles: [...layout.tiles, ...additions] };
+}
+
+function withoutLegacyTiles(layout: DashboardLayout): DashboardLayout {
+  return {
+    ...layout,
+    tiles: layout.tiles.filter((t) => !LEGACY_PLUGIN_IDS.has(t.pluginId)),
+  };
+}
+
 export function initialDashboardLayout(): DashboardLayout {
-  return loadDashboardLayout() ?? structuredClone(DEFAULT_DASHBOARD_LAYOUT);
+  const stored = loadDashboardLayout();
+  let base: DashboardLayout =
+    stored != null ? withoutLegacyTiles(stored) : structuredClone(DEFAULT_DASHBOARD_LAYOUT);
+  const strippedAny =
+    stored != null && base.tiles.length !== stored.tiles.length;
+
+  if (stored != null) {
+    const merged = mergeMissingDefaultPlugins(base);
+    const mergedGrew = merged.tiles.length > base.tiles.length;
+    base = mergedGrew ? merged : base;
+    if (mergedGrew || strippedAny) {
+      saveDashboardLayout(base);
+    }
+  }
+
+  return layoutWithGrid(base);
 }

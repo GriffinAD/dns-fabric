@@ -4,6 +4,7 @@ import { DEFAULT_DASHBOARD_LAYOUT } from "./defaultLayout";
 import {
   initialDashboardLayout,
   loadDashboardLayout,
+  mergeMissingDefaultPlugins,
   parseDashboardLayout,
   saveDashboardLayout,
 } from "./layoutStorage";
@@ -17,6 +18,76 @@ describe("parseDashboardLayout", () => {
 
   it("rejects invalid tiles", () => {
     expect(parseDashboardLayout({ version: 1, tiles: [{}] })).toBeNull();
+  });
+
+  it("accepts optional grid placement and rejects out-of-bounds grid", () => {
+    const base = {
+      id: "a",
+      pluginId: "p",
+      hostControl: "single-panel" as const,
+      displayMode: "full" as const,
+    };
+    expect(
+      parseDashboardLayout({
+        version: 1,
+        tiles: [{ ...base, grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 } }],
+      }),
+    ).not.toBeNull();
+    expect(
+      parseDashboardLayout({
+        version: 1,
+        tiles: [{ ...base, grid: { col: 6, row: 0, colSpan: 7, rowSpan: 1 } }],
+      }),
+    ).toBeNull();
+    expect(
+      parseDashboardLayout({
+        version: 1,
+        tiles: [{ ...base, grid: { col: 0, row: 0, colSpan: 12 } }],
+      }),
+    ).toBeNull();
+    expect(
+      parseDashboardLayout({
+        version: 1,
+        tiles: [{ ...base, grid: { col: "0", row: 0, colSpan: 1, rowSpan: 1 } }],
+      }),
+    ).toBeNull();
+    expect(parseDashboardLayout({ version: 1, tiles: [{ ...base, grid: [] }] })).toBeNull();
+    expect(
+      parseDashboardLayout({
+        version: 1,
+        tiles: [{ ...base, grid: { col: 0.5, row: 0, colSpan: 1, rowSpan: 1 } }],
+      }),
+    ).toBeNull();
+    expect(
+      parseDashboardLayout({
+        version: 1,
+        tiles: [{ ...base, grid: { col: -1, row: 0, colSpan: 2, rowSpan: 1 } }],
+      }),
+    ).toBeNull();
+    expect(
+      parseDashboardLayout({
+        version: 1,
+        tiles: [{ ...base, grid: { col: 0, row: -1, colSpan: 1, rowSpan: 1 } }],
+      }),
+    ).toBeNull();
+    expect(
+      parseDashboardLayout({
+        version: 1,
+        tiles: [{ ...base, grid: { col: 0, row: 0, colSpan: 1, rowSpan: 0 } }],
+      }),
+    ).toBeNull();
+    expect(
+      parseDashboardLayout({
+        version: 1,
+        tiles: [{ ...base, grid: { col: 0, row: 0, colSpan: 1, rowSpan: 13 } }],
+      }),
+    ).toBeNull();
+    expect(
+      parseDashboardLayout({
+        version: 1,
+        tiles: [{ ...base, grid: { col: 0, row: 500, colSpan: 1, rowSpan: 1 } }],
+      }),
+    ).not.toBeNull();
   });
 
   it("rejects missing version", () => {
@@ -51,6 +122,15 @@ describe("parseDashboardLayout", () => {
     expect(parseDashboardLayout({ version: 1, tiles: [{ ...base, options: { disk_by_volume: 1 } }] })).toBeNull();
     expect(
       parseDashboardLayout({ version: 1, tiles: [{ ...base, options: { display_style: "big" } }] }),
+    ).toBeNull();
+    expect(
+      parseDashboardLayout({ version: 1, tiles: [{ ...base, options: { perf_max_cols: 0 } }] }),
+    ).toBeNull();
+    expect(
+      parseDashboardLayout({ version: 1, tiles: [{ ...base, options: { perf_max_cols: 4 } }] }),
+    ).not.toBeNull();
+    expect(
+      parseDashboardLayout({ version: 1, tiles: [{ ...base, options: { perf_max_cols: 2.5 } }] }),
     ).toBeNull();
     expect(parseDashboardLayout({ version: 1, tiles: [{ ...base, options: {} }] })).not.toBeNull();
   });
@@ -150,6 +230,86 @@ describe("localStorage persistence", () => {
     store = {};
     const init = initialDashboardLayout();
     expect(init.version).toBe(DEFAULT_DASHBOARD_LAYOUT.version);
+  });
+
+  it("mergeMissingDefaultPlugins appends default tiles absent from saved layout", () => {
+    const partial = {
+      version: 1 as const,
+      tiles: DEFAULT_DASHBOARD_LAYOUT.tiles.filter((t) => t.pluginId === "dhcp.pools"),
+    };
+    const merged = mergeMissingDefaultPlugins(partial);
+    const ids = new Set(merged.tiles.map((t) => t.pluginId));
+    expect(ids.has("dhcp.pools")).toBe(true);
+    expect(ids.has("dhcp.clients")).toBe(true);
+    expect(ids.has("dhcp.reservations")).toBe(true);
+    expect(merged.tiles.length).toBe(DEFAULT_DASHBOARD_LAYOUT.tiles.length);
+  });
+
+  it("mergeMissingDefaultPlugins returns the same layout when nothing is missing", () => {
+    const full = structuredClone(DEFAULT_DASHBOARD_LAYOUT);
+    const merged = mergeMissingDefaultPlugins(full);
+    expect(merged).toBe(full);
+    expect(merged.tiles.length).toBe(DEFAULT_DASHBOARD_LAYOUT.tiles.length);
+  });
+
+  it("initialDashboardLayout merges in missing plugins when storage has partial layout", () => {
+    const partial = {
+      version: 1 as const,
+      tiles: DEFAULT_DASHBOARD_LAYOUT.tiles.filter((t) => t.pluginId === "dhcp.pools"),
+    };
+    store["kea-fabric-dashboard-layout"] = JSON.stringify(partial);
+    const init = initialDashboardLayout();
+    expect(init.tiles.length).toBe(DEFAULT_DASHBOARD_LAYOUT.tiles.length);
+  });
+
+  it("initialDashboardLayout strips legacy tile but keeps merge when defaults already complete", () => {
+    const stored = {
+      version: 1 as const,
+      tiles: [
+        ...DEFAULT_DASHBOARD_LAYOUT.tiles.map((t) => structuredClone(t)),
+        {
+          id: "tile-perf-legacy",
+          pluginId: "perf.summary",
+          hostControl: "single-panel" as const,
+          displayMode: "full" as const,
+          grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+        },
+      ],
+    };
+    store["kea-fabric-dashboard-layout"] = JSON.stringify(stored);
+    const init = initialDashboardLayout();
+    expect(init.tiles.some((t) => t.pluginId === "perf.summary")).toBe(false);
+    expect(init.tiles.length).toBe(DEFAULT_DASHBOARD_LAYOUT.tiles.length);
+    const reloaded = loadDashboardLayout();
+    expect(reloaded?.tiles.some((t) => t.pluginId === "perf.summary")).toBe(false);
+    expect(reloaded?.tiles.length).toBe(DEFAULT_DASHBOARD_LAYOUT.tiles.length);
+  });
+
+  it("initialDashboardLayout removes legacy perf.summary from storage and persists", () => {
+    const withSummary = {
+      version: 1 as const,
+      tiles: [
+        {
+          id: "tile-perf-legacy",
+          pluginId: "perf.summary",
+          hostControl: "single-panel" as const,
+          displayMode: "full" as const,
+          grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+        },
+        {
+          id: "tile-pools-only",
+          pluginId: "dhcp.pools",
+          hostControl: "single-panel" as const,
+          displayMode: "full" as const,
+          grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+        },
+      ],
+    };
+    store["kea-fabric-dashboard-layout"] = JSON.stringify(withSummary);
+    const init = initialDashboardLayout();
+    expect(init.tiles.some((t) => t.pluginId === "perf.summary")).toBe(false);
+    const reloaded = loadDashboardLayout();
+    expect(reloaded?.tiles.some((t) => t.pluginId === "perf.summary")).toBe(false);
   });
 
   it("saveDashboardLayout is a no-op without localStorage", () => {
