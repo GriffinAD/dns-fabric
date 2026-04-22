@@ -62,21 +62,28 @@ Invalid or missing JSON falls back to `{ "version": 1, "mode": "system", "colorP
 - Untrusted or iframe-hosted UIs remain isolated per `ui.md`; this document
   governs **in-process** Svelte plugin tiles only.
 
-### Performance gauge severity (semicircle)
+### Performance gauge arc colors (semicircle)
 
-Load gauges use a single color for the **progress** stroke derived from the
-**current** reading (not a gradient along the arc), with **half-open** ranges:
+The **track** is neutral; the **filled** portion is drawn as one or more SVG
+sub-arcs. Colors are fixed **along the arc** (as a fraction of full path length):
 
-- `[0, 70)` — green; `[70, 80)` — yellow; `[80, 90)` — orange; `[90, 100]` — red.
+- `0–70%` of the arc — green; `70–80%` — yellow; `80–90%` — orange; `90–100%` — red.
 
-See `apps/ui/src/lib/components/gaugeThresholds.ts` (`gaugePercentBand`).
+The **value** (0–100) is how far the fill extends along that spectrum. For
+example, at **95%** the visible fill shows **four** colors (green, then yellow,
+then orange, then red for the last 5% of the arc). At **50%**, only the green
+portion appears (the first half of the arc lies entirely in the 0–70% band).
+
+Implementation: `gaugeArcSegmentsForFill` in
+`apps/ui/src/lib/components/gaugeThresholds.ts` and
+`describeSemicircleSegment` in `gaugeMath.ts`.
 
 ### Contrast and verification
 
 - New chrome or tiles should be checked in **light and dark** effective modes
   and, when using `colorPreset`, in **default** and **emerald** accents.
-- Error and success text should use existing semantic reds/greens; gauge strokes
-  use the mapped Tailwind `stroke-*` classes from `gaugeProgressStrokeClass`.
+- Error and success text should use existing semantic reds/greens; gauge progress
+  uses the zone `stroke-*` classes defined next to `gaugeArcSegmentsForFill`.
 
 ### Breaking changes and migration
 

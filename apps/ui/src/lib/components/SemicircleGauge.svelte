@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { describeSemicircleArc } from "./gaugeMath";
-  import { gaugeProgressStrokeClass } from "./gaugeThresholds";
+  import { describeSemicircleArc, describeSemicircleSegment } from "./gaugeMath";
+  import { gaugeArcSegmentsForFill } from "./gaugeThresholds";
 
   let {
     label = undefined,
@@ -32,14 +32,13 @@
   });
 
   const track = $derived(describeSemicircleArc(cx, cy, r));
-  /**
-   * A second `A` command with a computed end point does not always pick the same
-   * elliptical-arc branch as the full track in every UA → progress “lifts off” the gray arc.
-   * Reuse the exact same `d` and trim with dasharray + pathLength (see SVG pathLength).
-   */
-  const showProgress = $derived(safePercent > 0);
-  const progressDash = $derived(`${safePercent} 100`);
-  const progressStrokeClass = $derived(gaugeProgressStrokeClass(safePercent));
+  const progressSegments = $derived(
+    gaugeArcSegmentsForFill(safePercent).map((seg) => ({
+      d: describeSemicircleSegment(cx, cy, r, seg.t0, seg.t1),
+      className: seg.className,
+    })),
+  );
+  const showProgress = $derived(progressSegments.length > 0);
 </script>
 
 <div
@@ -77,15 +76,15 @@
       stroke-linecap="round"
     />
     {#if showProgress}
-      <path
-        d={track}
-        pathLength="100"
-        fill="none"
-        class={progressStrokeClass}
-        stroke-width={stroke}
-        stroke-linecap="round"
-        stroke-dasharray={progressDash}
-      />
+      {#each progressSegments as seg (seg.d)}
+        <path
+          d={seg.d}
+          fill="none"
+          class={seg.className}
+          stroke-width={stroke}
+          stroke-linecap="round"
+        />
+      {/each}
     {/if}
   </svg>
   <span class="font-mono text-gray-900 dark:text-white {mini ? 'text-xs' : 'text-sm'}"
@@ -96,7 +95,6 @@
       class="max-w-[6rem] break-words text-center text-gray-500 dark:text-gray-400 {mini
         ? 'text-[10px] leading-tight'
         : 'text-xs'}"
-      >{sublabel}</span
-    >
+      >{sublabel}</span>
   {/if}
 </div>
