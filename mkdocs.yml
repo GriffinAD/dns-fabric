@@ -1,0 +1,109 @@
+site_name: Kea Fabric
+site_dir: site
+docs_dir: docs
+strict: true
+
+# This documentation-first clone may cite ADRs and repo-root paths that are not
+# yet vendored under docs/. Tighten to `warn` when the full ADR set lives in-tree.
+validation:
+  links:
+    not_found: ignore
+
+exclude_docs: |
+  _templates/
+
+theme:
+  name: material
+  features:
+    - navigation.expand
+    - content.code.copy
+
+plugins:
+  - search
+  - mermaid2:
+      arguments:
+        theme: neutral
+
+markdown_extensions:
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:mermaid2.fence_mermaid_custom
+
+nav:
+  - Home: README.md
+  - Governance:
+      - Product naming: _governance/NAMING.md
+      - Reviewers: _governance/REVIEWERS.md
+  - ADRs: adr/README.md
+  - Architecture:
+      - README: architecture/README.md
+      - DOC_STANDARDS: architecture/DOC_STANDARDS.md
+      - Glossary: architecture/glossary.md
+      - Principles: architecture/principles.md
+      - Overview: architecture/overview.md
+      - Invariants: architecture/invariants.md
+      - Threat model: architecture/threat-model.md
+      - Core runtime: architecture/core-runtime.md
+      - Plugins: architecture/plugins.md
+      - Contracts: architecture/contracts.md
+      - Events: architecture/events.md
+      - API: architecture/api.md
+      - UI: architecture/ui.md
+      - Security: architecture/security.md
+      - Kea integration: architecture/kea-integration.md
+      - Data: architecture/data.md
+      - Config: architecture/config.md
+      - Brokers: architecture/brokers.md
+      - Observability: architecture/observability.md
+      - Marketplace: architecture/marketplace.md
+      - Nebula sync: architecture/nebula-sync.md
+      - Scheduler: architecture/scheduler.md
+      - Discovery: architecture/discovery.md
+      - Versioning: architecture/versioning.md
+      - Error taxonomy: architecture/error-taxonomy.md
+      - Concurrency model: architecture/concurrency-model.md
+      - Testing: architecture/testing.md
+      - Packaging: architecture/packaging.md
+      - CI/CD: architecture/cicd.md
+      - Deployment: architecture/deployment.md
+      - Release process: architecture/release-process.md
+      - i18n: architecture/i18n.md
+      - Performance: architecture/performance.md
+      - Data governance: architecture/data-governance.md
+      - Platform support: architecture/platform-support.md
+      - Future considerations: architecture/future-considerations.md
+      - UI design system: architecture/ui-design-system.md
+      - UI themes: architecture/ui-themes.md
+      - UI icons: architecture/ui-icons.md
+      - UI fonts: architecture/ui-fonts.md
+      - UI assets: architecture/ui-assets.md
+      - Dashboard blueprint: architecture/dashboard-plugin-blueprint.md
+      - Reference ledger: architecture/reference-ledger.md
+      - Product roadmap: architecture/product-roadmap.md
+  - Operator demo: operator-demo.md
+  - Operator:
+      - README: operator/README.md
+      - Install: operator/install.md
+      - Configure: operator/configure.md
+      - Upgrade: operator/upgrade.md
+      - Backup & restore: operator/backup-restore.md
+      - Troubleshooting: operator/troubleshooting.md
+      - Runbooks:
+          - README: operator/runbooks/README.md
+          - Kea control agent unreachable: operator/runbooks/kea-control-agent-unreachable.md
+          - Plugin quarantined: operator/runbooks/plugin-quarantined.md
+          - Plugins diagnostics: operator/runbooks/plugins-diagnostics.md
+          - Policy denied or pending approval: operator/runbooks/policy-denied-or-pending-approval.md
+          - Warm standby failover: operator/runbooks/warm-standby-failover.md
+  - Plugin development:
+      - README: plugin-dev/README.md
+      - Getting started: plugin-dev/getting-started.md
+      - Manifest reference: plugin-dev/manifest-reference.md
+      - Contracts cookbook: plugin-dev/contracts-cookbook.md
+      - Publishing: plugin-dev/publishing.md
+      - Testing: plugin-dev/testing.md

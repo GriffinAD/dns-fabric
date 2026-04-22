@@ -1,0 +1,3 @@
+# Kea Fabric — secret scanning (.github/workflows/security.yml)
+[extend]
+useDefault = true

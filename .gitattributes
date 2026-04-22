@@ -1,0 +1,2 @@
+# Reference trees must never ship in release archives (docs/architecture/DOC_STANDARDS.md).
+REF_ONLY/** export-ignore

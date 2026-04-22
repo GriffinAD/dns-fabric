@@ -24,7 +24,7 @@
 | `plugin-dev/` | Tier D — plugin-developer handbook ([index](./plugin-dev/README.md)). |
 | `operator/` | Tier D — operator runbooks ([index](./operator/README.md)). |
 
-The MkDocs site ([`../mkdocs.yml`](../mkdocs.yml)) lists every published page
+The MkDocs site (`mkdocs.yml` at the repository root) lists every published page
 except `_templates/` (excluded from the build). Update `nav` when you add a new
 `docs/**/*.md` file so `mkdocs build --strict` stays clean.
 
@@ -33,13 +33,12 @@ corpus (and Cursor rules under `.cursor/`), excluding `REF_ONLY/`. After the
 MkDocs build, **lychee** runs the same corpus in **advisory** mode (reports
 broken links; does not fail the workflow). For a broader local sweep (markdown,
 cspell, Python compile, advisory **lychee**), use `npm run ci:docs-local` after
-`npm install`. Commands and order match
-[`../AGENTS.md`](../AGENTS.md) **Build / CI (current)** and the repo-root
-[`README.md`](../README.md) **Documentation site** section.
+`npm install`. Commands and order match **AGENTS.md** (repository root)
+**Build / CI (current)** and the repo-root **README.md** **Documentation site** section.
 
 Separately, **`.github/workflows/security.yml`** runs blocking **gitleaks**,
 **Syft** (CycloneDX SBOM + artifact), and **Grype** (`--fail-on high`) — see
-[`../AGENTS.md`](../AGENTS.md).
+**AGENTS.md** at the repository root.
 
 ## Architecture document set — accepted map
 

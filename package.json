@@ -1,0 +1,16 @@
+{
+  "name": "kea-fabric",
+  "private": true,
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "check:ui-unit": "npm --prefix apps/ui run check:ui-unit",
+    "check:ui-e2e": "npm --prefix apps/ui run check:ui-e2e",
+    "ci:docs-local": "bash scripts/check_markdownlint.sh && bash scripts/check_cspell.sh"
+  },
+  "devDependencies": {
+    "cspell": "^8.17.5",
+    "markdownlint-cli2": "^0.18.1"
+  }
+}

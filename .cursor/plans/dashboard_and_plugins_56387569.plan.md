@@ -49,6 +49,18 @@ isProject: false
 
 **Build order (imperative):** **UI and UX quality first.** Implement against **mocked data** on the public API contract (static JSON, MSW, or a thin mock server) so dnd, tiles, empty/error/loading states, and a11y are proven **before** investing in real Kea/Nebula integration. The **OpenAPI spec is the source of truth** for mocks and generated/ hand types—**fail fast** on contract mismatch in CI and in dev (e.g. Zod or openapi-typescript validation on responses). **Real backend** production of data is a **follow-on phase**; it must not block shell or plugin work.
 
+## Git workflow (general)
+
+For this workstream (and similarly scoped efforts):
+
+1. **Create a branch** off `main` (or the current integration branch), named for the slice or phase (e.g. `dashboard-phase-a`, `feat/ui-flowbite-bootstrap`).
+2. **Implement in logical chunks** — vertical slices (e.g. bootstrap → OpenAPI/mocks → gateway → one plugin) rather than one giant diff.
+3. **Commit in chunks** — one commit per coherent chunk; prefer [conventional commit](https://www.conventionalcommits.org/) subjects. Run applicable checks before each commit when the full repo is available (see [.cursor/rules/commits.mdc](.cursor/rules/commits.mdc) **Phase delivery workflow**).
+4. **Push** the branch regularly so remote backup and review stay current.
+5. **When complete** — open a PR or merge per team practice; integrate only after acceptance criteria for the slice/phase are met.
+
+**Repo policy (non-optional):** every commit must use **DCO sign-off** (`git commit -s`) and the **repo-local** author identity in [.cursor/rules/commits.mdc](.cursor/rules/commits.mdc). Prefer a **linear branch**: rebase onto `main` to update (`git fetch origin && git rebase origin/main`), avoid repeated `git merge main` into the feature branch, and do not force-push rewritten history without explicit agreement. Stacked slices can live on one branch in history order, with `commit --fixup` + `rebase -i --autosquash` when tightening the story before push.
+
 ## Architecture verification (obligations checklist)
 
 | Source | What must be true for acceptance |
@@ -182,6 +194,7 @@ Regenerate or sync OpenAPI; keep [scripts/check_openapi_drift.py](.github/workfl
 
 ## Testing
 
+- **Coverage policy:** [docs/architecture/testing.md](docs/architecture/testing.md) — **100%** line coverage as the target; **99%** as the CI floor (`pytest` `fail_under` and Vitest thresholds). Dashboard work should narrow the gap toward **100%** as surfaces land.
 - **Primary target:** Mocks/MSW (or a pinned mock server) so e2e is **stable and fast**; real API tests come in Phase B.
 - **Vitest:** Presentational components (gauge math, table vs compact switch for pools, option toggles) + any response parsing against OpenAPI types or Zod.
 - **Playwright:** Extend [apps/ui/tests/](docs/architecture/dashboard-plugin-blueprint.md) (drag-drop, layout persist) against **mocked** `GET /api/v1/*`; optional SSE in e2e or polling flag for CI.

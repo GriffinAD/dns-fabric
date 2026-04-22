@@ -5,7 +5,7 @@ gate: Rolling
 owner: GriffinAD
 peer_reviewer: GriffinAD
 status: Accepted
-last_review: 2026-04-19
+last_review: 2026-04-22
 adrs: []
 invariants: []
 ---
@@ -49,12 +49,13 @@ policy/broker paths, plugin lifecycle, and Kea integration operations.
 
 ### Coverage goals
 
-- **Minimum quality bar:** 90%+ coverage on testable code surfaces.
-- **Project target:** 100% coverage where practical.
-- Existing Python gate keeps `kea_fabric` coverage near full line coverage
-  (current `fail_under` in `pyproject.toml` is 99).
-- UI coverage policy follows the same principle: keep above 90% and push toward
-  100% as UI surfaces land.
+- **Target:** **100%** line coverage on testable code surfaces; treat uncovered
+  lines as debt to clear when touching nearby code.
+- **Python (`src/kea_fabric/`):** `tool.coverage.report.fail_under` in
+  `pyproject.toml` is **99** — CI must not regress below **99%**; raise toward
+  **100%** over time.
+- **UI (`apps/ui/`):** Vitest coverage thresholds set to **99%** minimum with the
+  same **100%** aspirational target (see UI `vitest` / Vite config).
 
 ## Cross-refs
 
@@ -70,3 +71,4 @@ policy/broker paths, plugin lifecycle, and Kea integration operations.
 | 2026-04-19 | Proposed | GriffinAD | Initial Tier C testing architecture draft. |
 | 2026-04-19 | Accepted | GriffinAD | Self-review; Tier C Rolling baseline acceptance (doc gates closed). |
 | 2026-04-20 | Accepted | GriffinAD | Testing stack update: Vitest for UI unit/component tests, Playwright for UI automation, and explicit 90%+ / target-100% coverage policy. |
+| 2026-04-22 | Accepted | GriffinAD | **100%** coverage as the project target; **99%** as the enforced CI floor (`fail_under` / Vitest thresholds), replacing the prior 90%+ minimum. |
