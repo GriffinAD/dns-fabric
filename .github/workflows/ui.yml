@@ -23,6 +23,12 @@ jobs:
       - name: Install UI dependencies
         run: npm --prefix apps/ui ci
 
+      - name: Svelte check (TypeScript + Svelte)
+        run: npm --prefix apps/ui run check:ui-types
+
+      - name: Production build
+        run: npm --prefix apps/ui run build
+
       - name: Unit/component tests (Vitest + coverage)
         run: npm run check:ui-unit
 
