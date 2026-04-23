@@ -427,7 +427,7 @@
           {@const g = d.item.kind === "group" ? d.item : null}
           {@const cv = d.item.kind === "tile" ? d.item : null}
           {#if g}
-            {@const gItems = dndByGroup[g.id] ?? []}
+            {@const gItems = dedupeById(dndByGroup[g.id] ?? [])}
             {@const isGroupEmpty = gItems.length === 0}
             {@const G = groupOuterColSpan(g)}
             <div
@@ -676,7 +676,9 @@
           >
             {#if it.innerWrap === true}
               {@const Gr = groupOuterColSpan(it)}
-              {@const packed = packGroupChildrenRowWrapInOrder(dedupeById(it.children), Gr)}
+              {@const packed = dedupeById(
+                packGroupChildrenRowWrapInOrder(dedupeById(it.children), Gr),
+              )}
               <div
                 class="grid h-full w-full min-h-0 min-w-0 auto-rows-[minmax(0,auto)] content-start gap-2 [box-sizing:border-box] [min-width:0] [place-self:stretch] [align-self:stretch] [overflow:visible]"
                 style="grid-template-columns: repeat({Gr}, minmax(0, 1fr));"

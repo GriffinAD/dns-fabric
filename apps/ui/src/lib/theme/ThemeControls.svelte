@@ -10,6 +10,8 @@
     saveThemePreferences,
   } from "./themeStorage";
 
+  let { showAccent = true }: { showAccent?: boolean } = $props();
+
   const appearanceItems: { value: ThemeMode; name: string }[] = [
     { value: "system", name: "System" },
     { value: "light", name: "Light" },
@@ -52,20 +54,22 @@
       onchange={commit}
     />
   </div>
-  <div class="min-w-0 sm:w-40">
-    <label
-      for="theme-accent"
-      class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
-    >
-      Accent
-    </label>
-    <Select
-      id="theme-accent"
-      class="w-full"
-      bind:value={colorPreset}
-      placeholder=""
-      items={accentItems}
-      onchange={commit}
-    />
-  </div>
+  {#if showAccent}
+    <div class="min-w-0 sm:w-40">
+      <label
+        for="theme-accent"
+        class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+      >
+        Accent
+      </label>
+      <Select
+        id="theme-accent"
+        class="w-full"
+        bind:value={colorPreset}
+        placeholder=""
+        items={accentItems}
+        onchange={commit}
+      />
+    </div>
+  {/if}
 </div>

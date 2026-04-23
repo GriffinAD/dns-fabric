@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Button from "flowbite-svelte/Button.svelte";
+  import ArrowLeft from "lucide-svelte/icons/arrow-left";
   import House from "lucide-svelte/icons/house";
+  import Pencil from "lucide-svelte/icons/pencil";
   import Settings from "lucide-svelte/icons/settings";
 
   import AdminPage from "./lib/admin/AdminPage.svelte";
@@ -59,6 +61,7 @@
   }
 
   function goAdmin() {
+    selectDashboardView();
     window.location.hash = "#/admin";
     route = "admin";
   }
@@ -334,8 +337,8 @@
 
 <main class="min-h-screen bg-gray-50 p-8 dark:bg-gray-900">
   <div class="mx-auto flex max-w-6xl flex-col gap-6">
-    <header class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-      <div>
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div class="min-w-0">
         <h1 class="flex items-center gap-2 text-2xl font-semibold text-gray-900 dark:text-white">
           <House class="h-8 w-8 shrink-0" aria-hidden="true" />
           Kea Fabric
@@ -344,46 +347,72 @@
           Operator shell ({UI_VERSION}). Flowbite Svelte v2 + mocked <code class="font-mono text-sm">/api/v1</code>.
         </p>
       </div>
-      <div class="flex w-full min-w-0 flex-col items-stretch gap-4 sm:max-w-md lg:w-auto lg:max-w-none lg:flex-1 lg:flex-row lg:items-end lg:justify-end">
-        <ThemeControls />
-        <DashboardControls />
+      <div
+        class="flex w-full min-w-0 flex-col items-stretch gap-3 sm:max-w-none sm:flex-1 sm:items-end"
+        data-testid="app-header-actions"
+      >
+        <div class="flex w-full flex-wrap items-end justify-end gap-3">
+          <ThemeControls showAccent={route === "home" && editorOpen} />
+          {#if route === "home" && editorOpen}
+            <DashboardControls />
+          {/if}
+          {#if route === "home"}
+            <div role="toolbar" aria-label="Dashboard mode" class="flex flex-wrap items-center gap-1">
+              {#if editorOpen}
+                <Button
+                  type="button"
+                  color="alternative"
+                  class="!p-2"
+                  aria-label="Return to dashboard"
+                  onclick={selectDashboardView}
+                >
+                  <ArrowLeft class="h-5 w-5" aria-hidden="true" />
+                </Button>
+                <Button
+                  type="button"
+                  color="danger"
+                  class="outline shrink-0"
+                  aria-label="Reset dashboard layout to saved baseline"
+                  onclick={resetLayoutToBaseline}
+                >
+                  Reset
+                </Button>
+              {:else}
+                <Button
+                  type="button"
+                  color="alternative"
+                  class="!p-2"
+                  aria-label="Edit layout"
+                  onclick={() => (editorOpen = true)}
+                >
+                  <Pencil class="h-5 w-5" aria-hidden="true" />
+                </Button>
+              {/if}
+            </div>
+          {/if}
+          {#if route === "admin"}
+            <Button
+              type="button"
+              color="alternative"
+              class="inline-flex shrink-0 items-center gap-2"
+              onclick={goHome}
+            >
+              <House class="h-4 w-4" aria-hidden="true" />
+              Dashboard
+            </Button>
+          {:else if !editorOpen}
+            <Button type="button" class="inline-flex shrink-0 items-center gap-2" onclick={goAdmin}>
+              <Settings class="h-4 w-4" aria-hidden="true" />
+              Admin
+            </Button>
+          {/if}
+        </div>
       </div>
     </header>
-
-    <div class="flex flex-wrap gap-2">
-      <Button type="button" color="alternative" class="inline-flex items-center gap-2" onclick={goHome}>
-        <House class="h-4 w-4" aria-hidden="true" />
-        Dashboard
-      </Button>
-      <Button type="button" class="inline-flex items-center gap-2" onclick={goAdmin}>
-        <Settings class="h-4 w-4" aria-hidden="true" />
-        Admin
-      </Button>
-    </div>
 
     {#if route === "admin"}
       <AdminPage {gateway} />
     {:else}
-      <div class="flex flex-wrap items-center gap-2" role="tablist" aria-label="Dashboard mode">
-        <Button type="button" color={editorOpen ? "alternative" : "brand"} onclick={selectDashboardView}>
-          Dashboard
-        </Button>
-        <Button type="button" color={editorOpen ? "brand" : "alternative"} onclick={() => (editorOpen = true)}>
-          Edit layout
-        </Button>
-        {#if editorOpen}
-          <Button
-            type="button"
-            color="danger"
-            class="outline"
-            aria-label="Reset dashboard layout to saved baseline"
-            onclick={resetLayoutToBaseline}
-          >
-            Reset
-          </Button>
-        {/if}
-      </div>
-
       {#if loadError}
         <p class="text-red-600 dark:text-red-400" role="alert">{loadError}</p>
       {:else}

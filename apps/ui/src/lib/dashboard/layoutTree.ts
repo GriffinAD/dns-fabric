@@ -100,14 +100,45 @@ export function migrateV1ToV2(tiles: DashboardTile[]): RootLayoutItem[] {
   return items;
 }
 
-export function ensureLayoutV2(layout: DashboardLayout): DashboardLayoutV2 {
-  if (isLayoutV2(layout)) {
-    return layout;
+function layoutItemsHaveDuplicateIds(items: RootLayoutItem[]): boolean {
+  const root = new Set<string>();
+  for (const it of items) {
+    if (root.has(it.id)) return true;
+    root.add(it.id);
+    if (it.kind === "group") {
+      const seen = new Set<string>();
+      for (const c of it.children) {
+        if (seen.has(c.id)) return true;
+        seen.add(c.id);
+      }
+    }
   }
+  return false;
+}
+
+/**
+ * Deduplicate root items and every group’s `children` by `id` (first wins). Corrupt storage or
+ * bad merges can otherwise repeat ids and Svelte’s keyed `{#each}` throws `each_key_duplicate`.
+ */
+export function dedupeLayoutV2ItemIds(layout: DashboardLayoutV2): DashboardLayoutV2 {
   return {
     version: 2,
-    items: migrateV1ToV2(layout.tiles),
+    items: dedupeById(
+      layout.items.map((it) =>
+        it.kind === "group" ? { ...it, children: dedupeById(it.children) } : it,
+      ),
+    ),
   };
+}
+
+export function ensureLayoutV2(layout: DashboardLayout): DashboardLayoutV2 {
+  if (isLayoutV2(layout)) {
+    if (!layoutItemsHaveDuplicateIds(layout.items)) return layout;
+    return dedupeLayoutV2ItemIds(layout);
+  }
+  const v2: DashboardLayoutV2 = { version: 2, items: migrateV1ToV2(layout.tiles) };
+  if (!layoutItemsHaveDuplicateIds(v2.items)) return v2;
+  return dedupeLayoutV2ItemIds(v2);
 }
 
 export function* iterateTilesInLayout(

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   migrateV1ToV2,
   ensureLayoutV2,
+  dedupeLayoutV2ItemIds,
   iterateTilesInLayout,
   findTileInLayout,
   mapTileInLayout,
@@ -33,6 +34,56 @@ describe("layoutTree", () => {
   it("ensureLayoutV2 passes through v2", () => {
     const v2: DashboardLayoutV2 = { version: 2, items: [{ kind: "tile", ...baseTile("a", "dhcp.pools") }] };
     expect(ensureLayoutV2(v2)).toBe(v2);
+  });
+
+  it("ensureLayoutV2 dedupes duplicate group child ids (first wins)", () => {
+    const dupId = "tile-dup-1";
+    const t1: DashboardTile = { ...baseTile(dupId, "perf.cpu"), displayMode: "full" };
+    const t2: DashboardTile = { ...baseTile(dupId, "perf.ram"), displayMode: "full" };
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      children: [t1, t2],
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+    };
+    const v2: DashboardLayoutV2 = { version: 2, items: [g] };
+    const out = ensureLayoutV2(v2);
+    expect(out).not.toBe(v2);
+    const og = out.items[0];
+    expect(og?.kind).toBe("group");
+    if (og?.kind === "group") {
+      expect(og.children).toEqual([t1]);
+    }
+  });
+
+  it("dedupeLayoutV2ItemIds dedupes root items", () => {
+    const a: RootLayoutItem = { kind: "tile", ...baseTile("same", "perf.cpu") };
+    const b: RootLayoutItem = { kind: "tile", ...baseTile("same", "perf.ram"), displayMode: "full" };
+    const out = dedupeLayoutV2ItemIds({ version: 2, items: [a, b] });
+    expect(out.items).toEqual([a]);
+  });
+
+  it("ensureLayoutV2 dedupes duplicate root tile ids (v2)", () => {
+    const a: RootLayoutItem = { kind: "tile", ...baseTile("same", "perf.cpu") };
+    const b: RootLayoutItem = { kind: "tile", ...baseTile("same", "perf.ram"), displayMode: "full" };
+    const v2: DashboardLayoutV2 = { version: 2, items: [a, b] };
+    const out = ensureLayoutV2(v2);
+    expect(out.items).toEqual([a]);
+  });
+
+  it("ensureLayoutV2 migrates v1 and dedupes when two root tiles share an id", () => {
+    const v1: DashboardLayoutV1 = {
+      version: 1,
+      tiles: [
+        { ...baseTile("twin", "perf.cpu"), grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 } },
+        { ...baseTile("twin", "perf.ram"), displayMode: "full", grid: { col: 4, row: 0, colSpan: 4, rowSpan: 1 } },
+      ],
+    };
+    const out = ensureLayoutV2(v1);
+    expect(isLayoutV2(out)).toBe(true);
+    expect(out.items.length).toBe(1);
+    expect(out.items[0]?.kind).toBe("tile");
   });
 
   it("ensureLayoutV2 migrates v1 tiles", () => {
@@ -179,5 +230,20 @@ describe("layoutTree", () => {
     expect(out.some((i) => i.kind === "tile" && i.id === "r1")).toBe(false);
     const gg = out.find((i): i is DashboardGroup => i.kind === "group" && i.id === "g1");
     expect(gg?.children?.some((c) => c.id === "r1")).toBe(true);
+  });
+
+  it("moveTileToParent leaves other groups unchanged when reparenting into a group", () => {
+    const t: RootLayoutItem = { kind: "tile", ...baseTile("r1", "perf.cpu") };
+    const g1: DashboardGroup = { kind: "group", id: "g1", showBorder: true, children: [] };
+    const g2: DashboardGroup = { kind: "group", id: "g2", showBorder: true, children: [] };
+    const items: RootLayoutItem[] = [t, g1, g2];
+    const out = moveTileToParent(items, "r1", { type: "group", groupId: "g2" }, {
+      ...baseTile("r1", "perf.cpu"),
+      grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+    });
+    const foundG1 = out.find((i): i is DashboardGroup => i.kind === "group" && i.id === "g1");
+    const foundG2 = out.find((i): i is DashboardGroup => i.kind === "group" && i.id === "g2");
+    expect(foundG1?.children.length).toBe(0);
+    expect(foundG2?.children.some((c) => c.id === "r1")).toBe(true);
   });
 });
