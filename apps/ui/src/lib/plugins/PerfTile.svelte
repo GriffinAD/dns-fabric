@@ -13,13 +13,15 @@
     gateway,
     tile,
     liveCpuPercent,
-    /** Parent container width in dashboard columns (e.g. group colSpan=8 → 8, not 12). */
     alignColumnCount = 12,
+    /** false in a container: equal-width gauges only, no root-grid virtual column alignment. */
+    dashboardGaugeAlign = true,
   }: {
     gateway: DataGateway;
     tile: DashboardTile;
     liveCpuPercent?: number | null;
     alignColumnCount?: number;
+    dashboardGaugeAlign?: boolean;
   } = $props();
 
   let summary = $state<PerfSummaryResponse | null>(null);
@@ -100,10 +102,19 @@
     return out;
   });
 
-  const layoutTracks = $derived(
+  const alignTracks = $derived(
     Math.max(1, Math.min(GRID_COLUMNS, Math.floor(alignColumnCount || 12))),
   );
-  const gaugeSpans = $derived(columnSpansOn(layoutTracks, summarySlots.length));
+  const layoutTracks = $derived(
+    summarySlots.length === 0
+      ? alignTracks
+      : Math.max(alignTracks, Math.min(GRID_COLUMNS, summarySlots.length)),
+  );
+  const gaugeSpans = $derived(
+    !dashboardGaugeAlign || summarySlots.length === 0
+      ? null
+      : columnSpansOn(layoutTracks, summarySlots.length),
+  );
   const fillGauges = $derived(summarySlots.length > 1);
 </script>
 

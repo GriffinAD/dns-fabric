@@ -15,8 +15,9 @@
     metric,
     liveCpuPercent,
     onGridHint,
-    /** Parent container width in dashboard columns (e.g. group colSpan=8). */
+    /** Root grid: align semicircle sub-grid to main 12-col rhythm. In a container, set false so gauges only fill the tile (no extra virtual column math). */
     alignColumnCount = 12,
+    dashboardGaugeAlign = true,
   }: {
     gateway: DataGateway;
     tile: DashboardTile;
@@ -25,6 +26,7 @@
     /** Dashboard grid: colSpan matches intratile gauge column count (capped; single-gauge = 1×1). */
     onGridHint?: (hint: { colSpan: number; rowSpan: number }) => void;
     alignColumnCount?: number;
+    dashboardGaugeAlign?: boolean;
   } = $props();
 
   let summary = $state<PerfSummaryResponse | null>(null);
@@ -79,15 +81,21 @@
     return byVolume && summary.disk_volumes?.length ? summary.disk_volumes.length : 1;
   });
 
-  const layoutTracks = $derived(
+  const alignTracks = $derived(
     Math.max(1, Math.min(GRID_COLUMNS, Math.floor(alignColumnCount || 12))),
   );
+  /** At least the dashboard align count, and at least one column per semicircle so `columnSpansOn` is solvable. */
+  const layoutTracks = $derived(
+    nGaugeCells <= 0 ? alignTracks : Math.max(alignTracks, Math.min(GRID_COLUMNS, nGaugeCells)),
+  );
   const intratileColSpans = $derived(
-    nGaugeCells <= 0 ? null : columnSpansOn(layoutTracks, nGaugeCells),
+    nGaugeCells <= 0 || !dashboardGaugeAlign
+      ? null
+      : columnSpansOn(layoutTracks, nGaugeCells),
   );
   const gaugeFrFallback = $derived(
     intratileColSpans == null
-      ? `grid-template-columns: repeat(${Math.max(1, nGaugeCells)}, minmax(0, 1fr)); justify-items: center; align-items: stretch;`
+      ? `grid-template-columns: repeat(${Math.max(1, nGaugeCells)}, minmax(0, 1fr)); justify-items: stretch; align-items: stretch;`
       : null,
   );
   const alignGridStyle = $derived(
@@ -171,7 +179,7 @@
         </div>
       {:else}
         <div
-          class="flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center"
+          class="flex min-h-0 w-full min-w-0 flex-1 flex-col items-stretch justify-center"
           data-testid="perf-metric-body"
         >
           {#if metric === "cpu"}

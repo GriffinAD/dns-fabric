@@ -358,6 +358,18 @@ export function groupOuterColSpan(g: DashboardGroup): number {
   return 12;
 }
 
+/**
+ * For **root** perf tiles: number of `1fr` sub-columns so gauge edges line up with the main
+ * 12-col grid (roughly = effective col span in root columns). **Tiles inside a container**
+ * ignore this in the UI (`dashboardGaugeAlign={false}`) and only equal-split the card width.
+ */
+export function alignGaugeColumnCount(parentGroup: DashboardGroup | null, tile: DashboardTile): number {
+  const T = effectiveColSpan(tile);
+  const gRoot = parentGroup == null ? GRID_COLUMNS : groupOuterColSpan(parentGroup);
+  const w = (gRoot * T) / 12;
+  return Math.max(1, Math.min(GRID_COLUMNS, Math.round(w)));
+}
+
 function groupOuterRowSpan(g: DashboardGroup, innerH: number): number {
   const cg = g.grid;
   if (cg != null && Number.isInteger(cg.rowSpan) && cg.rowSpan >= 1) {
@@ -492,13 +504,33 @@ export function reorderRootLayoutItemsPreservingSlotOrigins(
 }
 
 /**
- * Pack the root 12-col grid. Groups first pack their inner 12×n grid, then the group’s
- * outer col/row span is derived (defaults: full width, height from inner).
+ * For inner lists **inside a group only**: if every child already has a full grid, clamp
+ * in-bounds; do not run `defragmentGapsInSingleRowTiles` (that shifts col origins to remove
+ * “holes” and would reslot children when the user only changes the **container** span). If
+ * any child is incomplete, use full `normalizeDashboardTiles` (incl. defrag) as before; if
+ * clamped placements overlap, fall back to full normalize.
+ */
+function normalizeGroupChildrenPreservingColOrigins(tiles: DashboardTile[]): DashboardTile[] {
+  if (tiles.length === 0) return tiles;
+  if (!tiles.every(hasCompleteGrid)) {
+    return normalizeDashboardTiles(tiles);
+  }
+  const next = tiles.map((t) => ({ ...t, grid: clampTileGridPlacement(t) }));
+  if (placementsOverlap(next.map((t) => t.grid!))) {
+    return normalizeDashboardTiles(tiles);
+  }
+  return next;
+}
+
+/**
+ * Pack the root 12-col grid. Group children: do **not** defrag inner rows on save (editing
+ * the container’s outer col/row span must not reslot or narrow inner tiles in place),
+ * and do not run a blind `packTilesToGrid` (that would reset inner spans).
  */
 function packGroupChildrenInLayout(items: RootLayoutItem[]): RootLayoutItem[] {
   return items.map((it) => {
     if (it.kind === "group") {
-      const children = normalizeDashboardTiles(packTilesToGrid([...it.children]));
+      const children = normalizeGroupChildrenPreservingColOrigins([...it.children]);
       return { ...it, showBorder: it.showBorder !== false, children };
     }
     return it;
@@ -508,7 +540,7 @@ function packGroupChildrenInLayout(items: RootLayoutItem[]): RootLayoutItem[] {
 export function packRootLayoutItems(items: RootLayoutItem[]): RootLayoutItem[] {
   const withInner: RootLayoutItem[] = items.map((it) => {
     if (it.kind === "group") {
-      const children = normalizeDashboardTiles(packTilesToGrid([...it.children]));
+      const children = normalizeDashboardTiles([...it.children]);
       return { ...it, showBorder: it.showBorder !== false, children };
     }
     if (it.kind === "tile") return it;
@@ -604,6 +636,25 @@ export function gridAreaStyle(g: GridPlacement): string {
 }
 
 /**
+ * Placement inside a **group** whose inner grid has `innerColumns` physical tracks (G = group
+ * width in root columns). The JSON 12-based contract is **one column unit = one main-dashboard
+ * column** (same as the root 12-col grid), not 1/12 of the group only. Each physical `1fr`
+ * track is therefore 1/12 of the full dashboard width, so a span of T uses `min(T, G)` tracks
+ * and keeps the same pixel width as a root-level tile of width T, instead of `T*G/12` tracks
+ * (which made widgets look “shrunk” in narrow groups).
+ */
+export function groupGridAreaStyle(placement: GridPlacement, innerColumns: number): string {
+  const G = Math.max(1, Math.min(GRID_COLUMNS, Math.floor(Number(innerColumns)) || 1));
+  if (G === GRID_COLUMNS) {
+    return gridAreaStyle(placement);
+  }
+  const { col, colSpan, row, rowSpan } = placement;
+  const c0 = col < G ? col : G - 1;
+  const s = Math.max(1, Math.min(colSpan, G - c0));
+  return `grid-column: ${c0 + 1} / span ${s}; grid-row: ${row + 1} / span ${rowSpan};`;
+}
+
+/**
  * Host + editor: auto-place by DOM order with span only (works with svelte-dnd-action).
  * Uses packed `tile.grid` when present, else effective spans from the tile.
  * No `min-width: 0` on the inline style (same reason as `gridAreaStyle`).
@@ -612,4 +663,28 @@ export function gridColumnSpanStyle(tile: DashboardTile): string {
   const cs = effectiveColSpan(tile);
   const rs = effectiveRowSpan(tile);
   return `grid-column: span ${cs}; grid-row: span ${rs};`;
+}
+
+/**
+ * How many of the G physical group tracks a tile uses for its 12 contract width. One track =
+ * one main-dashboard column, so this is `min(T, G)` (width T/12 of the viewport, capped by the
+ * container), not `round(T*G/12)`.
+ */
+export function groupInnerWidthInPhysicalTracks(colSpan12: number, innerColumns: number): number {
+  const T = clampGridColSpan(colSpan12);
+  const G = Math.max(1, Math.min(GRID_COLUMNS, Math.floor(Number(innerColumns)) || 1));
+  return Math.max(1, Math.min(G, T));
+}
+
+/**
+ * `gridColumnSpanStyle` for a group whose inner grid has G columns (see `groupGridAreaStyle`).
+ */
+export function groupGridColumnSpanStyle(tile: DashboardTile, innerColumns: number): string {
+  const G = Math.max(1, Math.min(GRID_COLUMNS, Math.floor(Number(innerColumns)) || 1));
+  if (G === GRID_COLUMNS) {
+    return gridColumnSpanStyle(tile);
+  }
+  const rs = effectiveRowSpan(tile);
+  const spanG = groupInnerWidthInPhysicalTracks(effectiveColSpan(tile), G);
+  return `grid-column: span ${spanG}; grid-row: span ${rs};`;
 }

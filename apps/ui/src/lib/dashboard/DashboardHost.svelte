@@ -24,9 +24,12 @@
   import PerfTile from "../plugins/PerfTile.svelte";
   import RamTile from "../plugins/RamTile.svelte";
   import {
-    effectiveColSpan,
+    alignGaugeColumnCount,
     gridAreaStyle,
     gridColumnSpanStyle,
+    groupGridAreaStyle,
+    groupGridColumnSpanStyle,
+    groupOuterColSpan,
     reorderRootLayoutItemsPreservingSlotOrigins,
     reorderTilesPreservingSlotOrigins,
   } from "./gridPlacement";
@@ -217,7 +220,8 @@
   }
 </script>
 
-{#snippet renderTile(tile: DashboardTile, alignColumnCount: number)}
+{#snippet renderTile(tile: DashboardTile, inGroup: boolean)}
+  {@const ac = alignGaugeColumnCount(null, tile)}
   {#if tile.pluginId === "dhcp.pools"}
     <DhcpPoolsTile {gateway} {tile} />
   {:else if tile.pluginId === "dhcp.clients"}
@@ -231,34 +235,44 @@
       onOpenSettings={editLayout && onEditTile ? () => onEditTile(tile) : undefined}
     />
   {:else if tile.pluginId === "perf.summary"}
-    <PerfTile {gateway} {tile} {liveCpuPercent} {alignColumnCount} />
+    <PerfTile
+      {gateway}
+      {tile}
+      {liveCpuPercent}
+      alignColumnCount={inGroup ? 12 : ac}
+      dashboardGaugeAlign={!inGroup}
+    />
   {:else if tile.pluginId === "perf.cpu"}
     <CpuTile
       {gateway}
       {tile}
       {liveCpuPercent}
-      {alignColumnCount}
+      alignColumnCount={inGroup ? 12 : ac}
+      dashboardGaugeAlign={!inGroup}
       onGridHint={onPerfTileGridHint ? (hint) => onPerfTileGridHint(tile.id, hint) : undefined}
     />
   {:else if tile.pluginId === "perf.ram"}
     <RamTile
       {gateway}
       {tile}
-      {alignColumnCount}
+      alignColumnCount={inGroup ? 12 : ac}
+      dashboardGaugeAlign={!inGroup}
       onGridHint={onPerfTileGridHint ? (hint) => onPerfTileGridHint(tile.id, hint) : undefined}
     />
   {:else if tile.pluginId === "perf.network"}
     <NwTile
       {gateway}
       {tile}
-      {alignColumnCount}
+      alignColumnCount={inGroup ? 12 : ac}
+      dashboardGaugeAlign={!inGroup}
       onGridHint={onPerfTileGridHint ? (hint) => onPerfTileGridHint(tile.id, hint) : undefined}
     />
   {:else if tile.pluginId === "perf.disk"}
     <DiskTile
       {gateway}
       {tile}
-      {alignColumnCount}
+      alignColumnCount={inGroup ? 12 : ac}
+      dashboardGaugeAlign={!inGroup}
       onGridHint={onPerfTileGridHint ? (hint) => onPerfTileGridHint(tile.id, hint) : undefined}
     />
   {:else}
@@ -402,7 +416,8 @@
                   </div>
                 {:else}
                   <div
-                    class="grid h-full w-full min-h-0 min-w-0 auto-rows-[minmax(0,auto)] grid-cols-12 content-start gap-2"
+                    class="grid h-full w-full min-h-0 min-w-0 auto-rows-[minmax(0,auto)] content-start gap-2"
+                    style="grid-template-columns: repeat({groupOuterColSpan(g)}, minmax(0, 1fr));"
                     use:dragHandleZone={{
                       items: dndByGroup[g.id] ?? [],
                       flipDurationMs,
@@ -417,7 +432,9 @@
                       {@const pTile = inPrev.byId.get(c.tile.id) ?? c.tile}
                       <div
                         class="relative flex h-full min-h-0 w-full min-w-0 max-w-full flex-col place-self-stretch rounded border border-dashed border-gray-200/80 bg-white/30 dark:border-gray-600/50 dark:bg-gray-900/20"
-                        style={pTile.grid ? gridAreaStyle(pTile.grid) : gridColumnSpanStyle(c.tile)}
+                        style={pTile.grid
+                          ? groupGridAreaStyle(pTile.grid, groupOuterColSpan(g))
+                          : groupGridColumnSpanStyle(c.tile, groupOuterColSpan(g))}
                         data-testid="editor-tile"
                         data-tile-id={c.id}
                       >
@@ -444,7 +461,7 @@
                               >
                                 In group
                               </p>
-                              {@render renderTile(c.tile, effectiveColSpan(c.tile))}
+                              {@render renderTile(c.tile, true)}
                             {/snippet}
                           </TileEditChrome>
                         </div>
@@ -486,7 +503,7 @@
                         Span {placed.grid.colSpan}×{placed.grid.rowSpan} · row {placed.grid.row + 1}
                       </p>
                     {/if}
-                    {@render renderTile(cv, effectiveColSpan(cv))}
+                    {@render renderTile(cv, false)}
                   {/snippet}
                 </TileEditChrome>
               </div>
@@ -512,13 +529,16 @@
             aria-label="Group {it.id}"
           >
             <div
-              class="grid h-full w-full min-h-0 min-w-0 auto-rows-[minmax(0,auto)] grid-cols-12 content-start gap-2 [box-sizing:border-box] [min-width:0] [place-self:stretch] [align-self:stretch] [overflow:visible]"
+              class="grid h-full w-full min-h-0 min-w-0 auto-rows-[minmax(0,auto)] content-start gap-2 [box-sizing:border-box] [min-width:0] [place-self:stretch] [align-self:stretch] [overflow:visible]"
+              style="grid-template-columns: repeat({groupOuterColSpan(it)}, minmax(0, 1fr));"
             >
               {#each it.children as tile (tile.id)}
                 <div
                   class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col place-self-stretch"
                   data-in-row-panel={it.showBorder !== false ? "true" : undefined}
-                  style={tile.grid ? gridAreaStyle(tile.grid) : gridColumnSpanStyle(tile)}
+                  style={tile.grid
+                    ? groupGridAreaStyle(tile.grid, groupOuterColSpan(it))
+                    : groupGridColumnSpanStyle(tile, groupOuterColSpan(it))}
                 >
                   <TileEditChrome
                     {tile}
@@ -529,7 +549,7 @@
                     showEditButton={editLayout}
                   >
                     {#snippet children()}
-                      {@render renderTile(tile, effectiveColSpan(tile))}
+                      {@render renderTile(tile, true)}
                     {/snippet}
                   </TileEditChrome>
                 </div>
@@ -548,7 +568,7 @@
               showEditButton={editLayout}
             >
               {#snippet children()}
-                {@render renderTile(it, effectiveColSpan(it))}
+                {@render renderTile(it, false)}
               {/snippet}
             </TileEditChrome>
           </div>

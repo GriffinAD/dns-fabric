@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  alignGaugeColumnCount,
   clampGridColSpan,
   clampGridRowSpan,
   clampTileGridPlacement,
   gridAreaStyle,
   gridColumnSpanStyle,
+  groupGridAreaStyle,
+  groupGridColumnSpanStyle,
+  groupInnerWidthInPhysicalTracks,
   hasCompleteGrid,
   layoutWithGrid,
   normalizeDashboardTiles,
@@ -21,6 +25,7 @@ import type {
   DashboardGroup,
   DashboardLayout,
   DashboardLayoutV1,
+  GridPlacement,
   RootLayoutItem,
   DashboardTile,
 } from "./types";
@@ -216,11 +221,84 @@ describe("packTilesToGrid", () => {
   });
 });
 
+describe("alignGaugeColumnCount", () => {
+  const tileSpanT = (T: number): DashboardTile => ({
+    id: "t",
+    pluginId: "perf.cpu",
+    hostControl: "single-panel",
+    displayMode: "compact",
+    grid: { col: 0, row: 0, colSpan: T, rowSpan: 1 },
+  });
+
+  const groupRootW = (w: number): DashboardGroup => ({
+    kind: "group",
+    id: "g",
+    showBorder: true,
+    grid: { col: 0, row: 0, colSpan: w, rowSpan: 1 },
+    children: [],
+  });
+
+  it("at root, width in root cols equals T; in a G-wide group, (G×T)/12 (not T alone)", () => {
+    expect(alignGaugeColumnCount(null, tileSpanT(12))).toBe(12);
+    expect(alignGaugeColumnCount(null, tileSpanT(3))).toBe(3);
+    expect(alignGaugeColumnCount(groupRootW(12), tileSpanT(12))).toBe(12);
+    /* Full-width in 6 root cols → 6 align tracks, not 12, so sub-columns are one root wide. */
+    expect(alignGaugeColumnCount(groupRootW(6), tileSpanT(12))).toBe(6);
+    /* T=3 in 6-wide group: 3×6/12 = 1.5 → 2 */
+    expect(alignGaugeColumnCount(groupRootW(6), tileSpanT(3))).toBe(2);
+  });
+});
+
 describe("gridAreaStyle", () => {
   it("emits 1-based CSS grid lines", () => {
     expect(gridAreaStyle({ col: 0, row: 1, colSpan: 6, rowSpan: 1 })).toBe(
       "grid-column: 1 / span 6; grid-row: 2 / span 1;",
     );
+  });
+});
+
+describe("groupGridAreaStyle and groupGridColumnSpanStyle", () => {
+  it("G=12 matches the root grid helpers", () => {
+    const g: GridPlacement = { col: 0, row: 0, colSpan: 6, rowSpan: 1 };
+    expect(groupGridAreaStyle(g, 12)).toBe(gridAreaStyle(g));
+    const tile: DashboardTile = {
+      id: "x",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+    };
+    expect(groupGridColumnSpanStyle(tile, 12)).toBe(gridColumnSpanStyle(tile));
+  });
+
+  it("G=6 uses six physical inner columns: full 12-based span matches six dashboard column widths", () => {
+    expect(groupGridAreaStyle({ col: 0, row: 0, colSpan: 12, rowSpan: 1 }, 6)).toBe(
+      "grid-column: 1 / span 6; grid-row: 1 / span 1;",
+    );
+  });
+
+  it("G=6: span-6 in the 12 model uses all six physical tracks (half dashboard, full group)", () => {
+    expect(groupGridAreaStyle({ col: 0, row: 0, colSpan: 6, rowSpan: 1 }, 6)).toBe(
+      "grid-column: 1 / span 6; grid-row: 1 / span 1;",
+    );
+  });
+
+  it("G=6: default span-6 (dhcp) fills the group (six tracks = six dashboard col widths)", () => {
+    const tile: DashboardTile = {
+      id: "x",
+      pluginId: "dhcp.pools",
+      hostControl: "single-panel",
+      displayMode: "full",
+    };
+    expect(groupGridColumnSpanStyle(tile, 6)).toBe("grid-column: span 6; grid-row: span 1;");
+  });
+});
+
+describe("groupInnerWidthInPhysicalTracks", () => {
+  it("maps 1–12 contract to min(T, G) tracks (one track = one main-dashboard column width)", () => {
+    expect(groupInnerWidthInPhysicalTracks(4, 6)).toBe(4);
+    expect(groupInnerWidthInPhysicalTracks(8, 6)).toBe(6);
+    expect(groupInnerWidthInPhysicalTracks(6, 6)).toBe(6);
+    expect(groupInnerWidthInPhysicalTracks(5, 6)).toBe(5);
   });
 });
 
@@ -443,7 +521,7 @@ describe("layoutWithGrid", () => {
     }
   });
 
-  it("preserveRootPlacementIfComplete keeps non-overlapping root placement and repacks group children", () => {
+  it("preserveRootPlacementIfComplete keeps non-overlapping root placement and normalizes group children", () => {
     const t: RootLayoutItem = {
       kind: "tile",
       id: "t1",
@@ -475,6 +553,63 @@ describe("layoutWithGrid", () => {
     if (next.items[1]?.kind === "group") {
       expect(next.items[1].grid).toMatchObject({ col: 6, row: 0, colSpan: 6, rowSpan: 1 });
       expect(next.items[1].children[0]?.grid).toBeDefined();
+    }
+  });
+
+  it("preserveRootPlacementIfComplete does not reset group children that already have grid (e.g. after container span change)", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+      children: [
+        {
+          id: "c1",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+        },
+      ],
+    };
+    const next = layoutWithGrid({ version: 2, items: [g] }, { preserveRootPlacementIfComplete: true });
+    expect(next.items[0]?.kind).toBe("group");
+    if (next.items[0]?.kind === "group") {
+      expect(next.items[0].grid).toMatchObject({ col: 0, row: 0, colSpan: 6, rowSpan: 1 });
+      const c0 = next.items[0].children[0];
+      expect(c0?.grid?.colSpan).toBe(12);
+    }
+  });
+
+  it("preserveRootPlacementIfComplete does not defragment inner group gaps (sibling col origins stay fixed)", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      children: [
+        {
+          id: "c1",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 0, row: 0, colSpan: 2, rowSpan: 1 },
+        },
+        {
+          id: "c2",
+          pluginId: "perf.ram",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 4, row: 0, colSpan: 2, rowSpan: 1 },
+        },
+      ],
+    };
+    const next = layoutWithGrid({ version: 2, items: [g] }, { preserveRootPlacementIfComplete: true });
+    expect(next.items[0]?.kind).toBe("group");
+    if (next.items[0]?.kind === "group") {
+      const c = next.items[0].children;
+      expect(c[0]?.grid).toMatchObject({ col: 0, row: 0, colSpan: 2, rowSpan: 1 });
+      expect(c[1]?.grid).toMatchObject({ col: 4, row: 0, colSpan: 2, rowSpan: 1 });
     }
   });
 

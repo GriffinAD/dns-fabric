@@ -11,6 +11,7 @@
   import {
     clampGridColSpan,
     clampGridRowSpan,
+    groupOuterColSpan,
     layoutWithGrid,
     reorderRootLayoutItemsPreservingSlotOrigins,
     tileColSpan,
@@ -113,6 +114,12 @@
     if (!settingsTile) return PARENT_ID_DASHBOARD;
     const f = findTileInLayout(layout.items, settingsTile.id);
     return f?.inGroup ? f.inGroup.id : PARENT_ID_DASHBOARD;
+  });
+
+  const settingsTileContainerG = $derived.by(() => {
+    if (!settingsTile) return null;
+    const f = findTileInLayout(layout.items, settingsTile.id);
+    return f?.inGroup != null ? groupOuterColSpan(f.inGroup) : null;
   });
 
   const parentOptions = $derived([
@@ -386,6 +393,7 @@
             {plugins}
             parentOptions={parentOptions}
             initialParentId={settingsParentId}
+            containerWidthColumns={settingsTileContainerG}
             onClose={closeTileSettings}
             onSave={saveTileFromOverlay}
           />

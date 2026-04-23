@@ -6,6 +6,7 @@
     clampGridColSpan,
     clampGridRowSpan,
     GRID_COLUMNS,
+    groupInnerWidthInPhysicalTracks,
     tileColSpan,
   } from "./gridPlacement";
   import { PARENT_ID_DASHBOARD } from "./layoutTree";
@@ -18,6 +19,8 @@
     initialParentId,
     onClose,
     onSave,
+    /** If this tile is in a group: that container’s width in root grid columns, for mapping help text. */
+    containerWidthColumns = null as number | null,
   }: {
     tile: DashboardTile;
     plugins: PluginEntry[];
@@ -27,6 +30,7 @@
     initialParentId: string;
     onClose: () => void;
     onSave: (next: DashboardTile, parentId: string) => void;
+    containerWidthColumns?: number | null;
   } = $props();
 
   function cloneDraft(from: DashboardTile): DashboardTile {
@@ -136,6 +140,14 @@
                   };
                 }}
               />
+              {#if initialParentId !== PARENT_ID_DASHBOARD && containerWidthColumns != null}
+                <span class="text-[11px] font-normal text-gray-500 dark:text-gray-500">
+                  Same 1–12 column units as the main dashboard. Each unit is the same width as on the
+                  root grid. In a {containerWidthColumns}-wide row, a width of {draft.grid!.colSpan} uses
+                  {groupInnerWidthInPhysicalTracks(draft.grid!.colSpan, containerWidthColumns)} of
+                  {containerWidthColumns} physical tracks (capped to the container).
+                </span>
+              {/if}
             </label>
             <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
               <span>Height (rows)</span>
