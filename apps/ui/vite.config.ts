@@ -7,6 +7,14 @@ import { mockApiPlugin } from "./vite-plugin-mock-api";
 export default defineConfig({
   plugins: [tailwindcss(), mockApiPlugin(), svelte()],
   server: {
+    /* Default `host: "localhost"` can make the dev server unreachable from Cursor’s embedded
+     * browser (and some IDE previews) while Safari/Chrome work. Listen on all interfaces. */
+    host: true,
+    /* Without this, a non-matching `Host` header (some embedded browsers / port-forward tools)
+     * can yield 403 from Vite’s host check so module scripts never load (blank #app). */
+    allowedHosts: true,
+    port: 5173,
+    strictPort: true,
     proxy: {
       "/api": {
         target: "http://127.0.0.1:8080",

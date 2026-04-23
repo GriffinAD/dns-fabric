@@ -6,10 +6,10 @@
     "gridPlacement": {
       "type": "object",
       "additionalProperties": false,
-      "description": "12-column grid cell (root grid or inner group grid; same 0–11 column contract).",
+      "description": "Root and auto-wrap group tiles: 0–11 col, col+colSpan ≤ 12. Group with Auto wrap off may use a wider col strip (max ~10000); API and UI validate per context.",
       "required": ["col", "row", "colSpan", "rowSpan"],
       "properties": {
-        "col": { "type": "integer", "minimum": 0, "maximum": 11 },
+        "col": { "type": "integer", "minimum": 0, "maximum": 10000 },
         "row": { "type": "integer", "minimum": 0 },
         "colSpan": { "type": "integer", "minimum": 1, "maximum": 12 },
         "rowSpan": {
@@ -72,6 +72,10 @@
         "showBorder": {
           "type": "boolean",
           "description": "When true, draw a border on the group and hide inner tile card chrome. Default true when omitted in clients."
+        },
+        "innerWrap": {
+          "type": "boolean",
+          "description": "When true, child tiles flow in array order and wrap to a new row when a row is full, with col/row repacked on save. When false or omitted, children use a G-column grid from stored placement (no reflow)."
         },
         "grid": { "$ref": "#/$defs/gridPlacement" },
         "children": {

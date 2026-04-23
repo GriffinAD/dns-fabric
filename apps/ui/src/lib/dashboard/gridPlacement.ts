@@ -23,6 +23,13 @@ export const GRID_COLUMNS = 12;
 /** Max vertical span of a single tile (dashboard rows are unbounded). */
 export const GRID_ROW_SPAN_MAX = 12;
 
+/**
+ * For group children when **Auto wrap is off** (`innerWrap` not true), horizontal
+ * `col`/`colSpan` use the same 1/12 “dashboard width” units, but a row can extend
+ * **past 12** along X so many tiles can sit on one scroller row (no `col+colSpan ≤ 12`).
+ */
+export const GROUP_CHILD_INNER_STRIP_MAX_EXTENT = 10_000;
+
 /** Default width in columns when the tile has no custom `grid.colSpan`. */
 export function tileColSpan(tile: DashboardTile): number {
   if (tile.pluginId === "perf.summary") return 12;
@@ -59,6 +66,15 @@ function clampGridOriginRow(row: number): number {
   const r = Math.floor(Number(row));
   if (!Number.isFinite(r)) return 0;
   return Math.max(0, r);
+}
+
+/** Horizontal origin for a strip-mode group child: `0 … GROUP_CHILD_INNER_STRIP_MAX_EXTENT − colSpan`. */
+export function clampGroupChildStripOriginCol(col: number, colSpan: number): number {
+  const c = Math.floor(Number(col));
+  if (!Number.isFinite(c)) return 0;
+  const cs = Math.min(GRID_COLUMNS, Math.max(1, colSpan));
+  const cap = Math.max(0, GROUP_CHILD_INNER_STRIP_MAX_EXTENT - cs);
+  return Math.max(0, Math.min(cap, c));
 }
 
 export function effectiveColSpan(t: DashboardTile): number {
@@ -99,6 +115,47 @@ export function isCompleteGridPlacement(g: GridPlacement | null | undefined): bo
   return true;
 }
 
+/**
+ * `autoWrap === true` → same 0–11 / col+colSpan ≤ 12 as the root grid.
+ * `autoWrap === false` → “horizontal strip” (many tiles on one scroller row); `col` may exceed 11.
+ */
+export function isCompleteGroupChildGrid(
+  g: GridPlacement | null | undefined,
+  autoWrap: boolean,
+): boolean {
+  if (g == null) return false;
+  if (autoWrap) {
+    return isCompleteGridPlacement(g);
+  }
+  const { col, row, colSpan, rowSpan } = g;
+  if (
+    typeof col !== "number" ||
+    typeof row !== "number" ||
+    typeof colSpan !== "number" ||
+    typeof rowSpan !== "number"
+  ) {
+    return false;
+  }
+  if (
+    !Number.isInteger(col) ||
+    !Number.isInteger(row) ||
+    !Number.isInteger(colSpan) ||
+    !Number.isInteger(rowSpan)
+  ) {
+    return false;
+  }
+  if (
+    col < 0 ||
+    colSpan < 1 ||
+    colSpan > GRID_COLUMNS ||
+    col + colSpan > GROUP_CHILD_INNER_STRIP_MAX_EXTENT
+  ) {
+    return false;
+  }
+  if (row < 0 || rowSpan < 1 || rowSpan > GRID_ROW_SPAN_MAX) return false;
+  return true;
+}
+
 /** True when `grid` has integer col/row/spans within schema bounds. */
 export function hasCompleteGrid(t: DashboardTile): boolean {
   return isCompleteGridPlacement(t.grid);
@@ -111,6 +168,42 @@ export function clampTileGridPlacement(t: DashboardTile): GridPlacement {
   const col = clampGridOriginCol(g?.col ?? 0, colSpan);
   const row = clampGridOriginRow(g?.row ?? 0);
   return { col, row, colSpan, rowSpan };
+}
+
+/** Clamp a tile inside a group; `autoWrap` matches `innerWrap === true` on the group. */
+export function clampGroupChildGridPlacement(t: DashboardTile, autoWrap: boolean): GridPlacement {
+  if (autoWrap) {
+    return clampTileGridPlacement(t);
+  }
+  const colSpan = effectiveColSpan(t);
+  const rowSpan = effectiveRowSpan(t);
+  const g = t.grid;
+  const col = clampGroupChildStripOriginCol(g?.col ?? 0, colSpan);
+  const row = clampGridOriginRow(g?.row ?? 0);
+  return { col, row, colSpan, rowSpan };
+}
+
+function isCompleteForGroupChildReorder(
+  t: DashboardTile,
+  groupAutoWrap: boolean | undefined,
+): boolean {
+  if (groupAutoWrap === undefined) {
+    return hasCompleteGrid(t);
+  }
+  if (t.grid == null) {
+    return false;
+  }
+  return isCompleteGroupChildGrid(t.grid, groupAutoWrap);
+}
+
+function clampByGroupChildReorder(
+  t: DashboardTile,
+  groupAutoWrap: boolean | undefined,
+): GridPlacement {
+  if (groupAutoWrap === undefined) {
+    return clampTileGridPlacement(t);
+  }
+  return clampGroupChildGridPlacement(t, groupAutoWrap);
 }
 
 function gridRectsOverlap(a: GridPlacement, b: GridPlacement): boolean {
@@ -283,9 +376,14 @@ export function normalizeDashboardTiles(tiles: DashboardTile[]): DashboardTile[]
  * sorted by previous (row,col), preserving gaps / empty half-rows. Tile spans
  * stay on each tile; if that creates overlap, fall back to compact packing.
  */
+/**
+ * @param groupAutoWrap - `true` = group with Auto wrap. `false` = no wrap (wider than 12-col
+ *   strip allowed). Omitted = legacy 12-only behavior (e.g. unit tests without a group).
+ */
 export function reorderTilesPreservingSlotOrigins(
   prevTiles: DashboardTile[],
   reorderedTiles: DashboardTile[],
+  groupAutoWrap?: boolean,
 ): DashboardTile[] {
   if (reorderedTiles.length !== prevTiles.length) {
     return packTilesToGrid(reorderedTiles);
@@ -297,24 +395,27 @@ export function reorderTilesPreservingSlotOrigins(
   if (sameSequence) {
     return reorderedTiles.map((t, i) => {
       const prev = prevTiles[i]!;
-      if (!hasCompleteGrid(prev)) {
-        return { ...t, grid: clampTileGridPlacement(t) };
+      if (!isCompleteForGroupChildReorder(prev, groupAutoWrap)) {
+        return { ...t, grid: clampByGroupChildReorder(t, groupAutoWrap) };
       }
       return {
         ...t,
-        grid: clampTileGridPlacement({
-          ...t,
-          grid: {
-            ...prev.grid!,
-            colSpan: effectiveColSpan(t),
-            rowSpan: effectiveRowSpan(t),
+        grid: clampByGroupChildReorder(
+          {
+            ...t,
+            grid: {
+              ...prev.grid!,
+              colSpan: effectiveColSpan(t),
+              rowSpan: effectiveRowSpan(t),
+            },
           },
-        }),
+          groupAutoWrap,
+        ),
       };
     });
   }
 
-  if (!prevTiles.every(hasCompleteGrid)) {
+  if (!prevTiles.every((p) => isCompleteForGroupChildReorder(p, groupAutoWrap))) {
     return packTilesToGrid(reorderedTiles);
   }
   const anchors = [...prevTiles].sort(
@@ -333,7 +434,7 @@ export function reorderTilesPreservingSlotOrigins(
       },
     };
   });
-  const geoms = next.map((t) => clampTileGridPlacement(t));
+  const geoms = next.map((t) => clampByGroupChildReorder(t, groupAutoWrap));
   if (placementsOverlap(geoms)) {
     return packTilesToGrid(reorderedTiles);
   }
@@ -356,6 +457,38 @@ export function groupOuterColSpan(g: DashboardGroup): number {
     return clampGridColSpan(cg.colSpan);
   }
   return 12;
+}
+
+/**
+ * Number of 1fr columns for the **layout editor** group inner. Auto wrap: G tracks only. No wrap:
+ * at least G and the rightmost stored child extent so a wide strip can be placed without clipping.
+ */
+export function groupEditInnerColumnCount(g: DashboardGroup): number {
+  const G = groupOuterColSpan(g);
+  if (g.innerWrap === true) {
+    return G;
+  }
+  let maxEnd = 0;
+  for (const t of g.children) {
+    const gr = t.grid;
+    if (gr == null) continue;
+    const { col, colSpan } = gr;
+    if (
+      !Number.isInteger(col) ||
+      !Number.isInteger(colSpan) ||
+      col < 0 ||
+      colSpan < 1 ||
+      colSpan > GRID_COLUMNS ||
+      col + colSpan > GROUP_CHILD_INNER_STRIP_MAX_EXTENT
+    ) {
+      continue;
+    }
+    maxEnd = Math.max(maxEnd, col + colSpan);
+  }
+  return Math.min(
+    GROUP_CHILD_INNER_STRIP_MAX_EXTENT,
+    Math.max(G, maxEnd, 1),
+  );
 }
 
 /**
@@ -512,10 +645,10 @@ export function reorderRootLayoutItemsPreservingSlotOrigins(
  */
 function normalizeGroupChildrenPreservingColOrigins(tiles: DashboardTile[]): DashboardTile[] {
   if (tiles.length === 0) return tiles;
-  if (!tiles.every(hasCompleteGrid)) {
+  if (!tiles.every((t) => t.grid && isCompleteGroupChildGrid(t.grid, false))) {
     return normalizeDashboardTiles(tiles);
   }
-  const next = tiles.map((t) => ({ ...t, grid: clampTileGridPlacement(t) }));
+  const next = tiles.map((t) => ({ ...t, grid: clampGroupChildGridPlacement(t, false) }));
   if (placementsOverlap(next.map((t) => t.grid!))) {
     return normalizeDashboardTiles(tiles);
   }
@@ -527,9 +660,60 @@ function normalizeGroupChildrenPreservingColOrigins(tiles: DashboardTile[]): Das
  * the container’s outer col/row span must not reslot or narrow inner tiles in place),
  * and do not run a blind `packTilesToGrid` (that would reset inner spans).
  */
-function packGroupChildrenInLayout(items: RootLayoutItem[]): RootLayoutItem[] {
+/**
+ * In array order, place each tile in (row-major) G-wide tracks, wrapping to the next row
+ * when the next tile no longer fits. Col starts at 0 after each wrap. Width in tracks = min(T, G)
+ * in the same 1:1 “dashboard column” model as `groupGridAreaStyle` / `groupInnerWidthInPhysicalTracks`.
+ */
+export function packGroupChildrenRowWrapInOrder(tiles: DashboardTile[], innerColumns: number): DashboardTile[] {
+  const G = Math.max(1, Math.min(GRID_COLUMNS, Math.floor(Number(innerColumns)) || 1));
+  if (tiles.length === 0) return tiles;
+  let c = 0;
+  let r = 0;
+  return tiles.map((t) => {
+    const cs = effectiveColSpan(t);
+    const rs = effectiveRowSpan(t);
+    const w = groupInnerWidthInPhysicalTracks(cs, G);
+    if (c + w > G) {
+      r += 1;
+      c = 0;
+    }
+    const out: DashboardTile = { ...t, grid: { col: c, row: r, colSpan: cs, rowSpan: rs } };
+    c += w;
+    return out;
+  });
+}
+
+/**
+ * Recompute `grid` for every `innerWrap` group from the current child order. Call when leaving
+ * layout edit, or when saving group settings, so col/row match the wrap layout.
+ */
+export function commitGroupInnerRowWraps(items: RootLayoutItem[]): RootLayoutItem[] {
+  return items.map((it) => {
+    if (it.kind !== "group" || it.innerWrap !== true) return it;
+    const G = groupOuterColSpan(it);
+    return {
+      ...it,
+      showBorder: it.showBorder !== false,
+      children: packGroupChildrenRowWrapInOrder([...it.children], G),
+    };
+  });
+}
+
+function packGroupChildrenInLayout(
+  items: RootLayoutItem[],
+  options?: { editMode?: boolean },
+): RootLayoutItem[] {
   return items.map((it) => {
     if (it.kind === "group") {
+      if (it.innerWrap === true) {
+        if (options?.editMode) {
+          return { ...it, showBorder: it.showBorder !== false, children: [...it.children] };
+        }
+        const G = groupOuterColSpan(it);
+        const children = packGroupChildrenRowWrapInOrder([...it.children], G);
+        return { ...it, showBorder: it.showBorder !== false, children };
+      }
       const children = normalizeGroupChildrenPreservingColOrigins([...it.children]);
       return { ...it, showBorder: it.showBorder !== false, children };
     }
@@ -540,7 +724,11 @@ function packGroupChildrenInLayout(items: RootLayoutItem[]): RootLayoutItem[] {
 export function packRootLayoutItems(items: RootLayoutItem[]): RootLayoutItem[] {
   const withInner: RootLayoutItem[] = items.map((it) => {
     if (it.kind === "group") {
-      const children = normalizeDashboardTiles([...it.children]);
+      const G = groupOuterColSpan(it);
+      const children =
+        it.innerWrap === true
+          ? packGroupChildrenRowWrapInOrder([...it.children], G)
+          : normalizeDashboardTiles([...it.children]);
       return { ...it, showBorder: it.showBorder !== false, children };
     }
     if (it.kind === "tile") return it;
@@ -597,12 +785,12 @@ export function packRootLayoutItems(items: RootLayoutItem[]): RootLayoutItem[] {
 
 export function layoutWithGrid(
   layout: DashboardLayout,
-  options?: { preserveRootPlacementIfComplete?: boolean },
+  options?: { preserveRootPlacementIfComplete?: boolean; editMode?: boolean },
 ): DashboardLayoutV2 {
   const v2 = ensureLayoutV2(layout);
   const cloned = cloneLayoutJson(v2.items);
   if (options?.preserveRootPlacementIfComplete) {
-    const withInner = packGroupChildrenInLayout(cloned);
+    const withInner = packGroupChildrenInLayout(cloned, { editMode: options?.editMode });
     if (withInner.every(hasCompleteRootOuter)) {
       const geoms: GridPlacement[] = withInner.map((it) => {
         if (it.kind === "tile") return clampTileGridPlacement(it);
@@ -644,13 +832,16 @@ export function gridAreaStyle(g: GridPlacement): string {
  * (which made widgets look “shrunk” in narrow groups).
  */
 export function groupGridAreaStyle(placement: GridPlacement, innerColumns: number): string {
-  const G = Math.max(1, Math.min(GRID_COLUMNS, Math.floor(Number(innerColumns)) || 1));
-  if (G === GRID_COLUMNS) {
+  const m = Math.max(
+    1,
+    Math.min(GROUP_CHILD_INNER_STRIP_MAX_EXTENT, Math.floor(Number(innerColumns)) || 1),
+  );
+  if (m === GRID_COLUMNS) {
     return gridAreaStyle(placement);
   }
   const { col, colSpan, row, rowSpan } = placement;
-  const c0 = col < G ? col : G - 1;
-  const s = Math.max(1, Math.min(colSpan, G - c0));
+  const c0 = col < m ? col : m - 1;
+  const s = Math.max(1, Math.min(colSpan, m - c0));
   return `grid-column: ${c0 + 1} / span ${s}; grid-row: ${row + 1} / span ${rowSpan};`;
 }
 
@@ -672,19 +863,25 @@ export function gridColumnSpanStyle(tile: DashboardTile): string {
  */
 export function groupInnerWidthInPhysicalTracks(colSpan12: number, innerColumns: number): number {
   const T = clampGridColSpan(colSpan12);
-  const G = Math.max(1, Math.min(GRID_COLUMNS, Math.floor(Number(innerColumns)) || 1));
-  return Math.max(1, Math.min(G, T));
+  const m = Math.max(
+    1,
+    Math.min(GROUP_CHILD_INNER_STRIP_MAX_EXTENT, Math.floor(Number(innerColumns)) || 1),
+  );
+  return Math.max(1, Math.min(m, T));
 }
 
 /**
  * `gridColumnSpanStyle` for a group whose inner grid has G columns (see `groupGridAreaStyle`).
  */
 export function groupGridColumnSpanStyle(tile: DashboardTile, innerColumns: number): string {
-  const G = Math.max(1, Math.min(GRID_COLUMNS, Math.floor(Number(innerColumns)) || 1));
-  if (G === GRID_COLUMNS) {
+  const m = Math.max(
+    1,
+    Math.min(GROUP_CHILD_INNER_STRIP_MAX_EXTENT, Math.floor(Number(innerColumns)) || 1),
+  );
+  if (m === GRID_COLUMNS) {
     return gridColumnSpanStyle(tile);
   }
   const rs = effectiveRowSpan(tile);
-  const spanG = groupInnerWidthInPhysicalTracks(effectiveColSpan(tile), G);
+  const spanG = groupInnerWidthInPhysicalTracks(effectiveColSpan(tile), m);
   return `grid-column: span ${spanG}; grid-row: span ${rs};`;
 }

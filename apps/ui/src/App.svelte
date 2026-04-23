@@ -11,6 +11,7 @@
   import {
     clampGridColSpan,
     clampGridRowSpan,
+    commitGroupInnerRowWraps,
     groupOuterColSpan,
     layoutWithGrid,
     reorderRootLayoutItemsPreservingSlotOrigins,
@@ -83,7 +84,8 @@
   function saveGroupFromOverlay(next: DashboardGroup) {
     const replaced = mapRootItemsReplaceGroup(layout.items, next.id, next);
     const reordered = reorderRootLayoutItemsPreservingSlotOrigins(layout.items, replaced);
-    applyLayoutStructure({ version: 2, items: reordered }, { preserveRootPlacementIfComplete: true });
+    const withCommit = commitGroupInnerRowWraps(reordered);
+    applyLayoutStructure({ version: 2, items: withCommit }, { preserveRootPlacementIfComplete: true });
     closeGroupSettings();
   }
 
@@ -129,6 +131,12 @@
       .map((g) => ({ value: g.id, label: `Container: ${g.id}` })),
   ]);
 
+  const tileSettingsContainerMeta = $derived(
+    layout.items
+      .filter((it): it is DashboardGroup => it.kind === "group")
+      .map((g) => ({ id: g.id, innerWrap: g.innerWrap === true })),
+  );
+
   function deleteRootLayoutItem(id: string) {
     const next = layout.items.filter((it) => it.id !== id);
     if (settingsGroup?.id === id) {
@@ -153,6 +161,13 @@
   }
 
   function selectDashboardView() {
+    if (editorOpen) {
+      const committed = commitGroupInnerRowWraps(layout.items);
+      applyLayoutStructure(
+        { version: 2, items: committed },
+        { preserveRootPlacementIfComplete: true, editModeOverride: false },
+      );
+    }
     editorOpen = false;
   }
 
@@ -249,10 +264,14 @@
 
   function applyLayoutStructure(
     next: DashboardLayout,
-    opts?: { preserveRootPlacementIfComplete?: boolean },
+    opts?: { preserveRootPlacementIfComplete?: boolean; editModeOverride?: boolean },
   ) {
     try {
-      const normalized = layoutWithGrid(next, opts);
+      const editMode = opts?.editModeOverride !== undefined ? opts.editModeOverride : editorOpen;
+      const normalized = layoutWithGrid(next, {
+        preserveRootPlacementIfComplete: opts?.preserveRootPlacementIfComplete,
+        editMode,
+      });
       if (!isLayoutV2(normalized)) {
         loadError = "Layout update was ignored (invalid structure).";
         return;
@@ -394,6 +413,7 @@
             parentOptions={parentOptions}
             initialParentId={settingsParentId}
             containerWidthColumns={settingsTileContainerG}
+            containerGroups={tileSettingsContainerMeta}
             onClose={closeTileSettings}
             onSave={saveTileFromOverlay}
           />

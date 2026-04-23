@@ -1,12 +1,13 @@
 import { DEFAULT_DASHBOARD_LAYOUT } from "./defaultLayout";
 import { ensureLayoutV2, iterateTilesInLayout } from "./layoutTree";
-import { cloneLayoutJson, layoutWithGrid } from "./gridPlacement";
+import { cloneLayoutJson, isCompleteGroupChildGrid, layoutWithGrid } from "./gridPlacement";
 import type {
   DashboardLayout,
   DashboardLayoutV1,
   DashboardLayoutV2,
   DashboardGroup,
   DashboardTile,
+  GridPlacement,
   RootLayoutItem,
   RootTileItem,
 } from "./types";
@@ -81,16 +82,39 @@ function isTile(value: unknown): value is DashboardTile {
   return true;
 }
 
+/** Group child: `parentAutoWrap === true` → same 12 cell as root; else wide horizontal strip. */
+function isGroupChildTile(value: unknown, parentAutoWrap: boolean): value is DashboardTile {
+  if (!value || typeof value !== "object") return false;
+  const t = value as Record<string, unknown>;
+  if (typeof t.id !== "string" || !t.id) return false;
+  if (typeof t.pluginId !== "string" || !t.pluginId) return false;
+  if (typeof t.hostControl !== "string" || !HOST_CONTROLS.has(t.hostControl)) return false;
+  if (typeof t.displayMode !== "string" || !DISPLAY_MODES.has(t.displayMode)) return false;
+  if (t.region !== undefined && typeof t.region !== "string") return false;
+  if (t.rowPanel !== undefined) {
+    if (typeof t.rowPanel !== "string" || t.rowPanel.length < 1 || t.rowPanel.length > 64) {
+      return false;
+    }
+  }
+  if (t.grid !== undefined && t.grid !== null) {
+    if (!isCompleteGroupChildGrid(t.grid as GridPlacement, parentAutoWrap)) return false;
+  }
+  if (!isTileOptions(t.options)) return false;
+  return true;
+}
+
 function isGroupNodeJson(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const o = value as Record<string, unknown>;
   if (o.kind !== "group") return false;
   if (typeof o.id !== "string" || !o.id) return false;
   if (o.showBorder !== undefined && typeof o.showBorder !== "boolean") return false;
+  if (o.innerWrap !== undefined && typeof o.innerWrap !== "boolean") return false;
   if (o.grid !== undefined && o.grid != null && !validGridCell(o.grid)) return false;
   if (!Array.isArray(o.children)) return false;
+  const parentAutoWrap = o.innerWrap === true;
   for (const c of o.children) {
-    if (!isTile(c)) return false;
+    if (!isGroupChildTile(c, parentAutoWrap)) return false;
   }
   return true;
 }

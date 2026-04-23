@@ -6,6 +6,7 @@ from typing import Any
 
 _HOST = frozenset({"single-panel", "tab-control", "vertical-stack", "split-grid"})
 _DISPLAY = frozenset({"compact", "full"})
+_GROUP_CHILD_INNER_STRIP_MAX_EXTENT = 10_000
 
 
 def _valid_grid_cell(value: object) -> bool:
@@ -28,13 +29,38 @@ def _valid_grid_cell(value: object) -> bool:
     return True
 
 
+def _valid_group_child_grid(value: object, *, parent_auto_wrap: bool) -> bool:
+    """Group child: auto-wrap uses the root 12 cell; no-wrap allows a long horizontal strip."""
+    if not isinstance(value, dict):
+        return False
+    g = value
+    try:
+        col = g["col"]
+        row = g["row"]
+        cspan = g["colSpan"]
+        rspan = g["rowSpan"]
+    except KeyError:
+        return False
+    if not all(isinstance(x, int) for x in (col, row, cspan, rspan)):
+        return False
+    if parent_auto_wrap:
+        return _valid_grid_cell(value)
+    if not (1 <= cspan <= 12 and col >= 0 and col + cspan <= _GROUP_CHILD_INNER_STRIP_MAX_EXTENT):
+        return False
+    if row < 0 or rspan < 1 or rspan > 12:
+        return False
+    return True
+
+
 def _valid_row_panel(value: object) -> bool:
     if not isinstance(value, str):
         return False
     return 1 <= len(value) <= 64
 
 
-def _valid_tile_core(tile: dict[str, Any], *, inner: bool) -> bool:
+def _valid_tile_core(
+    tile: dict[str, Any], *, inner: bool, group_parent_auto_wrap: bool | None = None
+) -> bool:
     if "children" in tile:
         return False
     if not isinstance(tile.get("id"), str) or not tile["id"]:
@@ -63,8 +89,13 @@ def _valid_tile_core(tile: dict[str, Any], *, inner: bool) -> bool:
         if k is not None and k not in ("tile",):
             return False
     grid = tile.get("grid")
-    if grid is not None and not _valid_grid_cell(grid):
-        return False
+    if grid is not None:
+        if inner and group_parent_auto_wrap is not None:
+            if not _valid_group_child_grid(grid, parent_auto_wrap=group_parent_auto_wrap):
+                return False
+        else:
+            if not _valid_grid_cell(grid):
+                return False
     return True
 
 
@@ -82,10 +113,11 @@ def _valid_group(item: dict[str, Any]) -> bool:
     ch = item.get("children")
     if not isinstance(ch, list):
         return False
+    parent_auto_wrap = item.get("innerWrap") is True
     for t in ch:
         if not isinstance(t, dict):
             return False
-        if not _valid_tile_core(t, inner=True):
+        if not _valid_tile_core(t, inner=True, group_parent_auto_wrap=parent_auto_wrap):
             return False
     return True
 

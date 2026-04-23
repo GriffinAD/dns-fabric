@@ -4,15 +4,20 @@ import {
   alignGaugeColumnCount,
   clampGridColSpan,
   clampGridRowSpan,
+  clampGroupChildGridPlacement,
   clampTileGridPlacement,
   gridAreaStyle,
   gridColumnSpanStyle,
+  groupEditInnerColumnCount,
   groupGridAreaStyle,
   groupGridColumnSpanStyle,
   groupInnerWidthInPhysicalTracks,
   hasCompleteGrid,
+  isCompleteGroupChildGrid,
+  commitGroupInnerRowWraps,
   layoutWithGrid,
   normalizeDashboardTiles,
+  packGroupChildrenRowWrapInOrder,
   packRootLayoutItems,
   packTilesToGrid,
   packTilesWithFixedAndFloating,
@@ -302,6 +307,43 @@ describe("groupInnerWidthInPhysicalTracks", () => {
   });
 });
 
+const wrapTile = (
+  id: string,
+  colSpan: number,
+  pluginId = "dhcp.pools",
+): DashboardTile => ({
+  id,
+  pluginId,
+  hostControl: "single-panel",
+  displayMode: "full",
+  grid: { col: 0, row: 0, colSpan, rowSpan: 1 },
+});
+
+describe("packGroupChildrenRowWrapInOrder", () => {
+  it("wraps the next tile to a new row at col 0 when the row is full (G=4, widths 3+3)", () => {
+    const out = packGroupChildrenRowWrapInOrder([wrapTile("a", 3), wrapTile("b", 3)], 4);
+    expect(out[0]!.grid).toMatchObject({ col: 0, row: 0, colSpan: 3, rowSpan: 1 });
+    expect(out[1]!.grid).toMatchObject({ col: 0, row: 1, colSpan: 3, rowSpan: 1 });
+  });
+});
+
+describe("commitGroupInnerRowWraps", () => {
+  it("only rewrites children for groups with innerWrap", () => {
+    const g1: DashboardGroup = {
+      kind: "group",
+      id: "g",
+      showBorder: true,
+      innerWrap: true,
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+      children: [wrapTile("a", 3), wrapTile("b", 3)],
+    };
+    const g2: DashboardGroup = { ...g1, id: "g2", innerWrap: false };
+    const out = commitGroupInnerRowWraps([g1, g2]);
+    expect((out[0] as DashboardGroup).children[1]!.grid?.row).toBe(1);
+    expect((out[1] as DashboardGroup).children[0]!.grid?.row).toBe(0);
+  });
+});
+
 describe("clampGridRowSpan", () => {
   it("caps tile height at 12 rows", () => {
     expect(clampGridRowSpan(1)).toBe(1);
@@ -503,6 +545,29 @@ describe("packRootLayoutItems", () => {
     const out = packRootLayoutItems([raw]);
     expect(out[0]?.kind).toBe("tile");
   });
+
+  it("applies root normalizeDashboardTiles to !innerWrap group children (no auto-wrap strip)", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g-nowrap",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      children: [
+        {
+          id: "a",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+        },
+      ],
+    };
+    const out = packRootLayoutItems([g]);
+    expect(out[0]?.kind).toBe("group");
+    if (out[0]?.kind === "group") {
+      expect(out[0].children[0]?.grid).toBeDefined();
+    }
+  });
 });
 
 describe("layoutWithGrid", () => {
@@ -610,6 +675,64 @@ describe("layoutWithGrid", () => {
       const c = next.items[0].children;
       expect(c[0]?.grid).toMatchObject({ col: 0, row: 0, colSpan: 2, rowSpan: 1 });
       expect(c[1]?.grid).toMatchObject({ col: 4, row: 0, colSpan: 2, rowSpan: 1 });
+    }
+  });
+
+  it("preserve without editMode still repacks innerWrap group children via packGroupChildrenInLayout", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      innerWrap: true,
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      children: [
+        {
+          id: "c1",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+        },
+        {
+          id: "c2",
+          pluginId: "perf.ram",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 5, row: 0, colSpan: 1, rowSpan: 1 },
+        },
+      ],
+    };
+    const next = layoutWithGrid({ version: 2, items: [g] }, { preserveRootPlacementIfComplete: true });
+    expect(next.items[0]?.kind).toBe("group");
+    if (next.items[0]?.kind === "group") {
+      expect(next.items[0].children).toHaveLength(2);
+    }
+  });
+
+  it("preserve + editMode leaves innerWrap group children as-is (no re-pack in layoutWithGrid)", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      innerWrap: true,
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      children: [
+        {
+          id: "c1",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+        },
+      ],
+    };
+    const next = layoutWithGrid(
+      { version: 2, items: [g] },
+      { preserveRootPlacementIfComplete: true, editMode: true },
+    );
+    if (next.items[0]?.kind === "group") {
+      expect(next.items[0].innerWrap).toBe(true);
+      expect(next.items[0].children[0]?.grid).toEqual({ col: 0, row: 0, colSpan: 1, rowSpan: 1 });
     }
   });
 
@@ -773,5 +896,89 @@ describe("grid placement edge cases", () => {
   it("clampTileGridPlacement treats non-finite row as zero", () => {
     const t = tile("n", { col: 0, row: Number.NaN, colSpan: 6, rowSpan: 1 });
     expect(clampTileGridPlacement(t).row).toBe(0);
+  });
+
+  it("isCompleteGroupChildGrid (no wrap) allows col+colSpan past 12", () => {
+    const g: GridPlacement = { col: 12, row: 0, colSpan: 1, rowSpan: 1 };
+    expect(isCompleteGroupChildGrid(g, false)).toBe(true);
+  });
+
+  it("isCompleteGroupChildGrid (no wrap) rejects col+colSpan past max extent", () => {
+    const g: GridPlacement = { col: 9990, row: 0, colSpan: 12, rowSpan: 1 };
+    expect(isCompleteGroupChildGrid(g, false)).toBe(false);
+  });
+
+  it("groupEditInnerColumnCount extends past G when no-wrap children are wide on X", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+      children: [
+        {
+          id: "a",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+        },
+        {
+          id: "b",
+          pluginId: "perf.ram",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 20, row: 0, colSpan: 1, rowSpan: 1 },
+        },
+      ],
+    };
+    expect(groupEditInnerColumnCount(g)).toBe(21);
+  });
+
+  it("groupEditInnerColumnCount includes strip X extent even if row/rowSpan are not isComplete", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      children: [
+        {
+          id: "a",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 14, row: -1, colSpan: 2, rowSpan: 1 },
+        },
+      ],
+    };
+    expect(groupEditInnerColumnCount(g)).toBe(16);
+  });
+
+  it("groupGridAreaStyle works with >12 inner fr columns (editor strip)", () => {
+    const g: GridPlacement = { col: 18, row: 0, colSpan: 2, rowSpan: 1 };
+    const s = groupGridAreaStyle(g, 24);
+    expect(s).toContain("grid-column: 19 / span 2");
+  });
+
+  it("reorderTilesPreservingSlotOrigins (no wrap) permutes on wide strip", () => {
+    const a = tile("a", { col: 0, row: 0, colSpan: 1, rowSpan: 1 });
+    const b = { ...a, id: "b", grid: { col: 12, row: 0, colSpan: 1, rowSpan: 1 } };
+    const out = reorderTilesPreservingSlotOrigins([a, b], [b, a], false);
+    expect(out[0]!.id).toBe("b");
+    expect(out[0]!.grid!.col).toBe(0);
+    expect(out[1]!.grid!.col).toBe(12);
+  });
+
+  it("clampGroupChildGridPlacement (no wrap) constrains to strip", () => {
+    const t: DashboardTile = {
+      id: "x",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 9999, row: 0, colSpan: 4, rowSpan: 1 },
+    };
+    const c = clampGroupChildGridPlacement(t, false);
+    expect(c.col + c.colSpan).toBeLessThanOrEqual(10000);
   });
 });

@@ -5,7 +5,11 @@
   import {
     clampGridColSpan,
     clampGridRowSpan,
+    clampGroupChildGridPlacement,
+    clampGroupChildStripOriginCol,
+    clampTileGridPlacement,
     GRID_COLUMNS,
+    GROUP_CHILD_INNER_STRIP_MAX_EXTENT,
     groupInnerWidthInPhysicalTracks,
     tileColSpan,
   } from "./gridPlacement";
@@ -21,6 +25,8 @@
     onSave,
     /** If this tile is in a group: that container’s width in root grid columns, for mapping help text. */
     containerWidthColumns = null as number | null,
+    /** Each known container: used with `Parent` to apply root vs auto-wrap vs horizontal-strip grid rules. */
+    containerGroups = [] as { id: string; innerWrap: boolean }[],
   }: {
     tile: DashboardTile;
     plugins: PluginEntry[];
@@ -31,25 +37,44 @@
     onClose: () => void;
     onSave: (next: DashboardTile, parentId: string) => void;
     containerWidthColumns?: number | null;
+    containerGroups?: { id: string; innerWrap: boolean }[];
   } = $props();
 
-  function cloneDraft(from: DashboardTile): DashboardTile {
-    const g = from.grid;
-    const cs = g != null ? clampGridColSpan(g.colSpan) : tileColSpan(from);
-    const rs = g != null ? clampGridRowSpan(g.rowSpan) : 1;
-    return {
+  function layoutModeForParent(parentId: string): "root" | "wrap" | "strip" {
+    if (parentId === PARENT_ID_DASHBOARD) return "root";
+    const meta = containerGroups.find((c) => c.id === parentId);
+    if (meta == null) return "wrap";
+    return meta.innerWrap ? "wrap" : "strip";
+  }
+
+  function cloneDraft(from: DashboardTile, parentIdForClamp: string): DashboardTile {
+    const g0 = from.grid;
+    const cs0 = g0 != null ? clampGridColSpan(g0.colSpan) : tileColSpan(from);
+    const rs0 = g0 != null ? clampGridRowSpan(g0.rowSpan) : 1;
+    const prelim: DashboardTile = {
       ...from,
-      grid: { col: g?.col ?? 0, row: g?.row ?? 0, colSpan: cs, rowSpan: rs },
+      grid: { col: g0?.col ?? 0, row: g0?.row ?? 0, colSpan: cs0, rowSpan: rs0 },
       options: from.options ? { ...from.options } : undefined,
     };
+    const mode = layoutModeForParent(parentIdForClamp);
+    const g =
+      mode === "strip" ? clampGroupChildGridPlacement(prelim, false) : clampTileGridPlacement(prelim);
+    return { ...from, grid: g, options: from.options ? { ...from.options } : undefined };
+  }
+
+  function reClampGridForParent(d: DashboardTile, parentId: string): DashboardTile {
+    if (d.grid == null) return d;
+    const mode = layoutModeForParent(parentId);
+    const g = mode === "strip" ? clampGroupChildGridPlacement(d, false) : clampTileGridPlacement(d);
+    return { ...d, grid: g };
   }
 
   // svelte-ignore state_referenced_locally
-  let draft = $state(cloneDraft(tile));
+  let draft = $state(cloneDraft(tile, initialParentId));
   let selectedParentId = $state(PARENT_ID_DASHBOARD);
 
   $effect(() => {
-    draft = cloneDraft(tile);
+    draft = cloneDraft(tile, initialParentId);
     selectedParentId = initialParentId;
   });
 
@@ -66,14 +91,26 @@
     if (!draft) return;
     const g = draft.grid!;
     const { rowPanel: _rp, ...rest } = draft as DashboardTile & { rowPanel?: string };
+    const mode = layoutModeForParent(selectedParentId);
+    const prelim: DashboardTile = {
+      ...rest,
+      grid: {
+        col: g.col,
+        row: g.row,
+        colSpan: clampGridColSpan(g.colSpan),
+        rowSpan: clampGridRowSpan(g.rowSpan),
+      },
+    };
+    const nextG =
+      mode === "strip" ? clampGroupChildGridPlacement(prelim, false) : clampTileGridPlacement(prelim);
     onSave(
       {
         ...rest,
         grid: {
-          col: g.col,
-          row: g.row,
-          colSpan: clampGridColSpan(g.colSpan),
-          rowSpan: clampGridRowSpan(g.rowSpan),
+          col: nextG.col,
+          row: nextG.row,
+          colSpan: nextG.colSpan,
+          rowSpan: nextG.rowSpan,
         },
       },
       selectedParentId,
@@ -92,11 +129,16 @@
 <svelte:window onkeydown={onKeydown} />
 
 {#if draft}
+  {@const gridMode = layoutModeForParent(selectedParentId)}
   {@const manifest = manifestFor(draft.pluginId)}
   {@const hosts = hostChoices(manifest)}
   {@const ud = manifest?.ui_dashboard}
   {@const showCompact = ud?.supports_compact !== false}
   {@const showFull = ud?.supports_full !== false}
+  {@const colInputMax =
+    gridMode === "strip"
+      ? Math.max(0, GROUP_CHILD_INNER_STRIP_MAX_EXTENT - draft.grid!.colSpan)
+      : GRID_COLUMNS - draft.grid!.colSpan}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -133,14 +175,17 @@
                 oninput={(e) => {
                   const n = Number((e.currentTarget as HTMLInputElement).value);
                   const cs = clampGridColSpan(n);
-                  const col = Math.min(draft!.grid!.col, GRID_COLUMNS - cs);
+                  const col =
+                    gridMode === "strip"
+                      ? clampGroupChildStripOriginCol(draft!.grid!.col, cs)
+                      : Math.min(draft!.grid!.col, GRID_COLUMNS - cs);
                   draft = {
                     ...draft!,
                     grid: { ...draft!.grid!, colSpan: cs, col },
                   };
                 }}
               />
-              {#if initialParentId !== PARENT_ID_DASHBOARD && containerWidthColumns != null}
+              {#if selectedParentId !== PARENT_ID_DASHBOARD && containerWidthColumns != null}
                 <span class="text-[11px] font-normal text-gray-500 dark:text-gray-500">
                   Same 1–12 column units as the main dashboard. Each unit is the same width as on the
                   root grid. In a {containerWidthColumns}-wide row, a width of {draft.grid!.colSpan} uses
@@ -167,23 +212,36 @@
               />
             </label>
             <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-              <span>Column (0–11)</span>
+              <span
+                >{gridMode === "strip" && selectedParentId !== PARENT_ID_DASHBOARD
+                  ? "Start column (0+)"
+                  : "Column (0–11)"}</span
+              >
               <input
                 type="number"
                 min="0"
-                max={GRID_COLUMNS - 1}
+                max={colInputMax}
                 class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
                 value={draft.grid!.col}
                 oninput={(e) => {
                   const n = Number((e.currentTarget as HTMLInputElement).value);
                   const cs = draft!.grid!.colSpan;
-                  const col = Math.max(0, Math.min(GRID_COLUMNS - cs, Math.floor(n)));
+                  const col =
+                    gridMode === "strip"
+                      ? clampGroupChildStripOriginCol(Math.floor(n), cs)
+                      : Math.max(0, Math.min(GRID_COLUMNS - cs, Math.floor(n)));
                   draft = {
                     ...draft!,
                     grid: { ...draft!.grid!, col },
                   };
                 }}
               />
+              {#if gridMode === "strip" && selectedParentId !== PARENT_ID_DASHBOARD}
+                <span class="text-[11px] font-normal text-gray-500 dark:text-gray-500">
+                  Auto wrap is off: one row can span more than 12 width-units, so the start column may be
+                  greater than 11.
+                </span>
+              {/if}
             </label>
             <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
               <span>Row (from top)</span>
@@ -248,7 +306,9 @@
               data-testid="tile-settings-parent"
               value={selectedParentId}
               onchange={(e) => {
-                selectedParentId = (e.currentTarget as HTMLSelectElement).value;
+                const v = (e.currentTarget as HTMLSelectElement).value;
+                selectedParentId = v;
+                draft = reClampGridForParent(draft!, v);
               }}
             >
               {#each parentOptions as o (o.value)}

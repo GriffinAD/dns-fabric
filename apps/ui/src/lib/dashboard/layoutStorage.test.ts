@@ -44,6 +44,74 @@ describe("parseDashboardLayout", () => {
     expect(parseDashboardLayout({ version: 1, tiles: [{}] })).toBeNull();
   });
 
+  it("accepts group child grid past col 11 when Auto wrap is off", () => {
+    const ok = parseDashboardLayout({
+      version: 2,
+      items: [
+        {
+          kind: "group",
+          id: "g",
+          children: [
+            {
+              id: "a",
+              pluginId: "perf.cpu",
+              hostControl: "single-panel",
+              displayMode: "compact",
+              grid: { col: 14, row: 0, colSpan: 2, rowSpan: 1 },
+            },
+          ],
+        },
+      ],
+    });
+    expect(ok).not.toBeNull();
+  });
+
+  it("rejects group child rowPanel when too long", () => {
+    expect(
+      parseDashboardLayout({
+        version: 2,
+        items: [
+          {
+            kind: "group",
+            id: "g",
+            children: [
+              {
+                id: "a",
+                pluginId: "perf.cpu",
+                hostControl: "single-panel",
+                displayMode: "compact",
+                rowPanel: `${"x".repeat(64)}y`,
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects group child grid past col 11 when Auto wrap is on", () => {
+    const bad = parseDashboardLayout({
+      version: 2,
+      items: [
+        {
+          kind: "group",
+          id: "g",
+          innerWrap: true,
+          children: [
+            {
+              id: "a",
+              pluginId: "perf.cpu",
+              hostControl: "single-panel",
+              displayMode: "compact",
+              grid: { col: 14, row: 0, colSpan: 2, rowSpan: 1 },
+            },
+          ],
+        },
+      ],
+    });
+    expect(bad).toBeNull();
+  });
+
   it("accepts optional grid placement and rejects out-of-bounds grid", () => {
     const base = {
       id: "a",

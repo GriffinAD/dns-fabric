@@ -1,80 +1,121 @@
 {
   "default": {
-    "version": 1,
-    "tiles": [
+    "version": 2,
+    "items": [
       {
-        "id": "tile-perf-cpu-1776890120518-i4s9j3t",
-        "pluginId": "perf.cpu",
-        "hostControl": "single-panel",
-        "displayMode": "full",
-        "region": "status-zone",
+        "kind": "group",
+        "id": "group-1-1776969394613",
+        "showBorder": true,
+        "children": [
+          {
+            "id": "tile-perf-ram-1776972566363-bcg6kvx",
+            "pluginId": "perf.ram",
+            "hostControl": "single-panel",
+            "displayMode": "compact",
+            "region": "status-zone",
+            "options": {
+              "display_style": "gauge"
+            },
+            "grid": {
+              "col": 0,
+              "row": 0,
+              "colSpan": 1,
+              "rowSpan": 1
+            }
+          },
+          {
+            "id": "tile-in-group-1-1776969394613-1776969399660",
+            "pluginId": "perf.disk",
+            "hostControl": "single-panel",
+            "displayMode": "full",
+            "grid": {
+              "col": 1,
+              "row": 0,
+              "colSpan": 1,
+              "rowSpan": 1
+            }
+          },
+          {
+            "id": "tile-discovery-records-1776972566363-myi7lza",
+            "pluginId": "discovery.records",
+            "hostControl": "single-panel",
+            "displayMode": "full",
+            "region": "primary-grid",
+            "grid": {
+              "col": 2,
+              "row": 0,
+              "colSpan": 6,
+              "rowSpan": 1
+            }
+          },
+          {
+            "id": "tile-4-1776969442043",
+            "pluginId": "perf.cpu",
+            "hostControl": "single-panel",
+            "displayMode": "full",
+            "grid": {
+              "col": 8,
+              "row": 0,
+              "colSpan": 4,
+              "rowSpan": 1
+            }
+          },
+          {
+            "id": "tile-perf-network-1776969405917-joozh6i",
+            "pluginId": "perf.network",
+            "hostControl": "single-panel",
+            "displayMode": "compact",
+            "region": "status-zone",
+            "options": {
+              "network_by_adapter": true,
+              "display_style": "gauge"
+            },
+            "grid": {
+              "col": 0,
+              "row": 1,
+              "colSpan": 2,
+              "rowSpan": 1
+            }
+          },
+          {
+            "id": "tile-7-1776969486136",
+            "pluginId": "perf.cpu",
+            "hostControl": "single-panel",
+            "displayMode": "full",
+            "grid": {
+              "col": 2,
+              "row": 1,
+              "colSpan": 4,
+              "rowSpan": 1
+            }
+          }
+        ],
         "grid": {
           "col": 0,
           "row": 0,
-          "colSpan": 4,
+          "colSpan": 12,
           "rowSpan": 1
         },
-        "options": {
-          "cpu_total": false,
-          "display_style": "gauge"
-        }
+        "innerWrap": false
       },
       {
-        "id": "tile-perf-ram-1776890120518-iagrogy",
-        "pluginId": "perf.ram",
-        "hostControl": "single-panel",
-        "displayMode": "full",
-        "region": "status-zone",
-        "grid": {
-          "col": 4,
-          "row": 0,
-          "colSpan": 2,
-          "rowSpan": 1
-        },
-        "options": {
-          "display_style": "gauge"
-        }
-      },
-      {
-        "id": "tile-perf-network-1776890120518-8wakmp6",
-        "pluginId": "perf.network",
-        "hostControl": "single-panel",
-        "displayMode": "compact",
-        "region": "status-zone",
-        "grid": {
-          "col": 6,
-          "row": 0,
-          "colSpan": 2,
-          "rowSpan": 1
-        },
-        "options": {
-          "network_by_adapter": true,
-          "display_style": "gauge"
-        }
-      },
-      {
-        "id": "tile-perf-disk-1776890120518-l2zya54",
-        "pluginId": "perf.disk",
-        "hostControl": "single-panel",
-        "displayMode": "compact",
-        "region": "status-zone",
-        "grid": {
-          "col": 8,
-          "row": 0,
-          "colSpan": 2,
-          "rowSpan": 1
-        },
-        "options": {
-          "disk_by_volume": true,
-          "display_style": "gauge"
-        }
-      },
-      {
-        "id": "tile-pools",
-        "pluginId": "dhcp.pools",
-        "hostControl": "single-panel",
-        "displayMode": "compact",
-        "region": "primary-grid",
+        "kind": "group",
+        "id": "group-3-1776972827576",
+        "showBorder": true,
+        "children": [
+          {
+            "id": "tile-in-group-3-1776972827576-1776972831083",
+            "pluginId": "perf.disk",
+            "hostControl": "single-panel",
+            "displayMode": "full",
+            "grid": {
+              "col": 0,
+              "row": 0,
+              "colSpan": 1,
+              "rowSpan": 1
+            }
+          }
+        ],
         "grid": {
           "col": 0,
           "row": 1,
@@ -83,42 +124,16 @@
         }
       },
       {
-        "id": "tile-discovery",
-        "pluginId": "discovery.records",
+        "kind": "tile",
+        "id": "tile-in-group-1-1776969394613-1776969397308",
+        "pluginId": "perf.cpu",
         "hostControl": "single-panel",
         "displayMode": "full",
-        "region": "primary-grid",
         "grid": {
           "col": 0,
           "row": 2,
-          "colSpan": 6,
-          "rowSpan": 2
-        }
-      },
-      {
-        "id": "tile-dhcp-clients-1776890120518-l1qjge0",
-        "pluginId": "dhcp.clients",
-        "hostControl": "single-panel",
-        "displayMode": "full",
-        "region": "primary-grid",
-        "grid": {
-          "col": 0,
-          "row": 4,
-          "colSpan": 12,
-          "rowSpan": 10
-        }
-      },
-      {
-        "id": "tile-dhcp-reservations-1776890120518-kc3cfmp",
-        "pluginId": "dhcp.reservations",
-        "hostControl": "single-panel",
-        "displayMode": "full",
-        "region": "primary-grid",
-        "grid": {
-          "col": 0,
-          "row": 14,
-          "colSpan": 12,
-          "rowSpan": 10
+          "colSpan": 4,
+          "rowSpan": 1
         }
       }
     ]

@@ -35,6 +35,13 @@ export interface DashboardGroup {
   id: string;
   /** When true, draw a border on the group and hide inner tile card chrome. Default true. */
   showBorder: boolean;
+  /**
+   * When true, child tiles are laid out in array order, wrapping to a new row when a row
+   * would exceed the container width (G root columns), with grid positions repacked on save.
+   * When false or omitted, children keep saved col/colSpan; horizontal position can extend past
+   * a 12-column “pack” so one row can scroll (see `GROUP_CHILD_INNER_STRIP_MAX_EXTENT` in gridPlacement).
+   */
+  innerWrap?: boolean;
   /** Placement on the root 12-column grid. */
   grid?: GridPlacement;
   children: DashboardTile[];

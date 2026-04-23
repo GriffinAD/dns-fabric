@@ -24,7 +24,12 @@
           rowSpan: clampGridRowSpan(gr.rowSpan),
         }
       : { col: 0, row: 0, colSpan: 12, rowSpan: 1 };
-    return { ...g, showBorder: g.showBorder !== false, grid };
+    return {
+      ...g,
+      showBorder: g.showBorder !== false,
+      innerWrap: g.innerWrap === true,
+      grid,
+    };
   }
 
   // svelte-ignore state_referenced_locally
@@ -40,6 +45,7 @@
     onSave({
       ...draft,
       showBorder: draft.showBorder !== false,
+      innerWrap: draft.innerWrap === true,
       grid: {
         col: g.col,
         row: g.row,
@@ -94,6 +100,21 @@
             />
             Show border around container
           </label>
+          <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={draft.innerWrap === true}
+              data-testid="group-settings-inner-wrap"
+              onchange={() => {
+                draft = { ...draft!, innerWrap: !draft!.innerWrap };
+              }}
+            />
+            Auto wrap tiles to a new row when a row is full
+          </label>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            When off, tiles use the same G-wide column grid without reflowing; turn on to pack into
+            additional rows when a row would not fit.
+          </p>
 
           <p class="text-xs text-gray-500 dark:text-gray-400">
             Placement on the main dashboard grid (12 columns). Adjust column/row origin and span.

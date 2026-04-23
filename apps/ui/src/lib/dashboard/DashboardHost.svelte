@@ -25,14 +25,18 @@
   import RamTile from "../plugins/RamTile.svelte";
   import {
     alignGaugeColumnCount,
+    effectiveColSpan,
+    effectiveRowSpan,
     gridAreaStyle,
     gridColumnSpanStyle,
     groupGridAreaStyle,
     groupGridColumnSpanStyle,
     groupOuterColSpan,
+    packGroupChildrenRowWrapInOrder,
     reorderRootLayoutItemsPreservingSlotOrigins,
     reorderTilesPreservingSlotOrigins,
   } from "./gridPlacement";
+  import GroupReadNoWrap from "./GroupReadNoWrap.svelte";
   import TileEditChrome from "./TileEditChrome.svelte";
   import type { DashboardGroup, DashboardLayout, DashboardLayoutV2, DashboardTile, RootLayoutItem } from "./types";
 
@@ -71,10 +75,9 @@
     return null;
   }
 
-  type DndRootItem = { id: string; item: RootLayoutItem };
-  type DndChildItem = { id: string; tile: DashboardTile };
-
-  const ROOT_DND = "dashboard-root";
+  /** svelte-dnd-action zone type — one shared value so root ↔ container moves are allowed. */
+  const SVELTE_DND_TYPE_DASHBOARD = "dashboard-layout";
+  type DndListItem = { id: string; item: RootLayoutItem };
 
   let {
     layout,
@@ -112,25 +115,61 @@
     onPerfTileGridHint?: (tileId: string, hint: { colSpan: number; rowSpan: number }) => void;
   } = $props();
 
-  let dndRoot = $state<DndRootItem[]>([]);
-  let dndByGroup = $state<Record<string, DndChildItem[]>>({});
+  let dndRoot = $state<DndListItem[]>([]);
+  let dndByGroup = $state<Record<string, DndListItem[]>>({});
+
+  function tileToDndListItem(t: DashboardTile): DndListItem {
+    return { id: t.id, item: { kind: "tile" as const, ...t } };
+  }
+
+  function dndListItemToDashboardTile(c: DndListItem): DashboardTile {
+    if (c.item.kind !== "tile") {
+      throw new Error("expected a tile in group DnD list");
+    }
+    const { kind: _k, ...tile } = c.item;
+    return tile;
+  }
 
   $effect(() => {
     dndRoot = layout.items.map((it) => ({ id: it.id, item: it }));
-    const next: Record<string, DndChildItem[]> = {};
+    const next: Record<string, DndListItem[]> = {};
     for (const it of layout.items) {
       if (it.kind === "group") {
-        next[it.id] = it.children.map((t) => ({ id: t.id, tile: t }));
+        next[it.id] = it.children.map((t) => tileToDndListItem(t));
       }
     }
     dndByGroup = next;
   });
 
+  /** Merges per-group DnD lists with root so packed preview matches in-flight cross-zone drags. */
+  function buildV2FromDnd(): RootLayoutItem[] {
+    return dndRoot.map((row) => {
+      const it = row.item;
+      if (it.kind === "group") {
+        const prevG = layout.items.find(
+          (p) => p.kind === "group" && p.id === it.id,
+        ) as DashboardGroup | undefined;
+        if (!prevG) {
+          return it;
+        }
+        const list = dndByGroup[it.id] ?? prevG.children.map((t) => tileToDndListItem(t));
+        const reordered: DashboardTile[] = list
+          .filter((c) => c.item.kind === "tile")
+          .map((c) => dndListItemToDashboardTile(c));
+        const nextChildren = applyGroupDndList(prevG, reordered);
+        return { ...prevG, children: nextChildren } satisfies RootLayoutItem;
+      }
+      return { ...it };
+    });
+  }
+
+  function commitDndToLayout() {
+    const next = reorderRootLayoutItemsPreservingSlotOrigins(layout.items, buildV2FromDnd());
+    onLayoutStructureChange?.({ version: 2, items: next });
+  }
+
   const packedRoot = $derived(
-    reorderRootLayoutItemsPreservingSlotOrigins(
-      layout.items,
-      dndRoot.map((d) => d.item),
-    ),
+    reorderRootLayoutItemsPreservingSlotOrigins(layout.items, buildV2FromDnd()),
   );
   const rootPackedById = $derived(new Map(packedRoot.map((it) => [it.id, it])));
 
@@ -138,44 +177,72 @@
   const palette = $derived(plugins.filter((p) => p.enabled));
   const flipDurationMs = 180;
 
-  function childPreview(groupId: string, g: DashboardGroup): { list: DashboardTile[]; byId: Map<string, DashboardTile> } {
-    const order = dndByGroup[groupId] ?? g.children.map((t) => ({ id: t.id, tile: t }));
-    const reordered = order.map((x) => x.tile);
-    const list = reorderTilesPreservingSlotOrigins(g.children, reordered);
-    return { list, byId: new Map(list.map((t) => [t.id, t])) };
+  /** Viewport width for an editor “strip” (Auto wrap off) — same math as `GroupReadNoWrap` widthPx. */
+  let noWrapEditPortW = $state<Record<string, number>>({});
+  function noWrapStripPortMeasure(el: HTMLDivElement, gid: string) {
+    const set = () => {
+      const w = el.clientWidth;
+      noWrapEditPortW = { ...noWrapEditPortW, [gid]: w };
+    };
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return { destroy: () => ro.disconnect() };
   }
 
-  function handleRootConsider(e: CustomEvent<{ items: DndRootItem[] }>) {
+  /**
+   * `innerWrap`: pack in DnD list order. Otherwise preserve slot remapping (no `packTilesToGrid`,
+   * which would force extra rows and break "no wrap" + horizontal scroll in read view).
+   */
+  function applyGroupDndList(g: DashboardGroup, reordered: DashboardTile[]): DashboardTile[] {
+    if (g.innerWrap === true) {
+      return packGroupChildrenRowWrapInOrder(reordered, groupOuterColSpan(g));
+    }
+    return reorderTilesPreservingSlotOrigins(g.children, reordered, false);
+  }
+
+  /** Group group children by `grid.row` (ascending) with cols sorted left to right. */
+  function groupChildrenByRow(tiles: DashboardTile[]): DashboardTile[][] {
+    if (tiles.length === 0) return [];
+    const byRow = new Map<number, DashboardTile[]>();
+    for (const t of tiles) {
+      const r = t.grid?.row ?? 0;
+      byRow.set(r, [...(byRow.get(r) ?? []), t]);
+    }
+    return [...byRow.keys()]
+      .sort((a, b) => a - b)
+      .map((k) => {
+        const row = byRow.get(k) ?? [];
+        return [...row].sort((a, b) => (a.grid?.col ?? 0) - (b.grid?.col ?? 0));
+      });
+  }
+
+  function handleRootConsider(e: CustomEvent<{ items: DndListItem[] }>) {
     dndRoot = e.detail.items;
   }
 
-  function handleRootFinalize(e: CustomEvent<{ items: DndRootItem[] }>) {
+  function handleRootFinalize(e: CustomEvent<{ items: DndListItem[] }>) {
     dndRoot = e.detail.items;
-    const reordered = e.detail.items.map((x) => x.item);
-    onLayoutStructureChange?.({
-      version: 2,
-      items: reorderRootLayoutItemsPreservingSlotOrigins(layout.items, reordered),
+    queueMicrotask(() => {
+      if (!onLayoutStructureChange) return;
+      commitDndToLayout();
     });
   }
 
   function handleGroupConsider(gid: string) {
-    return (e: CustomEvent<{ items: DndChildItem[] }>) => {
-      dndByGroup = { ...dndByGroup, [gid]: e.detail.items };
+    return (e: CustomEvent<{ items: DndListItem[] }>) => {
+      const items = e.detail.items.filter((x) => x.item.kind === "tile");
+      dndByGroup = { ...dndByGroup, [gid]: items };
     };
   }
 
   function handleGroupFinalize(gid: string) {
-    return (e: CustomEvent<{ items: DndChildItem[] }>) => {
-      dndByGroup = { ...dndByGroup, [gid]: e.detail.items };
-      const reordered = e.detail.items.map((x) => x.tile);
-      const g = layout.items.find((i) => i.kind === "group" && i.id === gid) as DashboardGroup | undefined;
-      if (!g) return;
-      const nextChildren = reorderTilesPreservingSlotOrigins(g.children, reordered);
-      onLayoutStructureChange?.({
-        version: 2,
-        items: layout.items.map((it) =>
-          it.kind === "group" && it.id === gid ? { ...it, children: nextChildren } : it,
-        ),
+    return (e: CustomEvent<{ items: DndListItem[] }>) => {
+      const items = e.detail.items.filter((x) => x.item.kind === "tile");
+      dndByGroup = { ...dndByGroup, [gid]: items };
+      queueMicrotask(() => {
+        if (!onLayoutStructureChange) return;
+        commitDndToLayout();
       });
     };
   }
@@ -206,7 +273,6 @@
 
   function onGroupPluginDragOver(e: DragEvent) {
     e.preventDefault();
-    e.stopPropagation();
     if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
   }
 
@@ -347,9 +413,10 @@
         use:dragHandleZone={{
           items: dndRoot,
           flipDurationMs,
-          type: ROOT_DND,
+          type: SVELTE_DND_TYPE_DASHBOARD,
           autoAriaDisabled: true,
           morphDisabled: true,
+          dropTargetStyle: { outline: "none" },
         }}
         onconsider={handleRootConsider}
         onfinalize={handleRootFinalize}
@@ -359,7 +426,9 @@
           {@const g = d.item.kind === "group" ? d.item : null}
           {@const cv = d.item.kind === "tile" ? d.item : null}
           {#if g}
-            {@const inPrev = childPreview(g.id, g)}
+            {@const gItems = dndByGroup[g.id] ?? []}
+            {@const isGroupEmpty = gItems.length === 0}
+            {@const G = groupOuterColSpan(g)}
             <div
               class="relative flex h-full min-h-0 w-full max-w-full flex-col place-self-stretch overflow-hidden rounded-md border border-gray-200/60 bg-transparent py-1.5 shadow-[-2px_5px_14px_-3px_rgba(15,23,42,0.07),0_1px_1px_0_rgba(15,23,42,0.04)] dark:border-gray-500/30 dark:shadow-[-2px_6px_20px_-4px_rgba(0,0,0,0.45)]"
               style={placed?.grid ? gridAreaStyle(placed.grid) : ""}
@@ -404,71 +473,147 @@
                   <Trash2 class="h-4 w-4" aria-hidden="true" />
                 </button>
               {/if}
-              <div class="min-h-0 w-full min-w-0 flex-1 pl-0 pt-8">
-                {#if (dndByGroup[g.id] ?? []).length === 0}
-                  <div
-                    class="flex min-h-28 w-full flex-col items-center justify-center gap-1 rounded border border-dashed border-gray-300/90 bg-gray-50/50 px-2 py-4 dark:border-gray-600 dark:bg-gray-900/30"
-                    data-testid="editor-group-empty"
-                  >
-                    <p class="text-center text-xs text-gray-500 dark:text-gray-400">
-                      Drop a plugin from the palette here, or add tiles and reorder with the grip
-                    </p>
-                  </div>
-                {:else}
-                  <div
-                    class="grid h-full w-full min-h-0 min-w-0 auto-rows-[minmax(0,auto)] content-start gap-2"
-                    style="grid-template-columns: repeat({groupOuterColSpan(g)}, minmax(0, 1fr));"
-                    use:dragHandleZone={{
-                      items: dndByGroup[g.id] ?? [],
-                      flipDurationMs,
-                      type: `g-inner-${g.id}`,
-                      autoAriaDisabled: true,
-                      morphDisabled: true,
-                    }}
-                    onconsider={handleGroupConsider(g.id)}
-                    onfinalize={handleGroupFinalize(g.id)}
-                  >
-                    {#each (dndByGroup[g.id] ?? []) as c (c.id)}
-                      {@const pTile = inPrev.byId.get(c.tile.id) ?? c.tile}
-                      <div
-                        class="relative flex h-full min-h-0 w-full min-w-0 max-w-full flex-col place-self-stretch rounded border border-dashed border-gray-200/80 bg-white/30 dark:border-gray-600/50 dark:bg-gray-900/20"
-                        style={pTile.grid
-                          ? groupGridAreaStyle(pTile.grid, groupOuterColSpan(g))
-                          : groupGridColumnSpanStyle(c.tile, groupOuterColSpan(g))}
-                        data-testid="editor-tile"
-                        data-tile-id={c.id}
-                      >
-                        <button
-                          type="button"
-                          class="absolute left-1 top-1 z-20 flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded border border-gray-200 bg-white/90 text-gray-500 shadow-sm active:cursor-grabbing dark:border-gray-600 dark:bg-gray-800/90"
-                          aria-label="Drag to reorder tile in group"
-                          use:dragHandle
+              <div
+                class="min-h-0 w-full min-w-0 flex-1 pl-0 pt-8"
+                role="region"
+                aria-label="Container {g.id}: drop plugins or reorder tiles"
+                ondragover={onAddTileToGroup ? onGroupPluginDragOver : undefined}
+                ondrop={onAddTileToGroup ? (e: DragEvent) => onGroupPluginDrop(e, g.id) : undefined}
+              >
+                <div class="relative w-full min-h-0 flex-1" class:min-h-28={isGroupEmpty}>
+                  {#if g.innerWrap === true}
+                    <div
+                      class="flex h-full w-full min-w-0 flex-wrap content-start items-stretch gap-2 {isGroupEmpty
+                        ? 'min-h-28'
+                        : 'min-h-0'}"
+                      use:dragHandleZone={{
+                        items: gItems,
+                        flipDurationMs: 0,
+                        type: SVELTE_DND_TYPE_DASHBOARD,
+                        autoAriaDisabled: true,
+                        morphDisabled: true,
+                        dropAnimationDisabled: true,
+                        dropTargetStyle: { outline: "none" },
+                      }}
+                      onconsider={handleGroupConsider(g.id)}
+                      onfinalize={handleGroupFinalize(g.id)}
+                    >
+                      {#each gItems as c (c.id)}
+                        {@const t = dndListItemToDashboardTile(c)}
+                        {@const T = effectiveColSpan(t)}
+                        {@const rs = effectiveRowSpan(t)}
+                        <div
+                          class="relative box-border flex min-h-0 max-w-full min-w-0 flex-col rounded border border-dashed border-gray-200/80 bg-white/30 dark:border-gray-600/50 dark:bg-gray-900/20"
+                          style="flex: 0 0 min(100%, calc(100% * {T} / {G}));{rs > 1
+                            ? ` min-height: ${Math.min(12, rs) * 2.25}rem;`
+                            : ''}"
+                          data-testid="editor-tile"
+                          data-tile-id={c.id}
                         >
-                          <GripVertical class="h-4 w-4" aria-hidden="true" />
-                        </button>
-                        <div class="min-h-0 w-full min-w-0 flex-1 pt-7">
-                          <TileEditChrome
-                            tile={c.tile}
-                            onEdit={onEditTile}
-                            onDelete={editLayout && onDeleteGroupChildTile
-                              ? () => onDeleteGroupChildTile(g.id, c.tile.id)
-                              : undefined}
-                            showEditButton={editLayout}
+                          <button
+                            type="button"
+                            class="absolute left-1 top-1 z-20 flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded border border-gray-200 bg-white/90 text-gray-500 shadow-sm active:cursor-grabbing dark:border-gray-600 dark:bg-gray-800/90"
+                            aria-label="Drag to reorder tile in group"
+                            use:dragHandle
                           >
-                            {#snippet children()}
-                              <p
-                                class="min-h-6 truncate border-b border-gray-100 py-0.5 pl-8 pr-1 text-[10px] text-gray-400 dark:border-gray-700 dark:text-gray-500"
-                              >
-                                In group
-                              </p>
-                              {@render renderTile(c.tile, true)}
-                            {/snippet}
-                          </TileEditChrome>
+                            <GripVertical class="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          <div class="min-h-0 w-full min-w-0 flex-1 pt-7">
+                            <TileEditChrome
+                              tile={t}
+                              onEdit={onEditTile}
+                              onDelete={editLayout && onDeleteGroupChildTile
+                                ? () => onDeleteGroupChildTile(g.id, t.id)
+                                : undefined}
+                              showEditButton={editLayout}
+                            >
+                              {#snippet children()}
+                                <p
+                                  class="min-h-6 truncate border-b border-gray-100 py-0.5 pl-8 pr-1 text-[10px] text-gray-400 dark:border-gray-700 dark:text-gray-500"
+                                >
+                                  In group
+                                </p>
+                                {@render renderTile(t, true)}
+                              {/snippet}
+                            </TileEditChrome>
+                          </div>
                         </div>
-                      </div>
-                    {/each}
-                  </div>
-                {/if}
+                      {/each}
+                    </div>
+                  {:else}
+                    <div
+                      class="h-full w-full min-h-0 min-w-0 max-w-full overflow-x-auto overflow-y-hidden [scrollbar-gutter:stable_both-edges] flex min-w-0 max-w-full flex-nowrap content-start items-stretch gap-2 {isGroupEmpty
+                        ? 'min-h-28'
+                        : ''}"
+                      use:noWrapStripPortMeasure={g.id}
+                      use:dragHandleZone={{
+                        items: gItems,
+                        flipDurationMs: 0,
+                        type: SVELTE_DND_TYPE_DASHBOARD,
+                        autoAriaDisabled: true,
+                        morphDisabled: true,
+                        dropAnimationDisabled: true,
+                        dropTargetStyle: { outline: "none" },
+                      }}
+                      onconsider={handleGroupConsider(g.id)}
+                      onfinalize={handleGroupFinalize(g.id)}
+                    >
+                      {#each gItems as c (c.id)}
+                        {@const t = dndListItemToDashboardTile(c)}
+                        {@const T = effectiveColSpan(t)}
+                        {@const rs = effectiveRowSpan(t)}
+                        {@const portW = noWrapEditPortW[g.id] ?? 0}
+                        {@const wpx = G > 0 && portW > 0 ? (portW * T) / G : 0}
+                        <div
+                          class="relative box-border flex max-w-none min-w-0 shrink-0 flex-col rounded border border-dashed border-gray-200/80 bg-white/30 [min-width:2.5rem] dark:border-gray-600/50 dark:bg-gray-900/20"
+                          style="width: {wpx < 1 ? 40 : wpx}px;{rs > 1
+                            ? ` min-height: ${Math.min(12, rs) * 2.25}rem;`
+                            : ' min-height: 0;'}"
+                          data-testid="editor-tile"
+                          data-tile-id={c.id}
+                        >
+                          <button
+                            type="button"
+                            class="absolute left-1 top-1 z-20 flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded border border-gray-200 bg-white/90 text-gray-500 shadow-sm active:cursor-grabbing dark:border-gray-600 dark:bg-gray-800/90"
+                            aria-label="Drag to reorder tile in group"
+                            use:dragHandle
+                          >
+                            <GripVertical class="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          <div class="min-h-0 w-full min-w-0 flex-1 pt-7">
+                            <TileEditChrome
+                              tile={t}
+                              onEdit={onEditTile}
+                              onDelete={editLayout && onDeleteGroupChildTile
+                                ? () => onDeleteGroupChildTile(g.id, t.id)
+                                : undefined}
+                              showEditButton={editLayout}
+                            >
+                              {#snippet children()}
+                                <p
+                                  class="min-h-6 truncate border-b border-gray-100 py-0.5 pl-8 pr-1 text-[10px] text-gray-400 dark:border-gray-700 dark:text-gray-500"
+                                >
+                                  In group
+                                </p>
+                                {@render renderTile(t, true)}
+                              {/snippet}
+                            </TileEditChrome>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  {/if}
+                  {#if isGroupEmpty}
+                    <div
+                      class="pointer-events-none absolute inset-0 z-0 flex min-h-28 flex-col items-center justify-center gap-1 rounded border border-dashed border-gray-300/90 bg-gray-50/50 px-2 py-4 dark:border-gray-600 dark:bg-gray-900/30"
+                      data-testid="editor-group-empty"
+                    >
+                      <p class="text-center text-xs text-gray-500 dark:text-gray-400">
+                        Drop a plugin from the palette here, or add tiles and reorder with the grip
+                      </p>
+                    </div>
+                  {/if}
+                </div>
               </div>
             </div>
           {:else if cv}
@@ -528,33 +673,52 @@
             style={it.grid ? gridAreaStyle(it.grid) : ""}
             aria-label="Group {it.id}"
           >
-            <div
-              class="grid h-full w-full min-h-0 min-w-0 auto-rows-[minmax(0,auto)] content-start gap-2 [box-sizing:border-box] [min-width:0] [place-self:stretch] [align-self:stretch] [overflow:visible]"
-              style="grid-template-columns: repeat({groupOuterColSpan(it)}, minmax(0, 1fr));"
-            >
-              {#each it.children as tile (tile.id)}
-                <div
-                  class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col place-self-stretch"
-                  data-in-row-panel={it.showBorder !== false ? "true" : undefined}
-                  style={tile.grid
-                    ? groupGridAreaStyle(tile.grid, groupOuterColSpan(it))
-                    : groupGridColumnSpanStyle(tile, groupOuterColSpan(it))}
-                >
-                  <TileEditChrome
-                    {tile}
-                    onEdit={onEditTile}
-                    onDelete={editLayout && onDeleteGroupChildTile
-                      ? () => onDeleteGroupChildTile(it.id, tile.id)
-                      : undefined}
-                    showEditButton={editLayout}
+            {#if it.innerWrap === true}
+              {@const Gr = groupOuterColSpan(it)}
+              {@const packed = packGroupChildrenRowWrapInOrder(it.children, Gr)}
+              <div
+                class="grid h-full w-full min-h-0 min-w-0 auto-rows-[minmax(0,auto)] content-start gap-2 [box-sizing:border-box] [min-width:0] [place-self:stretch] [align-self:stretch] [overflow:visible]"
+                style="grid-template-columns: repeat({Gr}, minmax(0, 1fr));"
+              >
+                {#each packed as tile (tile.id)}
+                  <div
+                    class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col place-self-stretch"
+                    data-in-row-panel={it.showBorder !== false ? "true" : undefined}
+                    style={tile.grid
+                      ? groupGridAreaStyle(tile.grid, Gr)
+                      : groupGridColumnSpanStyle(tile, Gr)}
                   >
-                    {#snippet children()}
-                      {@render renderTile(tile, true)}
-                    {/snippet}
-                  </TileEditChrome>
-                </div>
-              {/each}
-            </div>
+                    <TileEditChrome
+                      {tile}
+                      onEdit={onEditTile}
+                      onDelete={editLayout && onDeleteGroupChildTile
+                        ? () => onDeleteGroupChildTile(it.id, tile.id)
+                        : undefined}
+                      showEditButton={editLayout}
+                    >
+                      {#snippet children()}
+                        {@render renderTile(tile, true)}
+                      {/snippet}
+                    </TileEditChrome>
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              {@const Gr = groupOuterColSpan(it)}
+              <GroupReadNoWrap
+                rowGroups={groupChildrenByRow(it.children)}
+                gCols={Gr}
+                groupId={it.id}
+                showPanelChrome={it.showBorder !== false}
+                {editLayout}
+                {onEditTile}
+                {onDeleteGroupChildTile}
+              >
+                {#snippet tileContent(t)}
+                  {@render renderTile(t, true)}
+                {/snippet}
+              </GroupReadNoWrap>
+            {/if}
           </div>
         {:else}
           <div
