@@ -2,100 +2,121 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kea-fabric.dev/specs/dashboard/layout.schema.json",
   "title": "DashboardLayout",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "version": {
-      "type": "integer",
-      "minimum": 1
+  "$defs": {
+    "gridPlacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Root and auto-wrap group tiles: 0–11 col, col+colSpan ≤ 12. Group with Auto wrap off may use a wider col strip (max ~10000); API and UI validate per context.",
+      "required": ["col", "row", "colSpan", "rowSpan"],
+      "properties": {
+        "col": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "row": { "type": "integer", "minimum": 0 },
+        "colSpan": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "rowSpan": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12,
+          "description": "Tile height in grid rows (capped for validation; dashboard rows are unbounded in the UI packer)."
+        }
+      }
     },
-    "tiles": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "pluginId", "hostControl", "displayMode"],
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "pluginId": {
-            "type": "string",
-            "minLength": 1
-          },
-          "hostControl": {
-            "type": "string",
-            "enum": ["single-panel", "tab-control", "vertical-stack", "split-grid"]
-          },
-          "displayMode": {
-            "type": "string",
-            "enum": ["compact", "full"]
-          },
-          "region": {
-            "type": "string",
-            "description": "Optional host region key (e.g. primary-grid, status-zone)"
-          },
-          "grid": {
-            "type": "object",
-            "additionalProperties": false,
-            "description": "Optional 12-column grid placement (Phase C editor). Servers should reject layouts when col + colSpan > 12.",
-            "required": ["col", "row", "colSpan", "rowSpan"],
-            "properties": {
-              "col": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 11
-              },
-              "row": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "colSpan": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 12
-              },
-              "rowSpan": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 12,
-                "description": "Tile height in grid rows; dashboard may have unlimited rows."
-              }
-            }
-          },
-          "options": {
-            "type": "object",
-            "additionalProperties": false,
-            "description": "Per-tile display options (performance plugin and shared toggles).",
-            "properties": {
-              "cpu_total": {
-                "type": "boolean",
-                "description": "When true, CPU is shown as a single aggregate gauge."
-              },
-              "network_by_adapter": {
-                "type": "boolean",
-                "description": "When true, network I/O is split per adapter."
-              },
-              "disk_by_volume": {
-                "type": "boolean",
-                "description": "When true, disk usage is split per volume/mount."
-              },
-              "display_style": {
-                "type": "string",
-                "enum": ["gauge", "percent_only"]
-              },
-              "perf_max_cols": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 12,
-                "description": "Max dashboard columns for a performance tile; extra gauges wrap inside the tile."
-              }
-            }
-          }
+    "tileOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Per-tile display options (performance plugin and shared toggles).",
+      "properties": {
+        "cpu_total": { "type": "boolean" },
+        "network_by_adapter": { "type": "boolean" },
+        "disk_by_volume": { "type": "boolean" },
+        "display_style": { "type": "string", "enum": ["gauge", "percent_only"] },
+        "perf_max_cols": { "type": "integer", "minimum": 1, "maximum": 12 }
+      }
+    },
+    "dashboardTile": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A plugin tile (v1 root, v2 root with optional kind, or v2 group child). Inner group children omit kind.",
+      "required": ["id", "pluginId", "hostControl", "displayMode"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "pluginId": { "type": "string", "minLength": 1 },
+        "hostControl": {
+          "type": "string",
+          "enum": ["single-panel", "tab-control", "vertical-stack", "split-grid"]
+        },
+        "displayMode": { "type": "string", "enum": ["compact", "full"] },
+        "region": { "type": "string" },
+        "rowPanel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "v1 only; optional row panel id for migration. v2 uses groups instead."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["tile"],
+          "description": "v2 root tiles should set kind to 'tile' (optional in some clients)."
+        },
+        "grid": { "$ref": "#/$defs/gridPlacement" },
+        "options": { "$ref": "#/$defs/tileOptions" }
+      }
+    },
+    "dashboardGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Container on the root 12-column grid; inner tiles use the same column rules inside the group.",
+      "required": ["kind", "id", "children"],
+      "properties": {
+        "kind": { "const": "group" },
+        "id": { "type": "string", "minLength": 1 },
+        "showBorder": {
+          "type": "boolean",
+          "description": "When true, draw a border on the group and hide inner tile card chrome. Default true when omitted in clients."
+        },
+        "innerWrap": {
+          "type": "boolean",
+          "description": "When true, child tiles flow in array order and wrap to a new row when a row is full, with col/row repacked on save. When false or omitted, children use a G-column grid from stored placement (no reflow)."
+        },
+        "grid": { "$ref": "#/$defs/gridPlacement" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dashboardTile" }
+        }
+      }
+    },
+    "rootLayoutItem": {
+      "oneOf": [
+        { "$ref": "#/$defs/dashboardGroup" },
+        { "$ref": "#/$defs/dashboardTile" }
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "title": "DashboardLayoutV1",
+      "required": ["version", "tiles"],
+      "properties": {
+        "version": { "type": "integer", "const": 1 },
+        "tiles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dashboardTile" }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "title": "DashboardLayoutV2",
+      "required": ["version", "items"],
+      "properties": {
+        "version": { "type": "integer", "const": 2 },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/rootLayoutItem" }
         }
       }
     }
-  },
-  "required": ["version", "tiles"]
+  ]
 }

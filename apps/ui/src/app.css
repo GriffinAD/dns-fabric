@@ -4,6 +4,29 @@
 @import "@fontsource/jetbrains-mono/latin-400.css";
 
 @import "tailwindcss";
+
+/*
+ * Flowbite’s theme references `--color-primary-*`, but Tailwind v4’s default
+ * palette does not define `primary` — only named scales (e.g. `blue`). Without
+ * a bridge, `bg-brand` / `text-fg-brand` can resolve to invalid colors (broken
+ * brand buttons, especially in light mode). Map the default shell accent to
+ * blue to match the “Default (blue)” control; `html[data-color-preset="emerald"]`
+ * below overrides for the emerald preset.
+ */
+@theme {
+  --color-primary-50: var(--color-blue-50);
+  --color-primary-100: var(--color-blue-100);
+  --color-primary-200: var(--color-blue-200);
+  --color-primary-300: var(--color-blue-300);
+  --color-primary-400: var(--color-blue-400);
+  --color-primary-500: var(--color-blue-500);
+  --color-primary-600: var(--color-blue-600);
+  --color-primary-700: var(--color-blue-700);
+  --color-primary-800: var(--color-blue-800);
+  --color-primary-900: var(--color-blue-900);
+  --color-primary-950: var(--color-blue-950);
+}
+
 @import "../node_modules/flowbite-svelte/dist/theme-selector/themes/default.css";
 
 @plugin "flowbite/plugin";
@@ -12,6 +35,249 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @source "../node_modules/flowbite-svelte/dist";
+
+/* Optional shell accent: maps Flowbite `--color-primary-*` to emerald (see lib/theme/themeStorage). */
+html[data-color-preset="emerald"] {
+  --color-primary-50: var(--color-emerald-50);
+  --color-primary-100: var(--color-emerald-100);
+  --color-primary-200: var(--color-emerald-200);
+  --color-primary-300: var(--color-emerald-300);
+  --color-primary-400: var(--color-emerald-400);
+  --color-primary-500: var(--color-emerald-500);
+  --color-primary-600: var(--color-emerald-600);
+  --color-primary-700: var(--color-emerald-700);
+  --color-primary-800: var(--color-emerald-800);
+  --color-primary-900: var(--color-emerald-900);
+  --color-primary-950: var(--color-emerald-950);
+}
+
+/*
+ * Grid: min-width 0 on *tracks* (fr) is handled by `minmax(0,1fr)` in Tailwind’s grid-cols-12.
+ * Do not set min-width:0 on the tile wrapper itself — as a flex child of the cell it can
+ * shrink the item shorter than the grid area (pools/perf tiles “don’t fill” their spans).
+ * Keep min-width:0 on inner flex rows (DashboardHost) and on non-tile dnd nodes only.
+ */
+@layer components {
+  /* svelte-dnd non-tile direct children of the drop zone only. Never apply min-width:0 to the
+   * tile grid items themselves (editor-tile or read-only wrappers) or they flex-shrink below
+   * their `grid-column` area and look "narrow" vs the column guides. */
+  [data-testid="editor-drop-zone"] > *:not([data-testid="editor-tile"]) {
+    min-width: 0;
+  }
+
+  [data-testid="editor-tile"] {
+    box-sizing: border-box;
+    min-width: auto;
+    width: 100%;
+    padding: 0;
+    justify-self: stretch;
+    align-self: stretch;
+  }
+
+  /* Read-only grid: do not `min-w-0` the shell (same shrink bug), but do not copy every
+   * editor-tile rule — inner layout already uses w-full / min-w-0 where needed. */
+  [data-dashboard-tile-grid] > * {
+    min-width: auto;
+    align-self: stretch;
+    justify-self: stretch;
+  }
+
+  /* Row panel: one border around a subgrid group; inner Flowbite cards drop their own border. */
+  [data-dashboard-tile-grid] [data-row-panel],
+  [data-dashboard-tile-grid] [data-dashboard-group] {
+    min-width: 0;
+    align-self: stretch;
+    justify-self: stretch;
+    overflow: visible;
+  }
+
+  [data-dashboard-tile-grid] [data-in-row-panel="true"] [data-scope="card"] {
+    border-width: 0 !important;
+    box-shadow: none !important;
+    --tw-shadow: 0 0 #0000 !important;
+  }
+}
+
+/*
+ * Edit layout: column guides on the same box as `grid-cols-12` (gap + padding driven
+ * by `--dashboard-gap`; see `[data-testid="editor-drop-zone"]` and `DashboardControls`).
+ * Draw at each *track start* (and the far right), not at track *ends*:
+ * left edge of col k (0-based) = k * (d-track + d-gap) — matches
+ * `grid-column: (k+1) / …`. Old guides used n·d + (n−1)·g (end of col n), which
+ * sat one gap to the *left* of the next track start and made only column 0 look aligned.
+ *
+ * Use `100cqi` (query container) so `--d-track` matches the same width the 12 `fr` columns
+ * split, not a possibly different `100%` resolution used only for this background in some cases.
+ * Parent [data-testid="editor-grid-chrome"] sets `container-type: inline-size`.
+ */
+[data-testid="editor-grid-chrome"] {
+  container-type: inline-size;
+}
+
+/*
+ * Both dashboard grids share a single user-configurable gap so adjacent tiles sit flush
+ * (default 0px) or have a uniform inset (e.g. 2px) as set via DashboardControls. Kept on
+ * the grid containers (not the host wrapper) so unrelated layout `gap-*` classes above
+ * are unaffected.
+ *
+ * `gap` spaces adjacent tiles. `padding` insets the *outer* tiles the same distance from
+ * the container edges so the effect is "N px all around every tile", not just between
+ * neighbors. Inline-only on the editor zone to preserve the huge `pb-[min(50vh,40rem)]`
+ * drop-target area at the bottom.
+ */
+[data-testid="editor-drop-zone"],
+[data-dashboard-tile-grid] {
+  gap: var(--dashboard-gap, 0px);
+}
+
+[data-dashboard-tile-grid] {
+  padding: var(--dashboard-gap, 0px);
+}
+
+[data-testid="editor-drop-zone"] {
+  padding-block-start: var(--dashboard-gap, 0px);
+  padding-inline: var(--dashboard-gap, 0px);
+}
+
+[data-testid="editor-drop-zone"] {
+  /* Column-guide ruler math follows the same gap as the grid tracks so guides land at
+   * track boundaries regardless of the user's chosen padding. Drop-zone itself now has
+   * `padding-inline: var(--d-gap)`, so the inline 12-track area is `100cqi - 2*--d-gap`
+   * wide. Guides are painted into the content box only (origin/clip) so the ruler moves
+   * with the tiles as padding changes. */
+  --d-gap: var(--dashboard-gap, 0px);
+  --d-track: calc((100cqi - 2 * var(--d-gap) - 11 * var(--d-gap)) / 12);
+  --d-cell: calc(var(--d-track) + var(--d-gap));
+  --d-ruler: rgba(0, 0, 0, 0.12);
+  /* Do not use scrollbar-gutter: stable here: it can reserve right inset so grid tracks
+     are narrower than `100%` in `--d-track`, but backgrounds still use the full width —
+     guides look fine while tiles and cards end short of the right (gap on the right). */
+  background-repeat: no-repeat;
+  background-origin: content-box;
+  background-clip: content-box;
+  background-size: 100% 100%;
+  background-image: linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(0 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(0 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(0 * var(--d-cell) + 0.5px),
+      #0000 calc(0 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(1 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(1 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(1 * var(--d-cell) + 0.5px),
+      #0000 calc(1 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(2 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(2 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(2 * var(--d-cell) + 0.5px),
+      #0000 calc(2 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(3 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(3 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(3 * var(--d-cell) + 0.5px),
+      #0000 calc(3 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(4 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(4 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(4 * var(--d-cell) + 0.5px),
+      #0000 calc(4 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(5 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(5 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(5 * var(--d-cell) + 0.5px),
+      #0000 calc(5 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(6 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(6 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(6 * var(--d-cell) + 0.5px),
+      #0000 calc(6 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(7 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(7 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(7 * var(--d-cell) + 0.5px),
+      #0000 calc(7 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(8 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(8 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(8 * var(--d-cell) + 0.5px),
+      #0000 calc(8 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(9 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(9 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(9 * var(--d-cell) + 0.5px),
+      #0000 calc(9 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(10 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(10 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(10 * var(--d-cell) + 0.5px),
+      #0000 calc(10 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(11 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(11 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(11 * var(--d-cell) + 0.5px),
+      #0000 calc(11 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(12 * var(--d-track) + 11 * var(--d-gap) - 0.5px),
+      var(--d-ruler) calc(12 * var(--d-track) + 11 * var(--d-gap) - 0.5px),
+      var(--d-ruler) calc(12 * var(--d-track) + 11 * var(--d-gap) + 0.5px),
+      #0000 calc(12 * var(--d-track) + 11 * var(--d-gap) + 0.5px),
+      #0000 100%
+    );
+}
+
+.dark [data-testid="editor-drop-zone"] {
+  --d-ruler: rgba(255, 255, 255, 0.14);
+}
 
 @layer base {
   html {
@@ -30,3 +296,4 @@
     display: none;
   }
 }
+

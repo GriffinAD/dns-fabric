@@ -1,73 +1,70 @@
 {
   "default": {
-    "version": 1,
-    "tiles": [
+    "version": 2,
+    "items": [
       {
-        "id": "tile-perf-cpu-1776890120518-i4s9j3t",
-        "pluginId": "perf.cpu",
-        "hostControl": "single-panel",
-        "displayMode": "full",
-        "region": "status-zone",
+        "kind": "group",
+        "id": "group-status",
+        "showBorder": true,
         "grid": {
           "col": 0,
           "row": 0,
-          "colSpan": 4,
+          "colSpan": 10,
           "rowSpan": 1
         },
-        "options": {
-          "cpu_total": false,
-          "display_style": "gauge"
-        }
-      },
-      {
-        "id": "tile-perf-ram-1776890120518-iagrogy",
-        "pluginId": "perf.ram",
-        "hostControl": "single-panel",
-        "displayMode": "full",
-        "region": "status-zone",
-        "grid": {
-          "col": 4,
-          "row": 0,
-          "colSpan": 2,
-          "rowSpan": 1
-        },
-        "options": {
-          "display_style": "gauge"
-        }
-      },
-      {
-        "id": "tile-perf-network-1776890120518-8wakmp6",
-        "pluginId": "perf.network",
-        "hostControl": "single-panel",
-        "displayMode": "compact",
-        "region": "status-zone",
-        "grid": {
-          "col": 6,
-          "row": 0,
-          "colSpan": 2,
-          "rowSpan": 1
-        },
-        "options": {
-          "network_by_adapter": true,
-          "display_style": "gauge"
-        }
-      },
-      {
-        "id": "tile-perf-disk-1776890120518-l2zya54",
-        "pluginId": "perf.disk",
-        "hostControl": "single-panel",
-        "displayMode": "compact",
-        "region": "status-zone",
-        "grid": {
-          "col": 8,
-          "row": 0,
-          "colSpan": 2,
-          "rowSpan": 1
-        },
-        "options": {
-          "disk_by_volume": true,
-          "display_style": "gauge"
-        }
+        "children": [
+          {
+            "id": "tile-perf-cpu",
+            "pluginId": "perf.cpu",
+            "hostControl": "single-panel",
+            "displayMode": "full",
+            "region": "status-zone",
+            "grid": {
+              "col": 0,
+              "row": 0,
+              "colSpan": 4,
+              "rowSpan": 1
+            },
+            "options": {
+              "cpu_total": false,
+              "display_style": "gauge"
+            }
+          },
+          {
+            "id": "tile-perf-net",
+            "pluginId": "perf.network",
+            "hostControl": "single-panel",
+            "displayMode": "compact",
+            "region": "status-zone",
+            "grid": {
+              "col": 4,
+              "row": 0,
+              "colSpan": 2,
+              "rowSpan": 1
+            },
+            "options": {
+              "network_by_adapter": true,
+              "display_style": "gauge"
+            }
+          },
+          {
+            "id": "tile-perf-disk",
+            "pluginId": "perf.disk",
+            "hostControl": "single-panel",
+            "displayMode": "compact",
+            "region": "status-zone",
+            "grid": {
+              "col": 6,
+              "row": 0,
+              "colSpan": 2,
+              "rowSpan": 1
+            },
+            "options": {
+              "disk_by_volume": true,
+              "display_style": "gauge"
+            }
+          }
+        ]
       },
       {
         "id": "tile-pools",
@@ -80,7 +77,8 @@
           "row": 1,
           "colSpan": 12,
           "rowSpan": 1
-        }
+        },
+        "kind": "tile"
       },
       {
         "id": "tile-discovery",
@@ -93,10 +91,11 @@
           "row": 2,
           "colSpan": 6,
           "rowSpan": 2
-        }
+        },
+        "kind": "tile"
       },
       {
-        "id": "tile-dhcp-clients-1776890120518-l1qjge0",
+        "id": "tile-clients",
         "pluginId": "dhcp.clients",
         "hostControl": "single-panel",
         "displayMode": "full",
@@ -105,21 +104,40 @@
           "col": 0,
           "row": 4,
           "colSpan": 12,
-          "rowSpan": 10
-        }
+          "rowSpan": 2
+        },
+        "kind": "tile"
       },
       {
-        "id": "tile-dhcp-reservations-1776890120518-kc3cfmp",
+        "id": "tile-reservations",
         "pluginId": "dhcp.reservations",
         "hostControl": "single-panel",
         "displayMode": "full",
         "region": "primary-grid",
         "grid": {
           "col": 0,
-          "row": 14,
+          "row": 6,
           "colSpan": 12,
-          "rowSpan": 10
-        }
+          "rowSpan": 1
+        },
+        "kind": "tile"
+      },
+      {
+        "id": "tile-perf-ram",
+        "pluginId": "perf.ram",
+        "hostControl": "single-panel",
+        "displayMode": "full",
+        "region": "status-zone",
+        "grid": {
+          "col": 0,
+          "row": 7,
+          "colSpan": 2,
+          "rowSpan": 1
+        },
+        "options": {
+          "display_style": "gauge"
+        },
+        "kind": "tile"
       }
     ]
   }

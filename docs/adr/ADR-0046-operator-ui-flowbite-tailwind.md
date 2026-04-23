@@ -103,6 +103,7 @@ CI must keep **`apps/ui`** building with **`svelte-check`**, **Vitest**, and
 - `docs/architecture/ui-design-system.md`
 - `docs/architecture/dashboard-plugin-blueprint.md`
 - ADR-0006 (Svelte 5 shell), ADR-0016 (Lucide), ADR-0017 (fonts)
+- ADR-0047 (data charts: Flowbite Svelte chart plugin + bespoke SVG)
 
 ## Change Log
 

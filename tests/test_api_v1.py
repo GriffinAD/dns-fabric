@@ -214,7 +214,75 @@ def test_layout_validate_false() -> None:
     assert is_dashboard_layout({"version": 1, "tiles": [{}]}) is False
     assert is_dashboard_layout({"version": 1, "tiles": []}) is True
     assert is_dashboard_layout({"version": 0, "tiles": []}) is False
+    assert is_dashboard_layout({"version": 2, "tiles": []}) is False
     assert is_dashboard_layout(None) is False
+
+
+def test_layout_validate_v2() -> None:
+    from kea_fabric.api.layout_validate import is_dashboard_layout
+
+    minimal_tile = {
+        "id": "a",
+        "pluginId": "dhcp.pools",
+        "hostControl": "single-panel",
+        "displayMode": "full",
+    }
+    assert is_dashboard_layout({"version": 2, "items": []}) is True
+    assert is_dashboard_layout({"version": 2, "items": [minimal_tile]}) is True
+    assert is_dashboard_layout(
+        {
+            "version": 2,
+            "items": [
+                {**minimal_tile, "kind": "tile", "grid": {"col": 0, "row": 0, "colSpan": 6, "rowSpan": 1}},
+            ],
+        }
+    )
+    assert is_dashboard_layout(
+        {
+            "version": 2,
+            "items": [
+                {
+                    "kind": "group",
+                    "id": "g-status",
+                    "showBorder": True,
+                    "grid": {"col": 0, "row": 0, "colSpan": 12, "rowSpan": 1},
+                    "children": [
+                        {
+                            "id": "c1",
+                            "pluginId": "perf.cpu",
+                            "hostControl": "single-panel",
+                            "displayMode": "compact",
+                            "grid": {"col": 0, "row": 0, "colSpan": 4, "rowSpan": 1},
+                        },
+                    ],
+                },
+            ],
+        }
+    )
+    assert is_dashboard_layout({"version": 2, "items": [{}]}) is False
+    assert is_dashboard_layout({"version": 2, "items": [{"kind": "group", "id": "x", "children": []}]}) is True
+    assert is_dashboard_layout(
+        {
+            "version": 2,
+            "items": [
+                {
+                    "kind": "group",
+                    "id": "x",
+                    "children": [
+                        {
+                            "id": "t",
+                            "pluginId": "p",
+                            "hostControl": "single-panel",
+                            "displayMode": "full",
+                            "kind": "tile",
+                        },
+                    ],
+                },
+            ],
+        }
+    )
+    assert is_dashboard_layout({"version": 1, "items": []}) is False
+    assert is_dashboard_layout({"version": 3, "items": []}) is False
 
 
 def test_list_endpoints_mock_empty(client: TestClient) -> None:
