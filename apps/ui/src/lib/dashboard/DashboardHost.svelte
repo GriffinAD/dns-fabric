@@ -39,6 +39,7 @@
   import GroupReadNoWrap from "./GroupReadNoWrap.svelte";
   import TileEditChrome from "./TileEditChrome.svelte";
   import { dedupeById } from "./layoutTree";
+  import { stripScrollportObserve } from "./stripWidth";
   import type { DashboardGroup, DashboardLayout, DashboardLayoutV2, DashboardTile, RootLayoutItem } from "./types";
 
   const DND_PLUGIN_MIME = "application/x-kea-plugin-id";
@@ -183,14 +184,9 @@
   /** Viewport width for an editor “strip” (Auto wrap off) — same math as `GroupReadNoWrap` widthPx. */
   let noWrapEditPortW = $state<Record<string, number>>({});
   function noWrapStripPortMeasure(el: HTMLDivElement, gid: string) {
-    const set = () => {
-      const w = el.clientWidth;
+    return stripScrollportObserve(el, (w) => {
       noWrapEditPortW = { ...noWrapEditPortW, [gid]: w };
-    };
-    set();
-    const ro = new ResizeObserver(set);
-    ro.observe(el);
-    return { destroy: () => ro.disconnect() };
+    });
   }
 
   /**

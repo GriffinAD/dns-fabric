@@ -2,6 +2,7 @@
   import type { Snippet } from "svelte";
   import TileEditChrome from "./TileEditChrome.svelte";
   import { effectiveColSpan } from "./gridPlacement";
+  import { stripScrollportObserve } from "./stripWidth";
   import type { DashboardTile } from "./types";
 
   let {
@@ -40,13 +41,9 @@
    * correct so the strip scrolls and inner controls do not wrap into a bogus narrow column.
    */
   function noWrapReadStripMeasure(el: HTMLDivElement) {
-    const set = () => {
-      innerW = el.clientWidth;
-    };
-    set();
-    const ro = new ResizeObserver(set);
-    ro.observe(el);
-    return { destroy: () => ro.disconnect() };
+    return stripScrollportObserve(el, (w) => {
+      innerW = w;
+    });
   }
 </script>
 
