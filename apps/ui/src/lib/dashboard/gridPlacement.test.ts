@@ -22,11 +22,11 @@ describe("packTilesToGrid", () => {
   it("matches default dashboard layout geometry", () => {
     const packed = packTilesToGrid(DEFAULT_DASHBOARD_LAYOUT.tiles);
     expect(packed[0].grid).toEqual({ col: 0, row: 0, colSpan: 1, rowSpan: 1 });
-    expect(packed[1].grid).toEqual({ col: 1, row: 0, colSpan: 2, rowSpan: 1 });
-    expect(packed[2].grid).toEqual({ col: 3, row: 0, colSpan: 1, rowSpan: 1 });
-    expect(packed[3].grid).toEqual({ col: 4, row: 0, colSpan: 1, rowSpan: 1 });
-    expect(packed[4].grid).toEqual({ col: 5, row: 0, colSpan: 3, rowSpan: 1 });
-    expect(packed[5].grid).toEqual({ col: 8, row: 0, colSpan: 3, rowSpan: 1 });
+    expect(packed[1].grid).toEqual({ col: 1, row: 0, colSpan: 1, rowSpan: 1 });
+    expect(packed[2].grid).toEqual({ col: 2, row: 0, colSpan: 1, rowSpan: 1 });
+    expect(packed[3].grid).toEqual({ col: 3, row: 0, colSpan: 1, rowSpan: 1 });
+    expect(packed[4].grid).toEqual({ col: 4, row: 0, colSpan: 3, rowSpan: 1 });
+    expect(packed[5].grid).toEqual({ col: 7, row: 0, colSpan: 3, rowSpan: 1 });
     expect(packed[6].grid).toEqual({ col: 0, row: 1, colSpan: 3, rowSpan: 1 });
     expect(packed[7].grid).toEqual({ col: 0, row: 2, colSpan: 12, rowSpan: 1 });
   });
@@ -104,7 +104,7 @@ describe("packTilesToGrid", () => {
     expect(packed[1].grid).toMatchObject({ col: 0, row: 10, colSpan: 12, rowSpan: 10 });
   });
 
-  it("normalize keeps explicit gaps when grids are complete and non-overlapping", () => {
+  it("normalize defragments a hole between two rowSpan-1 tiles on the same row", () => {
     const tiles: DashboardTile[] = [
       {
         id: "a",
@@ -123,7 +123,7 @@ describe("packTilesToGrid", () => {
     ];
     const norm = normalizeDashboardTiles(tiles);
     expect(norm[0].grid).toMatchObject({ col: 0, row: 0, colSpan: 1 });
-    expect(norm[1].grid).toMatchObject({ col: 6, row: 0, colSpan: 1 });
+    expect(norm[1].grid).toMatchObject({ col: 1, row: 0, colSpan: 1, rowSpan: 1 });
   });
 
   it("reorder preserves each tile origin when list order is unchanged", () => {
@@ -241,16 +241,16 @@ describe("tileColSpan and gridColumnSpanStyle", () => {
 
   it("emits span-only grid-column and grid-row for auto placement", () => {
     expect(gridColumnSpanStyle(base("perf.summary"))).toBe(
-      "grid-column: span 12; grid-row: span 1; min-width: 0;",
+      "grid-column: span 12; grid-row: span 1;",
     );
     expect(gridColumnSpanStyle(base("perf.cpu"))).toBe(
-      "grid-column: span 1; grid-row: span 1; min-width: 0;",
+      "grid-column: span 1; grid-row: span 1;",
     );
     expect(gridColumnSpanStyle(base("perf.ram"))).toBe(
-      "grid-column: span 1; grid-row: span 1; min-width: 0;",
+      "grid-column: span 1; grid-row: span 1;",
     );
     expect(gridColumnSpanStyle(base("dhcp.pools"))).toBe(
-      "grid-column: span 6; grid-row: span 1; min-width: 0;",
+      "grid-column: span 6; grid-row: span 1;",
     );
   });
 
@@ -262,7 +262,7 @@ describe("tileColSpan and gridColumnSpanStyle", () => {
     const packed = packTilesToGrid([t]);
     expect(packed[0].grid?.colSpan).toBe(4);
     expect(packed[0].grid?.rowSpan).toBe(2);
-    expect(gridColumnSpanStyle(t)).toBe("grid-column: span 4; grid-row: span 2; min-width: 0;");
+    expect(gridColumnSpanStyle(t)).toBe("grid-column: span 4; grid-row: span 2;");
   });
 });
 
@@ -331,6 +331,25 @@ describe("grid placement edge cases", () => {
     const b = tile("b", { col: 0, row: 0, colSpan: 12, rowSpan: 1 });
     const out = normalizeDashboardTiles([a, b]);
     expect(out[0].grid?.row !== out[1].grid?.row || out[0].grid?.col !== out[1].grid?.col).toBe(true);
+  });
+
+  it("normalizeDashboardTiles removes empty columns between rowSpan-1 tiles on the same row", () => {
+    const a = tile("a", { col: 0, row: 0, colSpan: 4, rowSpan: 1 });
+    const b = tile("b", { col: 4, row: 0, colSpan: 1, rowSpan: 1 });
+    const c = tile("c", { col: 6, row: 0, colSpan: 1, rowSpan: 1 });
+    const d = tile("d", { col: 8, row: 0, colSpan: 2, rowSpan: 1 });
+    const out = normalizeDashboardTiles([a, b, c, d]);
+    expect(out.find((t) => t.id === "b")?.grid?.col).toBe(4);
+    expect(out.find((t) => t.id === "c")?.grid?.col).toBe(5);
+    expect(out.find((t) => t.id === "d")?.grid?.col).toBe(6);
+  });
+
+  it("normalizeDashboardTiles leaves abutting same-row rowSpan-1 tiles unchanged (no internal hole)", () => {
+    const a = tile("a", { col: 0, row: 0, colSpan: 1, rowSpan: 1 });
+    const b = tile("b", { col: 1, row: 0, colSpan: 1, rowSpan: 1 });
+    const norm = normalizeDashboardTiles([a, b]);
+    expect(norm[0].grid).toMatchObject({ col: 0, row: 0, colSpan: 1 });
+    expect(norm[1].grid).toMatchObject({ col: 1, row: 0, colSpan: 1, rowSpan: 1 });
   });
 
   it("packTilesWithFixedAndFloating places tiles without grid after fixed tiles", () => {

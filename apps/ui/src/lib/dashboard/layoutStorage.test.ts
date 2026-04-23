@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_DASHBOARD_LAYOUT } from "./defaultLayout";
+import * as gridPlacement from "./gridPlacement";
 import {
   initialDashboardLayout,
   loadDashboardLayout,
@@ -224,6 +225,25 @@ describe("localStorage persistence", () => {
   it("loadDashboardLayout returns null on invalid JSON", () => {
     store["kea-fabric-dashboard-layout"] = "{";
     expect(loadDashboardLayout()).toBeNull();
+  });
+
+  it("initialDashboardLayout clears storage and re-applies default when layoutWithGrid throws", () => {
+    store = {};
+    saveDashboardLayout(DEFAULT_DASHBOARD_LAYOUT);
+    const real = gridPlacement.layoutWithGrid;
+    let calls = 0;
+    const spy = vi.spyOn(gridPlacement, "layoutWithGrid").mockImplementation((layout) => {
+      calls += 1;
+      if (calls === 1) {
+        throw new Error("forced for test");
+      }
+      return real(layout);
+    });
+    const init = initialDashboardLayout();
+    expect(calls).toBe(2);
+    expect(init.tiles.length).toBe(DEFAULT_DASHBOARD_LAYOUT.tiles.length);
+    expect(store["kea-fabric-dashboard-layout"]).toBeUndefined();
+    spy.mockRestore();
   });
 
   it("initialDashboardLayout falls back to default when nothing stored", () => {

@@ -14,7 +14,7 @@ describe("DEFAULT_DASHBOARD_LAYOUT", () => {
     }
     const ram = DEFAULT_DASHBOARD_LAYOUT.tiles.find((t) => t.pluginId === "perf.ram");
     expect(ram?.options?.display_style).toBe("gauge");
-    expect(ram?.grid?.colSpan).toBe(2);
+    expect(ram?.grid?.colSpan).toBe(1);
     const clients = DEFAULT_DASHBOARD_LAYOUT.tiles.find((t) => t.pluginId === "dhcp.clients");
     expect(clients?.grid?.colSpan).toBe(3);
     const reservations = DEFAULT_DASHBOARD_LAYOUT.tiles.find((t) => t.pluginId === "dhcp.reservations");
