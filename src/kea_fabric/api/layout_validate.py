@@ -30,7 +30,7 @@ def _valid_grid_cell(value: object) -> bool:
 
 
 def _valid_group_child_grid(value: object, *, parent_auto_wrap: bool) -> bool:
-    """Group child: auto-wrap uses the root 12 cell; no-wrap allows a long horizontal strip."""
+    """Group child: auto-wrap uses the root 12 cell; no-wrap allows a long strip."""
     if not isinstance(value, dict):
         return False
     g = value
@@ -45,7 +45,8 @@ def _valid_group_child_grid(value: object, *, parent_auto_wrap: bool) -> bool:
         return False
     if parent_auto_wrap:
         return _valid_grid_cell(value)
-    if not (1 <= cspan <= 12 and col >= 0 and col + cspan <= _GROUP_CHILD_INNER_STRIP_MAX_EXTENT):
+    strip_ok = col + cspan <= _GROUP_CHILD_INNER_STRIP_MAX_EXTENT
+    if not (1 <= cspan <= 12 and col >= 0 and strip_ok):
         return False
     if row < 0 or rspan < 1 or rspan > 12:
         return False
@@ -91,7 +92,10 @@ def _valid_tile_core(
     grid = tile.get("grid")
     if grid is not None:
         if inner and group_parent_auto_wrap is not None:
-            if not _valid_group_child_grid(grid, parent_auto_wrap=group_parent_auto_wrap):
+            ok = _valid_group_child_grid(
+                grid, parent_auto_wrap=group_parent_auto_wrap
+            )
+            if not ok:
                 return False
         else:
             if not _valid_grid_cell(grid):

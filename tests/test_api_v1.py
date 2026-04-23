@@ -233,7 +233,11 @@ def test_layout_validate_v2() -> None:
         {
             "version": 2,
             "items": [
-                {**minimal_tile, "kind": "tile", "grid": {"col": 0, "row": 0, "colSpan": 6, "rowSpan": 1}},
+                {
+                    **minimal_tile,
+                    "kind": "tile",
+                    "grid": {"col": 0, "row": 0, "colSpan": 6, "rowSpan": 1},
+                },
             ],
         }
     )
@@ -260,7 +264,12 @@ def test_layout_validate_v2() -> None:
         }
     )
     assert is_dashboard_layout({"version": 2, "items": [{}]}) is False
-    assert is_dashboard_layout({"version": 2, "items": [{"kind": "group", "id": "x", "children": []}]}) is True
+    assert (
+        is_dashboard_layout(
+            {"version": 2, "items": [{"kind": "group", "id": "x", "children": []}]}
+        )
+        is True
+    )
     assert is_dashboard_layout(
         {
             "version": 2,
@@ -346,6 +355,239 @@ def test_layout_validate_grid_bounds() -> None:
         layout_with_grid({"col": "0", "row": 0, "colSpan": 1, "rowSpan": 1}),
     )
     assert not is_dashboard_layout(layout_with_grid("nope"))
+
+
+def test_layout_validate_v2_group_child_grid_modes() -> None:
+    """Cover innerWrap True (12-cell) vs False (horizontal strip) child grid rules."""
+    from kea_fabric.api.layout_validate import is_dashboard_layout
+
+    child = {
+        "id": "c",
+        "pluginId": "p",
+        "hostControl": "single-panel",
+        "displayMode": "full",
+        "grid": {"col": 0, "row": 0, "colSpan": 6, "rowSpan": 1},
+    }
+    group_wrap = {
+        "kind": "group",
+        "id": "g",
+        "showBorder": True,
+        "innerWrap": True,
+        "children": [child],
+    }
+    assert is_dashboard_layout({"version": 2, "items": [group_wrap]})
+    bad_wrap = {
+        **group_wrap,
+        "children": [
+            {
+                **child,
+                "grid": {"col": 11, "row": 0, "colSpan": 2, "rowSpan": 1},
+            },
+        ],
+    }
+    assert is_dashboard_layout({"version": 2, "items": [bad_wrap]}) is False
+
+    strip_child = {
+        **child,
+        "grid": {"col": 0, "row": 0, "colSpan": 12, "rowSpan": 1},
+    }
+    group_strip = {
+        "kind": "group",
+        "id": "g",
+        "showBorder": True,
+        "innerWrap": False,
+        "children": [strip_child],
+    }
+    assert is_dashboard_layout({"version": 2, "items": [group_strip]})
+    past_strip = {
+        **group_strip,
+        "children": [
+            {
+                **child,
+                "grid": {"col": 9999, "row": 0, "colSpan": 12, "rowSpan": 1},
+            },
+        ],
+    }
+    assert is_dashboard_layout({"version": 2, "items": [past_strip]}) is False
+
+
+def test_layout_validate_private_helpers() -> None:
+    """Hit defensive branches not reachable via is_dashboard_layout alone."""
+    import kea_fabric.api.layout_validate as lv
+
+    assert lv._valid_group({"kind": "tile", "id": "x", "children": []}) is False
+    assert lv._valid_group_child_grid("nope", parent_auto_wrap=True) is False
+    assert lv._valid_group_child_grid({"col": 0}, parent_auto_wrap=False) is False
+    assert (
+        lv._valid_group_child_grid(
+            {"col": 0, "row": 0, "colSpan": 6, "rowSpan": 1, "extra": 1},
+            parent_auto_wrap=False,
+        )
+        is True
+    )
+    assert (
+        lv._valid_group_child_grid(
+            {"col": 0, "row": 0, "colSpan": 1, "rowSpan": 13},
+            parent_auto_wrap=False,
+        )
+        is False
+    )
+    assert (
+        lv._valid_group_child_grid(
+            {"col": 0, "row": 0, "colSpan": 6, "rowSpan": "1"},
+            parent_auto_wrap=False,
+        )
+        is False
+    )
+    assert (
+        lv._valid_tile_core(
+            {
+                "id": "a",
+                "pluginId": "p",
+                "hostControl": "single-panel",
+                "displayMode": "full",
+                "children": [],
+            },
+            inner=False,
+        )
+        is False
+    )
+    assert (
+        lv._valid_tile_core(
+            {
+                "id": "a",
+                "pluginId": "p",
+                "hostControl": "single-panel",
+                "displayMode": "full",
+                "region": 1,
+            },
+            inner=False,
+        )
+        is False
+    )
+    assert (
+        lv._valid_tile_core(
+            {
+                "id": "a",
+                "pluginId": "p",
+                "hostControl": "single-panel",
+                "displayMode": "full",
+                "rowPanel": "x" * 65,
+            },
+            inner=False,
+        )
+        is False
+    )
+    assert (
+        lv._valid_tile_core(
+            {
+                "id": "a",
+                "pluginId": "p",
+                "hostControl": "single-panel",
+                "displayMode": "full",
+                "kind": "group",
+            },
+            inner=True,
+        )
+        is False
+    )
+    assert (
+        lv._valid_tile_core(
+            {
+                "id": "a",
+                "pluginId": "p",
+                "hostControl": "single-panel",
+                "displayMode": "full",
+                "kind": "other",
+            },
+            inner=True,
+        )
+        is False
+    )
+    assert (
+        lv._valid_tile_core(
+            {
+                "id": "a",
+                "pluginId": "p",
+                "hostControl": "single-panel",
+                "displayMode": "full",
+                "kind": "blob",
+            },
+            inner=False,
+        )
+        is False
+    )
+
+
+def test_layout_validate_v2_group_shape() -> None:
+    from kea_fabric.api.layout_validate import is_dashboard_layout
+
+    assert is_dashboard_layout({"version": 2, "items": [None]}) is False
+    assert (
+        is_dashboard_layout(
+            {
+                "version": 2,
+                "items": [
+                    {
+                        "kind": "group",
+                        "id": "g",
+                        "showBorder": "yes",
+                        "children": [],
+                    },
+                ],
+            }
+        )
+        is False
+    )
+    assert (
+        is_dashboard_layout(
+            {
+                "version": 2,
+                "items": [
+                    {
+                        "kind": "group",
+                        "id": "g",
+                        "showBorder": True,
+                        "grid": {"col": 0, "row": 0, "colSpan": 13, "rowSpan": 1},
+                        "children": [],
+                    },
+                ],
+            }
+        )
+        is False
+    )
+    assert (
+        is_dashboard_layout(
+            {
+                "version": 2,
+                "items": [
+                    {
+                        "kind": "group",
+                        "id": "g",
+                        "showBorder": True,
+                        "children": "nope",
+                    },
+                ],
+            }
+        )
+        is False
+    )
+    assert (
+        is_dashboard_layout(
+            {
+                "version": 2,
+                "items": [
+                    {
+                        "kind": "group",
+                        "id": "g",
+                        "showBorder": True,
+                        "children": [None],
+                    },
+                ],
+            }
+        )
+        is False
+    )
 
 
 def test_layout_validate_host_and_plugin() -> None:
