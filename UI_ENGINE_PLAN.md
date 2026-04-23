@@ -307,8 +307,10 @@ the new components.
 
 ## Phase 5 — EventBus + shared primitives (1 day)
 
-**Goal:** SSE fan-out via a bus; shared gauge/table/metric-list primitives
-available to all plugins, not just perf.
+**Goal:** SSE fan-out via a bus; shared **atoms** and **plugin families**
+(gauge layout, table shell) so perf-style and table-style plugins share
+behaviour without copying Card+Table boilerplate. See
+[`UI_ENGINE_SPEC.md`](UI_ENGINE_SPEC.md) §5.2 Layer B/C.
 
 **Changes:**
 
@@ -321,17 +323,26 @@ available to all plugins, not just perf.
   to a general-purpose primitive. No longer only used by perf. Add a story
   / usage doc (MDX or markdown) under
   `docs/operator/` describing plugin primitive usage.
-- **P5.4** Factor `DataTableTile.svelte` (the primitive used by DHCP
-  plugins in P2.2) with typed column configuration and compact/full
-  rendering. Add Vitest for column hiding under `compact`.
-- **P5.5** Factor `MetricList.svelte` for `display_style: "percent_only"`
-  views; perf tiles consume it instead of inline markup.
+- **P5.4** Introduce **`GaugeTileLayout`** (or equivalent): title/toolbar slot,
+  responsive gauge grid / metric-list mode, alignment + `hint()` wiring —
+  refactor `PerfTile` / `PerfMetricTile` to consume it so new gauge-class
+  plugins only supply data + options.
+- **P5.5** Introduce **`TablePluginShell`**: column defs, compact column
+  hiding, optional **client pagination** first; leave hooks for **server
+  paging** (`page`, `pageSize`, `total`, `onPageChange`) and optional **edit**
+  (row actions, `onSave` / modal slot) so reservations / static leases can
+  grow into it without a second table implementation. Factor DHCP list plugins
+  to adapters on this shell.
+- **P5.6** Factor `MetricList.svelte` for `display_style: "percent_only"`
+  views; gauge family consumes it instead of perf duplicating markup.
 
 **Done when:**
 
 - `App.svelte` does not import `subscribeFabricEvents` directly.
 - `SemicircleGauge` has a consumer other than perf (even a demo storybook
   page suffices for v1).
+- **Gauge family** and **table family** each have one non-perf consumer or a
+  documented demo route so the abstractions stay honest.
 - A CI check (or lint rule) prevents plugins from importing anything under
   `lib/dashboard/` except the public `types` barrel and `eventBus`.
 

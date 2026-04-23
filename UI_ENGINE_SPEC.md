@@ -308,15 +308,70 @@ Rules:
   implementation detail. The tile component is a pure function of
   `PluginData + tile`.
 
-### 5.2 Shared primitives (`lib/components/`)
+### 5.2 Reuse layers: host chrome, atoms, and plugin families
 
-Promoted from perf-only to "anyone can use":
+Most dashboard plugins should **not** hand-roll layout from scratch. Reuse stacks
+in three layers (outside-in):
 
-- `<SemicircleGauge percent label sublabel compact mini/>` — already pure.
-- `<DataTable columns rows compact/>` — factored out of DHCP tiles.
-- `<MetricList items compact/>` — for `display_style: "percent_only"`.
-- `<TileChrome tile editing onEdit onDelete/>` — one chrome component for
-  read and edit views.
+#### Layer A — Host chrome (always)
+
+The **`PluginTileSurface`** / error boundary described in §3.5 and mounted by
+`PluginTileMount` (§4.2): theme-safe padding, loading/error framing, edit-mode
+affordances delegated from the host, **no** domain content. Plugins never draw
+their own dashboard drag handles or outer Card when the host already provides
+chrome.
+
+#### Layer B — Atoms (`lib/components/`)
+
+Small, presentation-only building blocks with **no** data fetching:
+
+- `<SemicircleGauge …/>` — arc + bands; header/label props are presentational.
+- `<MetricList …/>` — dense key/value or percent lines for compact modes.
+- Shared table cell formatters, badges, skeleton rows.
+
+Atoms are imported by **families** and by bespoke plugins; they stay free of
+`DataGateway`.
+
+#### Layer C — Plugin families (composite behaviours)
+
+Families bundle **look-and-feel and interaction patterns** that many plugins
+share. They sit **between** Layer A and a thin plugin **adapter** that only
+wires data and options.
+
+**Gauge family** (performance-style and anything “metric + optional chart readout”):
+
+- A **`GaugeTileLayout`** (name TBD) composes: optional title/subtitle row,
+  actions slot, responsive **grid of gauges** or a single hero gauge, alignment
+  with `hostContext.containerColumns` / `hint()` for grid span feedback, and
+  switches between “full gauge grid” vs “percent-only / metric list” driven by
+  `tile.displayMode` and/or plugin `options` (e.g. `display_style`).
+- **Perf plugins today** become registrations that pass column counts, labels,
+  and `dataHook` output into this layout; `SemicircleGauge` remains an atom
+  inside the family.
+
+**Table family** (DHCP lists, reservations/static leases, future inventory grids):
+
+- A **`TablePluginShell`** (name TBD) composes: Flowbite-aligned **table chrome**
+  (toolbar slot, optional caption, refresh), **column definitions** (id, header,
+  accessor, sort key, `visibleInCompact?: boolean`), **pagination** (optional:
+  client-side slice vs server-driven `page` / `page_size` / `total` props —
+  leases and large datasets should prefer server paging when the API supports
+  it), **empty / loading / error** rows, and optional **row actions** (view,
+  edit, delete).
+- **Editing** is optional and staged: read-only grid first; then **row-level
+  edit** (modal or side panel) or **inline** cells behind a capability flag /
+  manifest extension — the shell owns the UX pattern; the plugin supplies
+  validators and `onSave` / `onDelete` callbacks. Static leases / reservations
+  are the natural “heavy” consumers once write APIs exist.
+- **DHCP pools / clients / reservations** become thin adapters: `fetchPage`,
+  column map, compact column set — not three copies of Card+Table+onMount.
+
+**Custom plugins** skip Layer C and compose only Layers A + B (or third-party
+widgets inside Layer A), e.g. discovery toolbar, embed iframe, bespoke chart.
+
+**Naming / placement:** keep families under `lib/components/dashboard-families/`
+(or similar) so they are **product UI primitives**, not imports from
+`lib/dashboard/` engine internals. Only `PluginTileProps` crosses into plugins.
 
 ### 5.3 Built-in plugins as registrations
 
