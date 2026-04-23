@@ -9,6 +9,7 @@ import {
   mapRootItemsReplaceGroup,
   moveTileToParent,
   removeTileFromAnywhere,
+  dedupeById,
 } from "./layoutTree";
 import type { DashboardGroup, DashboardLayoutV1, DashboardLayoutV2, DashboardTile, RootLayoutItem } from "./types";
 import { isLayoutV2 } from "./types";
@@ -22,6 +23,13 @@ const baseTile = (id: string, plugin: string, rowPanel?: string): DashboardTile 
 });
 
 describe("layoutTree", () => {
+  it("dedupeById keeps first occurrence of duplicate ids", () => {
+    const a = { id: "x", a: 1 } as { id: string; a: number };
+    const a2 = { id: "x", a: 2 } as { id: string; a: number };
+    const b = { id: "y", a: 3 } as { id: string; a: number };
+    expect(dedupeById([a, a2, b])).toEqual([a, b]);
+  });
+
   it("ensureLayoutV2 passes through v2", () => {
     const v2: DashboardLayoutV2 = { version: 2, items: [{ kind: "tile", ...baseTile("a", "dhcp.pools") }] };
     expect(ensureLayoutV2(v2)).toBe(v2);

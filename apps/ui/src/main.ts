@@ -46,6 +46,8 @@ function showBootFailure(e: unknown) {
 void (async () => {
   try {
     const [{ mount }, { default: App }] = await Promise.all([import("svelte"), import("./App.svelte")]);
+    // `mount` appends to `target` and does not clear it — remove index.html "Loading…" first.
+    target.replaceChildren();
     mount(App, { target });
   } catch (e) {
     showBootFailure(e);

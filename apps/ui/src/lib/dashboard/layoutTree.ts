@@ -11,6 +11,21 @@ import { isLayoutV2 } from "./types";
 /** `select` / settings value: tile lives on the root dashboard grid (not inside a container). */
 export const PARENT_ID_DASHBOARD = "__dashboard__";
 
+/**
+ * Keeps the first occurrence of each `id`. Cross-zone DnD or bad saves can duplicate group
+ * children; Svelte keyed `{#each ... (id)}` then throws `each_key_duplicate`.
+ */
+export function dedupeById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const x of items) {
+    if (seen.has(x.id)) continue;
+    seen.add(x.id);
+    out.push(x);
+  }
+  return out;
+}
+
 function compareRootItemsByPosition(a: RootLayoutItem, b: RootLayoutItem): number {
   const g = (it: RootLayoutItem) => {
     if (it.kind === "group") {

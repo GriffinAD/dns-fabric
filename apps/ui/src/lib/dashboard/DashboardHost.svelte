@@ -38,6 +38,7 @@
   } from "./gridPlacement";
   import GroupReadNoWrap from "./GroupReadNoWrap.svelte";
   import TileEditChrome from "./TileEditChrome.svelte";
+  import { dedupeById } from "./layoutTree";
   import type { DashboardGroup, DashboardLayout, DashboardLayoutV2, DashboardTile, RootLayoutItem } from "./types";
 
   const DND_PLUGIN_MIME = "application/x-kea-plugin-id";
@@ -135,7 +136,7 @@
     const next: Record<string, DndListItem[]> = {};
     for (const it of layout.items) {
       if (it.kind === "group") {
-        next[it.id] = it.children.map((t) => tileToDndListItem(t));
+        next[it.id] = dedupeById(it.children).map((t) => tileToDndListItem(t));
       }
     }
     dndByGroup = next;
@@ -153,9 +154,11 @@
           return it;
         }
         const list = dndByGroup[it.id] ?? prevG.children.map((t) => tileToDndListItem(t));
-        const reordered: DashboardTile[] = list
-          .filter((c) => c.item.kind === "tile")
-          .map((c) => dndListItemToDashboardTile(c));
+        const reordered: DashboardTile[] = dedupeById(
+          list
+            .filter((c) => c.item.kind === "tile")
+            .map((c) => dndListItemToDashboardTile(c)),
+        );
         const nextChildren = applyGroupDndList(prevG, reordered);
         return { ...prevG, children: nextChildren } satisfies RootLayoutItem;
       }
@@ -201,28 +204,26 @@
     return reorderTilesPreservingSlotOrigins(g.children, reordered, false);
   }
 
-  /** Group group children by `grid.row` (ascending) with cols sorted left to right. */
-  function groupChildrenByRow(tiles: DashboardTile[]): DashboardTile[][] {
+  /**
+   * Read view, Auto wrap off: a **single** horizontal scroller, not one strip per `grid.row`.
+   * Splitting by row made multi-row grid data look like wrapped flex; order follows row then col.
+   */
+  function noWrapReadRowGroups(tiles: DashboardTile[]): DashboardTile[][] {
     if (tiles.length === 0) return [];
-    const byRow = new Map<number, DashboardTile[]>();
-    for (const t of tiles) {
-      const r = t.grid?.row ?? 0;
-      byRow.set(r, [...(byRow.get(r) ?? []), t]);
-    }
-    return [...byRow.keys()]
-      .sort((a, b) => a - b)
-      .map((k) => {
-        const row = byRow.get(k) ?? [];
-        return [...row].sort((a, b) => (a.grid?.col ?? 0) - (b.grid?.col ?? 0));
-      });
+    const unique = dedupeById(tiles);
+    const sorted = [...unique].sort(
+      (a, b) =>
+        (a.grid?.row ?? 0) - (b.grid?.row ?? 0) || (a.grid?.col ?? 0) - (b.grid?.col ?? 0),
+    );
+    return [sorted];
   }
 
   function handleRootConsider(e: CustomEvent<{ items: DndListItem[] }>) {
-    dndRoot = e.detail.items;
+    dndRoot = dedupeById(e.detail.items);
   }
 
   function handleRootFinalize(e: CustomEvent<{ items: DndListItem[] }>) {
-    dndRoot = e.detail.items;
+    dndRoot = dedupeById(e.detail.items);
     queueMicrotask(() => {
       if (!onLayoutStructureChange) return;
       commitDndToLayout();
@@ -231,14 +232,14 @@
 
   function handleGroupConsider(gid: string) {
     return (e: CustomEvent<{ items: DndListItem[] }>) => {
-      const items = e.detail.items.filter((x) => x.item.kind === "tile");
+      const items = dedupeById(e.detail.items.filter((x) => x.item.kind === "tile"));
       dndByGroup = { ...dndByGroup, [gid]: items };
     };
   }
 
   function handleGroupFinalize(gid: string) {
     return (e: CustomEvent<{ items: DndListItem[] }>) => {
-      const items = e.detail.items.filter((x) => x.item.kind === "tile");
+      const items = dedupeById(e.detail.items.filter((x) => x.item.kind === "tile"));
       dndByGroup = { ...dndByGroup, [gid]: items };
       queueMicrotask(() => {
         if (!onLayoutStructureChange) return;
@@ -675,7 +676,7 @@
           >
             {#if it.innerWrap === true}
               {@const Gr = groupOuterColSpan(it)}
-              {@const packed = packGroupChildrenRowWrapInOrder(it.children, Gr)}
+              {@const packed = packGroupChildrenRowWrapInOrder(dedupeById(it.children), Gr)}
               <div
                 class="grid h-full w-full min-h-0 min-w-0 auto-rows-[minmax(0,auto)] content-start gap-2 [box-sizing:border-box] [min-width:0] [place-self:stretch] [align-self:stretch] [overflow:visible]"
                 style="grid-template-columns: repeat({Gr}, minmax(0, 1fr));"
@@ -706,7 +707,7 @@
             {:else}
               {@const Gr = groupOuterColSpan(it)}
               <GroupReadNoWrap
-                rowGroups={groupChildrenByRow(it.children)}
+                rowGroups={noWrapReadRowGroups(it.children)}
                 gCols={Gr}
                 groupId={it.id}
                 showPanelChrome={it.showBorder !== false}

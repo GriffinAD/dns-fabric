@@ -49,13 +49,25 @@
             }
           },
           {
-            "id": "tile-4-1776969442043",
+            "id": "tile-in-group-1-1776969394613-1776969397308",
             "pluginId": "perf.cpu",
             "hostControl": "single-panel",
             "displayMode": "full",
             "grid": {
               "col": 8,
               "row": 0,
+              "colSpan": 4,
+              "rowSpan": 1
+            }
+          },
+          {
+            "id": "tile-4-1776969442043",
+            "pluginId": "perf.cpu",
+            "hostControl": "single-panel",
+            "displayMode": "full",
+            "grid": {
+              "col": 0,
+              "row": 1,
               "colSpan": 4,
               "rowSpan": 1
             }
@@ -71,7 +83,7 @@
               "display_style": "gauge"
             },
             "grid": {
-              "col": 0,
+              "col": 4,
               "row": 1,
               "colSpan": 2,
               "rowSpan": 1
@@ -83,7 +95,7 @@
             "hostControl": "single-panel",
             "displayMode": "full",
             "grid": {
-              "col": 2,
+              "col": 6,
               "row": 1,
               "colSpan": 4,
               "rowSpan": 1
@@ -114,25 +126,24 @@
               "colSpan": 1,
               "rowSpan": 1
             }
+          },
+          {
+            "id": "tile-in-group-3-1776972827576-1776973171528",
+            "pluginId": "perf.disk",
+            "hostControl": "single-panel",
+            "displayMode": "full",
+            "grid": {
+              "col": 0,
+              "row": 1,
+              "colSpan": 1,
+              "rowSpan": 1
+            }
           }
         ],
         "grid": {
           "col": 0,
           "row": 1,
           "colSpan": 12,
-          "rowSpan": 1
-        }
-      },
-      {
-        "kind": "tile",
-        "id": "tile-in-group-1-1776969394613-1776969397308",
-        "pluginId": "perf.cpu",
-        "hostControl": "single-panel",
-        "displayMode": "full",
-        "grid": {
-          "col": 0,
-          "row": 2,
-          "colSpan": 4,
           "rowSpan": 1
         }
       }
