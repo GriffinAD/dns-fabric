@@ -81,6 +81,11 @@
     liveCpuPercent != null && Number.isFinite(liveCpuPercent) ? liveCpuPercent : (summary?.cpu_percent_total ?? 0),
   );
 
+  /** RAM card has only the tile title (h3), no in-gauge header—add a blank line + rule like other split tiles. */
+  const showRamTitleBlankLine = $derived(
+    metric === "ram" && err == null && summary != null && !percentOnly,
+  );
+
   let lastGridKey = $state<string | null>(null);
 
   $effect(() => {
@@ -96,7 +101,17 @@
 <Card size="xl" class="h-full overflow-auto">
   {#snippet children()}
     <div class="p-2 sm:p-3">
-      <h3 class="mb-2 text-center text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
+      <h3
+        class="text-center text-sm font-semibold text-gray-900 dark:text-white {showRamTitleBlankLine
+          ? 'mb-0'
+          : 'mb-2'}"
+        >{title}</h3>
+      {#if showRamTitleBlankLine}
+        <div
+          class="mb-2 min-h-4 w-full border-b border-gray-200 dark:border-gray-600"
+          aria-hidden="true"
+        ></div>
+      {/if}
       {#if err}
         <p class="text-center text-xs text-red-600 dark:text-red-400" role="alert">{err}</p>
       {:else if !summary}
