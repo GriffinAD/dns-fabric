@@ -142,7 +142,10 @@
       onGridHint={onPerfTileGridHint ? (hint) => onPerfTileGridHint(tile.id, hint) : undefined}
     />
   {:else}
-    <Card size="xl">
+    <Card
+      size="xl"
+      class="box-border !max-w-full w-full min-w-0 flex-1 min-h-0 flex-col"
+    >
       {#snippet children()}
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{tile.pluginId}</h3>
         <p class="text-sm text-gray-600 dark:text-gray-400">Unknown plugin (placeholder).</p>
@@ -179,19 +182,16 @@
   {/if}
 
   {#if editLayout}
+    <!--
+      Column guide is painted on the same element as the 12× tile grid (see app.css) so it cannot
+      drift vs an absolutely positioned overlay when a vertical scrollbar changes client width.
+    -->
     <div
-      class="relative min-h-[120px] rounded-lg border-2 border-dashed border-gray-300 p-3 dark:border-gray-600"
+      class="relative min-h-[120px] overflow-hidden rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600"
       data-testid="editor-grid-chrome"
     >
-      <div class="pointer-events-none absolute inset-3 grid grid-cols-12 gap-3" aria-hidden="true">
-        {#each Array.from({ length: 12 }, (_, i) => i) as i (i)}
-          <div
-            class="min-h-[4rem] border-l border-gray-200/90 first:border-l-0 dark:border-gray-600/90"
-          ></div>
-        {/each}
-      </div>
       <div
-        class="relative z-[1] grid min-h-[120px] grid-cols-12 gap-4 auto-rows-min pb-[min(50vh,40rem)]"
+        class="relative grid min-h-[120px] w-full auto-rows-[minmax(0,auto)] grid-cols-12 content-start place-items-stretch pb-[min(50vh,40rem)]"
         data-testid="editor-drop-zone"
         role="region"
         aria-label="Dashboard tile grid"
@@ -210,7 +210,7 @@
         {#each dndItems as item (item.id)}
           {@const placed = packedById.get(item.id)}
           <div
-            class="relative min-h-0 min-w-0 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
+            class="relative flex h-full min-h-0 w-full max-w-full flex-col place-self-stretch rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
             style={placed?.grid ? gridAreaStyle(placed.grid) : gridColumnSpanStyle(item.tile)}
             data-testid="editor-tile"
             data-tile-id={item.id}
@@ -224,12 +224,13 @@
             >
               <GripVertical class="h-5 w-5" aria-hidden="true" />
             </button>
-            <div class="min-h-0 min-w-0">
+            <div class="flex min-h-0 min-w-0 w-full flex-1 flex-col">
               <TileEditChrome tile={item.tile} onEdit={onEditTile} showEditButton={editLayout}>
                 {#snippet children()}
                   {#if placed?.grid}
                     <p
-                      class="border-b border-gray-100 py-1 pl-10 pr-2 text-[10px] text-gray-400 dark:border-gray-700 dark:text-gray-500"
+                      class="min-h-6 border-b border-gray-100 truncate py-1 pl-10 pr-2 text-[10px] text-gray-400 dark:border-gray-700 dark:text-gray-500"
+                      title="Span {placed.grid.colSpan}×{placed.grid.rowSpan} · row {placed.grid.row + 1}"
                     >
                       Span {placed.grid.colSpan}×{placed.grid.rowSpan} · row {placed.grid.row + 1}
                     </p>
@@ -243,10 +244,14 @@
       </div>
     </div>
   {:else}
-    <div class="grid grid-cols-12 gap-4 auto-rows-min" aria-label="Dashboard tiles">
+    <div
+      class="grid w-full auto-rows-[minmax(0,auto)] grid-cols-12 content-start place-items-stretch"
+      data-dashboard-tile-grid
+      aria-label="Dashboard tiles"
+    >
       {#each placedTiles as tile (tile.id)}
         <div
-          class="min-h-0 min-w-0"
+          class="flex h-full min-h-0 w-full max-w-full flex-col place-self-stretch"
           style={tile.grid ? gridAreaStyle(tile.grid) : gridColumnSpanStyle(tile)}
         >
           <TileEditChrome {tile} onEdit={onEditTile} showEditButton={editLayout}>

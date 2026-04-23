@@ -18,7 +18,7 @@
   } = $props();
 </script>
 
-<div class="relative min-w-0" data-tile-id={tile.id}>
+<div class="relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col items-stretch">
   {#if onEdit && showEditButton}
     <button
       type="button"
@@ -33,3 +33,30 @@
   {/if}
   {@render children()}
 </div>
+
+<!-- Flowbite Card ships max-w-sm on the base slot; class merge can leave both max-w-sm and
+     max-w-none, and margin:auto variants can keep tiles visually inset. This :global is the
+     single place we force true full-width in the grid. -->
+<style>
+  :global([data-testid="editor-tile"] [data-scope="card"][data-part="base"]),
+  :global([data-dashboard-tile-grid] > * [data-scope="card"][data-part="base"]) {
+    box-sizing: border-box;
+    display: flex;
+    flex: 1 1 auto;
+    align-self: stretch;
+    min-width: 0;
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    margin-inline: 0 !important;
+  }
+
+  /* Table wraps content in a full-width scroller; keep it as wide as the card, not max-w-sm. */
+  :global([data-testid="editor-tile"] [data-scope="table"][data-part="wrapper"]),
+  :global([data-dashboard-tile-grid] > * [data-scope="table"][data-part="wrapper"]) {
+    display: block;
+    width: 100% !important;
+    max-width: none !important;
+  }
+</style>

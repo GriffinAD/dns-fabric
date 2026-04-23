@@ -68,7 +68,10 @@
   });
 </script>
 
-<Card size="xl" class="h-full border-0 shadow-md">
+<Card
+  size="xl"
+  class="box-border !max-w-full w-full min-w-0 flex-1 min-h-0 flex-col border-0 shadow-md"
+>
   {#snippet children()}
     <div class="flex flex-col" data-testid="discovery-toolbar">
       <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">

@@ -201,6 +201,48 @@ export function packTilesWithFixedAndFloating(tiles: DashboardTile[]): Dashboard
 }
 
 /**
+ * If any grid row (only `rowSpan === 1` tiles) has an empty column *between* two tiles, pack
+ * those tiles to start at col 0 with no gap. This fixes legacy layouts with accidental holes
+ * (e.g. col 4, 6, 8 with 1+1+2) that looked like a broken / extremely narrow first row.
+ */
+function defragmentGapsInSingleRowTiles(next: DashboardTile[]): DashboardTile[] {
+  const out: DashboardTile[] = next.map((t) => ({ ...t, grid: { ...t.grid! } }));
+  const byRow = new Map<number, number[]>();
+  out.forEach((t, idx) => {
+    const g = t.grid;
+    if (!g || g.rowSpan !== 1) return;
+    const r = g.row;
+    if (!byRow.has(r)) byRow.set(r, []);
+    byRow.get(r)!.push(idx);
+  });
+  for (const idxs of byRow.values()) {
+    if (idxs.length < 2) continue;
+    const sortedIdx = [...idxs].sort((a, b) => out[a]!.grid!.col - out[b]!.grid!.col);
+    let gap = false;
+    for (let i = 1; i < sortedIdx.length; i++) {
+      const p = out[sortedIdx[i - 1]!]!.grid!;
+      const c = out[sortedIdx[i]!]!.grid!;
+      if (p.col + p.colSpan < c.col) {
+        gap = true;
+        break;
+      }
+    }
+    if (!gap) continue;
+    let col = 0;
+    for (const idx of sortedIdx) {
+      const t = out[idx]!;
+      const g = t.grid!;
+      out[idx] = {
+        ...t,
+        grid: { ...g, col, row: g.row, colSpan: g.colSpan, rowSpan: 1 },
+      };
+      col += g.colSpan;
+    }
+  }
+  return out;
+}
+
+/**
  * Clamp explicit grids; if anything overlaps or is missing, fall back to a full pack.
  */
 export function normalizeDashboardTiles(tiles: DashboardTile[]): DashboardTile[] {
@@ -213,7 +255,7 @@ export function normalizeDashboardTiles(tiles: DashboardTile[]): DashboardTile[]
   if (placementsOverlap(geoms)) {
     return packTilesToGrid(tiles);
   }
-  return next;
+  return defragmentGapsInSingleRowTiles(next);
 }
 
 /**
@@ -284,15 +326,18 @@ export function layoutWithGrid(layout: DashboardLayout): DashboardLayout {
 
 /** Inline style for a 1-based CSS grid placement from 0-based contract coords. */
 export function gridAreaStyle(g: GridPlacement): string {
+  /* Intentionally no `min-width: 0` here: on a flex + grid child it shrinks the item below
+   * the grid area. Tracks use `minmax(0,1fr)`; overflow lives on inner flex rows in DashboardHost. */
   return `grid-column: ${g.col + 1} / span ${g.colSpan}; grid-row: ${g.row + 1} / span ${g.rowSpan};`;
 }
 
 /**
  * Host + editor: auto-place by DOM order with span only (works with svelte-dnd-action).
  * Uses packed `tile.grid` when present, else effective spans from the tile.
+ * No `min-width: 0` on the inline style (same reason as `gridAreaStyle`).
  */
 export function gridColumnSpanStyle(tile: DashboardTile): string {
   const cs = effectiveColSpan(tile);
   const rs = effectiveRowSpan(tile);
-  return `grid-column: span ${cs}; grid-row: span ${rs}; min-width: 0;`;
+  return `grid-column: span ${cs}; grid-row: span ${rs};`;
 }

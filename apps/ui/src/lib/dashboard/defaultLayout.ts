@@ -22,7 +22,7 @@ export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayout = {
       hostControl: "single-panel",
       displayMode: "compact",
       region: "status-zone",
-      grid: { col: 0, row: 0, colSpan: 2, rowSpan: 1 },
+      grid: { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
       options: {
         display_style: "gauge",
       },

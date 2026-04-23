@@ -38,7 +38,10 @@
   );
 </script>
 
-<Card size="xl" class="h-full overflow-auto">
+<Card
+  size="xl"
+  class="box-border !max-w-full w-full min-w-0 flex-1 min-h-0 flex-col overflow-auto"
+>
   {#snippet children()}
     <div class="p-4">
       <h3 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">Performance</h3>

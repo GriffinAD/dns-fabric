@@ -22,6 +22,7 @@
   import TileSettingsOverlay from "./lib/dashboard/TileSettingsOverlay.svelte";
   import type { DashboardLayout, DashboardTile } from "./lib/dashboard/types";
   import { UI_VERSION } from "./lib/uiVersion";
+  import DashboardControls from "./lib/dashboard/DashboardControls.svelte";
   import ThemeControls from "./lib/theme/ThemeControls.svelte";
   import { loadThemePreferences, resyncDocumentThemeFromStorage } from "./lib/theme/themeStorage";
 
@@ -190,6 +191,7 @@
       </div>
       <div class="flex w-full min-w-0 flex-col items-stretch gap-4 sm:max-w-md lg:w-auto lg:max-w-none lg:flex-1 lg:flex-row lg:items-end lg:justify-end">
         <ThemeControls />
+        <DashboardControls />
       </div>
     </header>
 

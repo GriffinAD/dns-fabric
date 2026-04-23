@@ -124,20 +124,32 @@ function withoutLegacyTiles(layout: DashboardLayout): DashboardLayout {
 }
 
 export function initialDashboardLayout(): DashboardLayout {
-  const stored = loadDashboardLayout();
-  let base: DashboardLayout =
-    stored != null ? withoutLegacyTiles(stored) : structuredClone(DEFAULT_DASHBOARD_LAYOUT);
-  const strippedAny =
-    stored != null && base.tiles.length !== stored.tiles.length;
+  try {
+    const stored = loadDashboardLayout();
+    let base: DashboardLayout =
+      stored != null ? withoutLegacyTiles(stored) : structuredClone(DEFAULT_DASHBOARD_LAYOUT);
+    const strippedAny =
+      stored != null && base.tiles.length !== stored.tiles.length;
 
-  if (stored != null) {
-    const merged = mergeMissingDefaultPlugins(base);
-    const mergedGrew = merged.tiles.length > base.tiles.length;
-    base = mergedGrew ? merged : base;
-    if (mergedGrew || strippedAny) {
-      saveDashboardLayout(base);
+    if (stored != null) {
+      const merged = mergeMissingDefaultPlugins(base);
+      const mergedGrew = merged.tiles.length > base.tiles.length;
+      base = mergedGrew ? merged : base;
+      if (mergedGrew || strippedAny) {
+        saveDashboardLayout(base);
+      }
     }
-  }
 
-  return layoutWithGrid(base);
+    return layoutWithGrid(base);
+  } catch (e) {
+    console.error("Failed to apply saved dashboard layout; resetting to default.", e);
+    try {
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
+    return layoutWithGrid(structuredClone(DEFAULT_DASHBOARD_LAYOUT));
+  }
 }
