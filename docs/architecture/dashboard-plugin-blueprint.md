@@ -254,3 +254,4 @@ Operators can change **display mode**, **host control** (from the plugin manifes
 | 2026-04-21 | Accepted | GriffinAD | Rolling acceptance closed; shell snapshot + e2e/registry/fonts cross-refs. |
 | 2026-04-22 | Accepted | GriffinAD | Phase C grid + edit-mode semantics: span-only editor grid, packing rules, debounced layout PUT. |
 | 2026-04-22 | Accepted | GriffinAD | Cross-ref ADR-0047 (charts: Flowbite Svelte plugin + bespoke SVG). |
+| 2026-04-23 | Accepted | GriffinAD | Working UI engine docs at repo root: `UI_ENGINE_REVIEW.md`, `UI_ENGINE_SPEC.md`, `UI_ENGINE_PLAN.md` (implementation plan; promote into this doc when execution completes). |
