@@ -10,27 +10,17 @@
   import type { PluginEntry } from "./lib/api/types";
   import { DataGateway } from "./lib/dataGateway";
   import DashboardHost from "./lib/dashboard/DashboardHost.svelte";
-  import {
-    clampGridColSpan,
-    clampGridRowSpan,
-    commitGroupInnerRowWraps,
-    groupOuterColSpan,
-    layoutWithGrid,
-    reorderRootLayoutItemsPreservingSlotOrigins,
-    tileColSpan,
-  } from "./lib/dashboard/gridPlacement";
+  import { mountDashboardGatewaySideEffects } from "./lib/dashboard/dashboardBootstrap";
+  import { handlePerfTileGridHint } from "./lib/dashboard/gridHints";
+  import { groupOuterColSpan } from "./lib/dashboard/gridPlacement";
   import {
     initialDashboardLayout,
     parseDashboardLayout,
     saveDashboardLayout,
   } from "./lib/dashboard/layoutStorage";
-  import {
-    findTileInLayout,
-    mapRootItemsReplaceGroup,
-    mapTileInLayout,
-    moveTileToParent,
-    PARENT_ID_DASHBOARD,
-  } from "./lib/dashboard/layoutTree";
+  import { normalizeLayoutStrict } from "./lib/dashboard/layoutNormalize";
+  import { findTileInLayout, PARENT_ID_DASHBOARD } from "./lib/dashboard/layoutTree";
+  import { createOverlayActions } from "./lib/dashboard/overlayActions";
   import GroupSettingsOverlay from "./lib/dashboard/GroupSettingsOverlay.svelte";
   import TileSettingsOverlay from "./lib/dashboard/TileSettingsOverlay.svelte";
   import type { DashboardGroup, DashboardLayout, DashboardLayoutV2, DashboardTile, RootLayoutItem } from "./lib/dashboard/types";
@@ -51,6 +41,38 @@
 
   const gateway = new DataGateway();
 
+  function applyLayoutStructure(
+    next: DashboardLayout,
+    opts?: { preserveRootPlacementIfComplete?: boolean; editModeOverride?: boolean },
+  ) {
+    try {
+      const editMode = opts?.editModeOverride !== undefined ? opts.editModeOverride : editorOpen;
+      const normalized = normalizeLayoutStrict(next, editMode, {
+        preserveRootPlacementIfComplete: opts?.preserveRootPlacementIfComplete,
+      });
+      loadError = null;
+      layout = normalized;
+      saveDashboardLayout(normalized);
+      void gateway.putDashboardLayout("default", normalized).catch(() => {});
+    } catch (e: unknown) {
+      loadError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  const overlay = createOverlayActions({
+    getLayout: () => layout,
+    getEditorOpen: () => editorOpen,
+    getSettingsTile: () => settingsTile,
+    getSettingsGroup: () => settingsGroup,
+    setSettingsTile: (t) => {
+      settingsTile = t;
+    },
+    setSettingsGroup: (g) => {
+      settingsGroup = g;
+    },
+    applyLayoutStructure,
+  });
+
   function syncRouteFromHash() {
     route = window.location.hash === "#/admin" ? "admin" : "home";
   }
@@ -64,55 +86,6 @@
     selectDashboardView();
     window.location.hash = "#/admin";
     route = "admin";
-  }
-
-  function openTileSettings(tile: DashboardTile) {
-    settingsGroup = null;
-    settingsTile = tile;
-  }
-
-  function closeTileSettings() {
-    settingsTile = null;
-  }
-
-  function openGroupSettings(g: DashboardGroup) {
-    settingsTile = null;
-    settingsGroup = g;
-  }
-
-  function closeGroupSettings() {
-    settingsGroup = null;
-  }
-
-  function saveGroupFromOverlay(next: DashboardGroup) {
-    const replaced = mapRootItemsReplaceGroup(layout.items, next.id, next);
-    const reordered = reorderRootLayoutItemsPreservingSlotOrigins(layout.items, replaced);
-    const withCommit = commitGroupInnerRowWraps(reordered);
-    applyLayoutStructure({ version: 2, items: withCommit }, { preserveRootPlacementIfComplete: true });
-    closeGroupSettings();
-  }
-
-  function saveTileFromOverlay(updated: DashboardTile, parentId: string) {
-    const cleaned: DashboardTile = { ...updated };
-    delete (cleaned as { rowPanel?: string }).rowPanel;
-    const found = findTileInLayout(layout.items, updated.id);
-    const prevGroup = found?.inGroup?.id ?? null;
-    const nextGroup = parentId === PARENT_ID_DASHBOARD ? null : parentId;
-    if (prevGroup === nextGroup) {
-      applyLayoutStructure({
-        version: 2,
-        items: mapTileInLayout(layout.items, updated.id, () => cleaned),
-      });
-    } else {
-      const items = moveTileToParent(
-        layout.items,
-        updated.id,
-        nextGroup === null ? { type: "root" } : { type: "group", groupId: nextGroup },
-        cleaned,
-      );
-      applyLayoutStructure({ version: 2, items });
-    }
-    closeTileSettings();
   }
 
   const settingsParentId = $derived.by(() => {
@@ -140,37 +113,8 @@
       .map((g) => ({ id: g.id, innerWrap: g.innerWrap === true })),
   );
 
-  function deleteRootLayoutItem(id: string) {
-    const next = layout.items.filter((it) => it.id !== id);
-    if (settingsGroup?.id === id) {
-      closeGroupSettings();
-    }
-    if (settingsTile && !findTileInLayout(next, settingsTile.id)) {
-      closeTileSettings();
-    }
-    applyLayoutStructure({ version: 2, items: next });
-  }
-
-  function deleteGroupChildTile(groupId: string, tileId: string) {
-    const next = layout.items.map((it) =>
-      it.kind === "group" && it.id === groupId
-        ? { ...it, children: it.children.filter((c) => c.id !== tileId) }
-        : it,
-    );
-    if (settingsTile && !findTileInLayout(next, settingsTile.id)) {
-      closeTileSettings();
-    }
-    applyLayoutStructure({ version: 2, items: next });
-  }
-
   function selectDashboardView() {
-    if (editorOpen) {
-      const committed = commitGroupInnerRowWraps(layout.items);
-      applyLayoutStructure(
-        { version: 2, items: committed },
-        { preserveRootPlacementIfComplete: true, editModeOverride: false },
-      );
-    }
+    overlay.selectDashboardView();
     editorOpen = false;
   }
 
@@ -186,45 +130,25 @@
     };
     mq.addEventListener("change", onColorScheme);
 
-    void gateway
-      .listPlugins()
-      .then((r) => {
-        plugins = r.items;
-      })
-      .catch((e: unknown) => {
-        loadError = e instanceof Error ? e.message : String(e);
-      });
-
-    void gateway
-      .getDashboardLayout("default")
-      .then((raw) => {
-        const parsed = parseDashboardLayout(raw);
-        if (!parsed) return;
-        const withGrid = layoutWithGrid(parsed);
-        if (!isLayoutV2(withGrid)) return;
-        layout = withGrid;
-        saveDashboardLayout(layout);
-      })
-      .catch(() => {
-        /* In-memory mock 404, or no API: keep initialDashboardLayout() from localStorage. */
-      });
-
-    const unsub = gateway.subscribeFabricEvents(
-      (ev) => {
-        if (ev.topic === "fabric.perf.updated") {
-          const v = ev.payload.cpu_percent_total;
-          if (typeof v === "number" && Number.isFinite(v)) {
-            liveCpuPercent = v;
-          }
-        }
+    const stopData = mountDashboardGatewaySideEffects(gateway, {
+      onPluginsLoaded: (items) => {
+        plugins = items;
       },
-      () => {},
-    );
+      onPluginListError: (message) => {
+        loadError = message;
+      },
+      onServerLayoutApplied: (nextLayout) => {
+        layout = nextLayout;
+      },
+      onLiveCpuPercent: (v) => {
+        liveCpuPercent = v;
+      },
+    });
 
     return () => {
       window.removeEventListener("hashchange", syncRouteFromHash);
       mq.removeEventListener("change", onColorScheme);
-      unsub();
+      stopData();
     };
   });
 
@@ -265,29 +189,6 @@
     applyLayoutStructure({ version: 2, items });
   }
 
-  function applyLayoutStructure(
-    next: DashboardLayout,
-    opts?: { preserveRootPlacementIfComplete?: boolean; editModeOverride?: boolean },
-  ) {
-    try {
-      const editMode = opts?.editModeOverride !== undefined ? opts.editModeOverride : editorOpen;
-      const normalized = layoutWithGrid(next, {
-        preserveRootPlacementIfComplete: opts?.preserveRootPlacementIfComplete,
-        editMode,
-      });
-      if (!isLayoutV2(normalized)) {
-        loadError = "Layout update was ignored (invalid structure).";
-        return;
-      }
-      loadError = null;
-      layout = normalized;
-      saveDashboardLayout(normalized);
-      void gateway.putDashboardLayout("default", normalized).catch(() => {});
-    } catch (e: unknown) {
-      loadError = e instanceof Error ? e.message : String(e);
-    }
-  }
-
   async function resetLayoutToBaseline() {
     loadError = null;
     try {
@@ -304,34 +205,7 @@
   }
 
   function onPerfTileGridHint(tileId: string, hint: { colSpan: number; rowSpan: number }) {
-    const wantCs = clampGridColSpan(hint.colSpan);
-    const wantRs = clampGridRowSpan(hint.rowSpan);
-    const found = findTileInLayout(layout.items, tileId);
-    if (!found) return;
-    const t = found.tile;
-    const prevCs = t.grid?.colSpan ?? tileColSpan(t);
-    const prevRs = t.grid?.rowSpan ?? 1;
-    const nextCs =
-      t.pluginId === "perf.ram"
-        ? clampGridColSpan(Math.max(prevCs, wantCs))
-        : wantCs === 1
-          ? 1
-          : clampGridColSpan(Math.max(prevCs, wantCs));
-    const nextRs = clampGridRowSpan(Math.max(prevRs, wantRs));
-    if (prevCs === nextCs && prevRs === nextRs) return;
-    const g = t.grid;
-    applyLayoutStructure({
-      version: 2,
-      items: mapTileInLayout(layout.items, tileId, (x) => ({
-        ...x,
-        grid: {
-          col: g?.col ?? 0,
-          row: g?.row ?? 0,
-          colSpan: nextCs,
-          rowSpan: nextRs,
-        },
-      })),
-    });
+    handlePerfTileGridHint(layout.items, tileId, hint, applyLayoutStructure);
   }
 </script>
 
@@ -426,10 +300,10 @@
           onAddGroup={addGroup}
           onAddTileToGroup={addTileToGroup}
           onLayoutStructureChange={applyLayoutStructure}
-          onEditTile={openTileSettings}
-          onEditGroup={openGroupSettings}
-          onDeleteRootItem={deleteRootLayoutItem}
-          onDeleteGroupChildTile={deleteGroupChildTile}
+          onEditTile={overlay.openTileSettings}
+          onEditGroup={overlay.openGroupSettings}
+          onDeleteRootItem={overlay.deleteRootLayoutItem}
+          onDeleteGroupChildTile={overlay.deleteGroupChildTile}
           onPerfTileGridHint={onPerfTileGridHint}
         />
       {/if}
@@ -443,14 +317,14 @@
             initialParentId={settingsParentId}
             containerWidthColumns={settingsTileContainerG}
             containerGroups={tileSettingsContainerMeta}
-            onClose={closeTileSettings}
-            onSave={saveTileFromOverlay}
+            onClose={overlay.closeTileSettings}
+            onSave={overlay.saveTileFromOverlay}
           />
         {/key}
       {/if}
       {#if settingsGroup}
         {#key settingsGroup.id}
-          <GroupSettingsOverlay group={settingsGroup} onClose={closeGroupSettings} onSave={saveGroupFromOverlay} />
+          <GroupSettingsOverlay group={settingsGroup} onClose={overlay.closeGroupSettings} onSave={overlay.saveGroupFromOverlay} />
         {/key}
       {/if}
     {/if}

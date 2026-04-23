@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mockRoutes } from "../mock/routes";
+import { baseFixtures } from "../mock/fixtures";
 
 /** Paths declared in specs/api/openapi.yaml (GET /api/v1 relative to server root). */
 const requiredPaths = [
@@ -17,7 +17,7 @@ const requiredPaths = [
 describe("mock API routes", () => {
   for (const path of requiredPaths) {
     it(`defines fixture for ${path}`, () => {
-      expect(mockRoutes[path]).toBeDefined();
+      expect(baseFixtures[path]).toBeDefined();
     });
   }
 });
