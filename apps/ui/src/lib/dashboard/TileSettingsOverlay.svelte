@@ -1,19 +1,18 @@
 <script lang="ts">
   import Button from "flowbite-svelte/Button.svelte";
 
-  import type { DisplayMode, HostControl, PluginEntry, TileDisplayStyle } from "../api/types";
+  import type { HostControl, PluginEntry } from "../api/types";
   import {
     clampGridColSpan,
     clampGridRowSpan,
     clampGroupChildGridPlacement,
-    clampGroupChildStripOriginCol,
     clampTileGridPlacement,
-    GRID_COLUMNS,
-    GROUP_CHILD_INNER_STRIP_MAX_EXTENT,
-    groupInnerWidthInPhysicalTracks,
     tileColSpan,
   } from "./gridPlacement";
   import { PARENT_ID_DASHBOARD } from "./layoutTree";
+  import PerfOptionsForm from "./PerfOptionsForm.svelte";
+  import TileGenericFields from "./TileGenericFields.svelte";
+  import TilePlacementForm from "./TilePlacementForm.svelte";
   import type { DashboardTile } from "./types";
 
   let {
@@ -23,16 +22,12 @@
     initialParentId,
     onClose,
     onSave,
-    /** If this tile is in a group: that container’s width in root grid columns, for mapping help text. */
     containerWidthColumns = null as number | null,
-    /** Each known container: used with `Parent` to apply root vs auto-wrap vs horizontal-strip grid rules. */
     containerGroups = [] as { id: string; innerWrap: boolean }[],
   }: {
     tile: DashboardTile;
     plugins: PluginEntry[];
-    /** Dashboard (root) plus each container group on the layout. */
     parentOptions: { value: string; label: string }[];
-    /** Where this tile currently lives (`PARENT_ID_DASHBOARD` = root grid). */
     initialParentId: string;
     onClose: () => void;
     onSave: (next: DashboardTile, parentId: string) => void;
@@ -71,7 +66,8 @@
 
   // svelte-ignore state_referenced_locally
   let draft = $state(cloneDraft(tile, initialParentId));
-  let selectedParentId = $state(PARENT_ID_DASHBOARD);
+  // svelte-ignore state_referenced_locally
+  let selectedParentId = $state(initialParentId);
 
   $effect(() => {
     draft = cloneDraft(tile, initialParentId);
@@ -135,10 +131,6 @@
   {@const ud = manifest?.ui_dashboard}
   {@const showCompact = ud?.supports_compact !== false}
   {@const showFull = ud?.supports_full !== false}
-  {@const colInputMax =
-    gridMode === "strip"
-      ? Math.max(0, GROUP_CHILD_INNER_STRIP_MAX_EXTENT - draft.grid!.colSpan)
-      : GRID_COLUMNS - draft.grid!.colSpan}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -163,400 +155,18 @@
         </p>
 
         <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-3">
-            <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-              <span>Width (columns)</span>
-              <input
-                type="number"
-                min="1"
-                max="12"
-                class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                value={draft.grid!.colSpan}
-                oninput={(e) => {
-                  const n = Number((e.currentTarget as HTMLInputElement).value);
-                  const cs = clampGridColSpan(n);
-                  const col =
-                    gridMode === "strip"
-                      ? clampGroupChildStripOriginCol(draft!.grid!.col, cs)
-                      : Math.min(draft!.grid!.col, GRID_COLUMNS - cs);
-                  draft = {
-                    ...draft!,
-                    grid: { ...draft!.grid!, colSpan: cs, col },
-                  };
-                }}
-              />
-              {#if selectedParentId !== PARENT_ID_DASHBOARD && containerWidthColumns != null}
-                <span class="text-[11px] font-normal text-gray-500 dark:text-gray-500">
-                  Same 1–12 column units as the main dashboard. Each unit is the same width as on the
-                  root grid. In a {containerWidthColumns}-wide row, a width of {draft.grid!.colSpan} uses
-                  {groupInnerWidthInPhysicalTracks(draft.grid!.colSpan, containerWidthColumns)} of
-                  {containerWidthColumns} physical tracks (capped to the container).
-                </span>
-              {/if}
-            </label>
-            <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-              <span>Height (rows)</span>
-              <input
-                type="number"
-                min="1"
-                max="12"
-                class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                value={draft.grid!.rowSpan}
-                oninput={(e) => {
-                  const n = Number((e.currentTarget as HTMLInputElement).value);
-                  draft = {
-                    ...draft!,
-                    grid: { ...draft!.grid!, rowSpan: clampGridRowSpan(n) },
-                  };
-                }}
-              />
-            </label>
-            <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-              <span
-                >{gridMode === "strip" && selectedParentId !== PARENT_ID_DASHBOARD
-                  ? "Start column (0+)"
-                  : "Column (0–11)"}</span
-              >
-              <input
-                type="number"
-                min="0"
-                max={colInputMax}
-                class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                value={draft.grid!.col}
-                oninput={(e) => {
-                  const n = Number((e.currentTarget as HTMLInputElement).value);
-                  const cs = draft!.grid!.colSpan;
-                  const col =
-                    gridMode === "strip"
-                      ? clampGroupChildStripOriginCol(Math.floor(n), cs)
-                      : Math.max(0, Math.min(GRID_COLUMNS - cs, Math.floor(n)));
-                  draft = {
-                    ...draft!,
-                    grid: { ...draft!.grid!, col },
-                  };
-                }}
-              />
-              {#if gridMode === "strip" && selectedParentId !== PARENT_ID_DASHBOARD}
-                <span class="text-[11px] font-normal text-gray-500 dark:text-gray-500">
-                  Auto wrap is off: one row can span more than 12 width-units, so the start column may be
-                  greater than 11.
-                </span>
-              {/if}
-            </label>
-            <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-              <span>Row (from top)</span>
-              <input
-                type="number"
-                min="0"
-                class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                value={draft.grid!.row}
-                oninput={(e) => {
-                  const n = Number((e.currentTarget as HTMLInputElement).value);
-                  const row = Math.max(0, Math.floor(n));
-                  draft = {
-                    ...draft!,
-                    grid: { ...draft!.grid!, row },
-                  };
-                }}
-              />
-            </label>
-          </div>
+          <TilePlacementForm
+            bind:draft
+            bind:selectedParentId
+            {gridMode}
+            {parentOptions}
+            {containerWidthColumns}
+            {reClampGridForParent}
+          />
 
-          <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-            <span>Display mode</span>
-            <select
-              class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-              value={draft.displayMode}
-              onchange={(e) => {
-                draft = { ...draft!, displayMode: (e.currentTarget as HTMLSelectElement).value as DisplayMode };
-              }}
-            >
-              {#if showCompact}
-                <option value="compact">compact</option>
-              {/if}
-              {#if showFull}
-                <option value="full">full</option>
-              {/if}
-              {#if !showCompact && !showFull}
-                <option value="compact">compact</option>
-                <option value="full">full</option>
-              {/if}
-            </select>
-          </label>
+          <TileGenericFields bind:draft {hosts} {showCompact} {showFull} />
 
-          <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-            <span>Host control</span>
-            <select
-              class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-              value={draft.hostControl}
-              onchange={(e) => {
-                draft = { ...draft!, hostControl: (e.currentTarget as HTMLSelectElement).value as HostControl };
-              }}
-            >
-              {#each hosts as hc (hc)}
-                <option value={hc}>{hc}</option>
-              {/each}
-            </select>
-          </label>
-
-          <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-            <span>Parent</span>
-            <select
-              class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-              data-testid="tile-settings-parent"
-              value={selectedParentId}
-              onchange={(e) => {
-                const v = (e.currentTarget as HTMLSelectElement).value;
-                selectedParentId = v;
-                draft = reClampGridForParent(draft!, v);
-              }}
-            >
-              {#each parentOptions as o (o.value)}
-                <option value={o.value}>{o.label}</option>
-              {/each}
-            </select>
-            <span class="text-[11px] leading-snug text-gray-500 dark:text-gray-500">
-              {PARENT_ID_DASHBOARD === selectedParentId
-                ? "Tile sits on the main dashboard grid."
-                : "Tile sits inside the selected container’s inner grid."}
-            </span>
-          </label>
-
-          {#if draft.pluginId === "perf.summary"}
-            <div class="space-y-3 border-t border-gray-200 pt-3 dark:border-gray-600">
-              <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Performance</span>
-              <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={draft.options?.cpu_total !== true}
-                  onchange={() => {
-                    const perCore = draft!.options?.cpu_total !== true;
-                    draft = { ...draft!, options: { ...draft!.options, cpu_total: perCore ? true : false } };
-                  }}
-                />
-                One gauge per core
-              </label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={Boolean(draft.options?.network_by_adapter)}
-                  onchange={() => {
-                    const cur = Boolean(draft!.options?.network_by_adapter);
-                    draft = { ...draft!, options: { ...draft!.options, network_by_adapter: !cur } };
-                  }}
-                />
-                Network per adapter
-              </label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={Boolean(draft.options?.disk_by_volume)}
-                  onchange={() => {
-                    const cur = Boolean(draft!.options?.disk_by_volume);
-                    draft = { ...draft!, options: { ...draft!.options, disk_by_volume: !cur } };
-                  }}
-                />
-                Disk per volume
-              </label>
-              <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-                <span>Perf display</span>
-                <select
-                  class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                  data-testid="tile-settings-perf-display"
-                  value={draft.options?.display_style ?? "gauge"}
-                  onchange={(e) => {
-                    const v = (e.currentTarget as HTMLSelectElement).value as TileDisplayStyle;
-                    draft = { ...draft!, options: { ...draft!.options, display_style: v } };
-                  }}
-                >
-                  <option value="gauge">Gauges</option>
-                  <option value="percent_only">Percent list</option>
-                </select>
-              </label>
-            </div>
-          {:else if draft.pluginId === "perf.cpu"}
-            <div class="space-y-3 border-t border-gray-200 pt-3 dark:border-gray-600">
-              <span class="text-xs font-medium text-gray-500 dark:text-gray-400">CPU tile</span>
-              <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={draft.options?.cpu_total !== true}
-                  onchange={() => {
-                    const perCore = draft!.options?.cpu_total !== true;
-                    draft = { ...draft!, options: { ...draft!.options, cpu_total: perCore ? true : false } };
-                  }}
-                />
-                One gauge per core
-              </label>
-              <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-                <span>Presentation</span>
-                <select
-                  class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                  value={draft.options?.display_style ?? "gauge"}
-                  onchange={(e) => {
-                    const v = (e.currentTarget as HTMLSelectElement).value as TileDisplayStyle;
-                    draft = { ...draft!, options: { ...draft!.options, display_style: v } };
-                  }}
-                >
-                  <option value="gauge">Gauges</option>
-                  <option value="percent_only">Percent list</option>
-                </select>
-              </label>
-              <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-                <span>Max gauge columns (empty = 12)</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="12"
-                  class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                  value={draft.options?.perf_max_cols != null ? String(draft.options.perf_max_cols) : ""}
-                  oninput={(e) => {
-                    const raw = (e.currentTarget as HTMLInputElement).value.trim();
-                    if (raw === "") {
-                      draft = { ...draft!, options: { ...draft!.options, perf_max_cols: undefined } };
-                      return;
-                    }
-                    const n = clampGridColSpan(Number(raw));
-                    draft = { ...draft!, options: { ...draft!.options, perf_max_cols: n } };
-                  }}
-                />
-              </label>
-            </div>
-          {:else if draft.pluginId === "perf.network"}
-            <div class="space-y-3 border-t border-gray-200 pt-3 dark:border-gray-600">
-              <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Network tile</span>
-              <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={Boolean(draft.options?.network_by_adapter)}
-                  onchange={() => {
-                    const cur = Boolean(draft!.options?.network_by_adapter);
-                    draft = { ...draft!, options: { ...draft!.options, network_by_adapter: !cur } };
-                  }}
-                />
-                One gauge per adapter
-              </label>
-              <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-                <span>Presentation</span>
-                <select
-                  class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                  value={draft.options?.display_style ?? "gauge"}
-                  onchange={(e) => {
-                    const v = (e.currentTarget as HTMLSelectElement).value as TileDisplayStyle;
-                    draft = { ...draft!, options: { ...draft!.options, display_style: v } };
-                  }}
-                >
-                  <option value="gauge">Gauges</option>
-                  <option value="percent_only">Percent list</option>
-                </select>
-              </label>
-              <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-                <span>Max gauge columns (empty = 12)</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="12"
-                  class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                  value={draft.options?.perf_max_cols != null ? String(draft.options.perf_max_cols) : ""}
-                  oninput={(e) => {
-                    const raw = (e.currentTarget as HTMLInputElement).value.trim();
-                    if (raw === "") {
-                      draft = { ...draft!, options: { ...draft!.options, perf_max_cols: undefined } };
-                      return;
-                    }
-                    const n = clampGridColSpan(Number(raw));
-                    draft = { ...draft!, options: { ...draft!.options, perf_max_cols: n } };
-                  }}
-                />
-              </label>
-            </div>
-          {:else if draft.pluginId === "perf.disk"}
-            <div class="space-y-3 border-t border-gray-200 pt-3 dark:border-gray-600">
-              <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Disk tile</span>
-              <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={Boolean(draft.options?.disk_by_volume)}
-                  onchange={() => {
-                    const cur = Boolean(draft!.options?.disk_by_volume);
-                    draft = { ...draft!, options: { ...draft!.options, disk_by_volume: !cur } };
-                  }}
-                />
-                One gauge per volume
-              </label>
-              <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-                <span>Presentation</span>
-                <select
-                  class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                  value={draft.options?.display_style ?? "gauge"}
-                  onchange={(e) => {
-                    const v = (e.currentTarget as HTMLSelectElement).value as TileDisplayStyle;
-                    draft = { ...draft!, options: { ...draft!.options, display_style: v } };
-                  }}
-                >
-                  <option value="gauge">Gauges</option>
-                  <option value="percent_only">Percent list</option>
-                </select>
-              </label>
-              <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-                <span>Max gauge columns (empty = 12)</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="12"
-                  class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                  value={draft.options?.perf_max_cols != null ? String(draft.options.perf_max_cols) : ""}
-                  oninput={(e) => {
-                    const raw = (e.currentTarget as HTMLInputElement).value.trim();
-                    if (raw === "") {
-                      draft = { ...draft!, options: { ...draft!.options, perf_max_cols: undefined } };
-                      return;
-                    }
-                    const n = clampGridColSpan(Number(raw));
-                    draft = { ...draft!, options: { ...draft!.options, perf_max_cols: n } };
-                  }}
-                />
-              </label>
-            </div>
-          {:else if draft.pluginId === "perf.ram"}
-            <div class="space-y-3 border-t border-gray-200 pt-3 dark:border-gray-600">
-              <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Memory tile</span>
-              <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-                <span>Presentation</span>
-                <select
-                  class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                  data-testid="tile-settings-perf-display"
-                  value={draft.options?.display_style ?? "gauge"}
-                  onchange={(e) => {
-                    const v = (e.currentTarget as HTMLSelectElement).value as TileDisplayStyle;
-                    draft = { ...draft!, options: { ...draft!.options, display_style: v } };
-                  }}
-                >
-                  <option value="gauge">Gauges</option>
-                  <option value="percent_only">Percent list</option>
-                </select>
-              </label>
-              <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-                <span>Max gauge columns (empty = 12)</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="12"
-                  class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                  value={draft.options?.perf_max_cols != null ? String(draft.options.perf_max_cols) : ""}
-                  oninput={(e) => {
-                    const raw = (e.currentTarget as HTMLInputElement).value.trim();
-                    if (raw === "") {
-                      draft = { ...draft!, options: { ...draft!.options, perf_max_cols: undefined } };
-                      return;
-                    }
-                    const n = clampGridColSpan(Number(raw));
-                    draft = { ...draft!, options: { ...draft!.options, perf_max_cols: n } };
-                  }}
-                />
-              </label>
-            </div>
-          {/if}
+          <PerfOptionsForm bind:draft />
         </div>
       </div>
 
@@ -564,7 +174,6 @@
         class="flex shrink-0 justify-end gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-600 dark:bg-gray-900"
       >
         <Button type="button" color="alternative" onclick={onClose}>Cancel</Button>
-        <!-- Flowbite `brand` can render low-contrast on light footers; keep Save explicit. -->
         <button
           type="button"
           class="rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
