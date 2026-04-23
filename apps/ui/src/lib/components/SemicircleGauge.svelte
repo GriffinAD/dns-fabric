@@ -6,6 +6,8 @@
 
   let {
     label = undefined,
+    /** In-card title already names the tile; show the top label row with no text (single gauge). */
+    labelBlank = false,
     percent,
     sublabel,
     compact = false,
@@ -13,6 +15,7 @@
     miniFillCell = false,
   }: {
     label?: string;
+    labelBlank?: boolean;
     percent: number;
     sublabel?: string;
     compact?: boolean;
@@ -50,18 +53,32 @@
       ? 'w-auto max-w-[4.75rem] shrink-0'
       : ''} gap-0"
   data-testid="semicircle-gauge"
-  aria-label={label ? undefined : `Gauge ${safePercent.toFixed(1)} percent`}
+  aria-label={label && !labelBlank ? undefined : `Gauge ${safePercent.toFixed(1)} percent`}
 >
-  {#if label}
-    <div class="w-full shrink-0 text-center {divider}">
-      <span
-        class="block truncate font-medium text-gray-600 dark:text-gray-300 {mini
-          ? miniFillCell
-            ? 'w-full max-w-full text-[10px] uppercase tracking-wide'
-            : 'max-w-[4.75rem] text-[10px] uppercase tracking-wide'
-          : 'max-w-[5.5rem] text-xs'}"
-        >{label}</span
-      >
+  {#if labelBlank || label}
+    <div
+      class="w-full shrink-0 text-center {divider}"
+      aria-hidden={labelBlank ? "true" : undefined}
+    >
+      {#if labelBlank}
+        <span
+          class="block min-h-[1.1em] font-medium {mini
+            ? miniFillCell
+              ? 'w-full max-w-full text-[10px] uppercase tracking-wide'
+              : 'max-w-[4.75rem] text-[10px] uppercase tracking-wide'
+            : 'max-w-[5.5rem] text-xs'}"
+          >&nbsp;</span
+        >
+      {:else}
+        <span
+          class="block truncate font-medium text-gray-600 dark:text-gray-300 {mini
+            ? miniFillCell
+              ? 'w-full max-w-full text-[10px] uppercase tracking-wide'
+              : 'max-w-[4.75rem] text-[10px] uppercase tracking-wide'
+            : 'max-w-[5.5rem] text-xs'}"
+          >{label}</span
+        >
+      {/if}
     </div>
   {/if}
   <div class="flex shrink-0 justify-center">
@@ -98,19 +115,25 @@
       >{safePercent.toFixed(1)}%</span
     >
   </div>
-  {#if sublabel}
+  {#if mini}
+    <!-- One line; fixed height so perf tiles in a row stay level (full text in title for hover) -->
+    <div class="flex h-5 w-full min-w-0 max-w-full shrink-0 items-center justify-center">
+      {#if sublabel}
+        <p
+          class="m-0 w-full min-w-0 truncate text-center text-[9px] leading-tight text-gray-500 dark:text-gray-400"
+          title={sublabel}
+        >
+          {sublabel}
+        </p>
+      {/if}
+    </div>
+  {:else if sublabel}
     <p
-      class="m-0 max-w-[6rem] self-center break-words text-center text-gray-500 dark:text-gray-400 {mini
-        ? 'text-[10px] leading-tight'
-        : 'text-xs'}"
+      class="m-0 max-w-[6rem] self-center break-words text-center text-xs text-gray-500 dark:text-gray-400"
     >
       {sublabel}
     </p>
   {:else}
-    <!-- One line: align tile height with gauges that show a sublabel -->
-    <div
-      class="w-full shrink-0 {mini ? 'min-h-[0.875rem]' : 'min-h-4'}"
-      aria-hidden="true"
-    ></div>
+    <div class="w-full shrink-0 min-h-4" aria-hidden="true"></div>
   {/if}
 </div>

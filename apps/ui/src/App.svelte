@@ -91,6 +91,18 @@
         loadError = e instanceof Error ? e.message : String(e);
       });
 
+    void gateway
+      .getDashboardLayout("default")
+      .then((raw) => {
+        const parsed = parseDashboardLayout(raw);
+        if (!parsed) return;
+        layout = layoutWithGrid(parsed);
+        saveDashboardLayout(layout);
+      })
+      .catch(() => {
+        /* In-memory mock 404, or no API: keep initialDashboardLayout() from localStorage. */
+      });
+
     const unsub = gateway.subscribeFabricEvents(
       (ev) => {
         if (ev.topic === "fabric.perf.updated") {
@@ -150,13 +162,16 @@
   }
 
   function onPerfTileGridHint(tileId: string, hint: { colSpan: number; rowSpan: number }) {
-    const cs = clampGridColSpan(hint.colSpan);
-    const rs = clampGridRowSpan(hint.rowSpan);
+    const wantCs = clampGridColSpan(hint.colSpan);
+    const wantRs = clampGridRowSpan(hint.rowSpan);
     const t = layout.tiles.find((x) => x.id === tileId);
     if (!t) return;
     const prevCs = t.grid?.colSpan ?? tileColSpan(t);
     const prevRs = t.grid?.rowSpan ?? 1;
-    if (prevCs === cs && prevRs === rs) return;
+    /* Hint is “content would like this many columns”; do not *shrink* a saved (or user) colSpan. */
+    const nextCs = clampGridColSpan(Math.max(prevCs, wantCs));
+    const nextRs = clampGridRowSpan(Math.max(prevRs, wantRs));
+    if (prevCs === nextCs && prevRs === nextRs) return;
     const g = t.grid;
     applyLayoutStructure({
       ...layout,
@@ -167,8 +182,8 @@
               grid: {
                 col: g?.col ?? 0,
                 row: g?.row ?? 0,
-                colSpan: cs,
-                rowSpan: rs,
+                colSpan: nextCs,
+                rowSpan: nextRs,
               },
             }
           : x,
