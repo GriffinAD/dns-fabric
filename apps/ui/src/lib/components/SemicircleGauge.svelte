@@ -64,9 +64,14 @@
       >
     </div>
   {:else if mini}
-    <!-- e.g. RAM: card has h3 but no in-gauge label; reserve same top band as labeled mini gauges -->
-    <div class="w-full shrink-0 {divider}" aria-hidden="true">
-      <div class="h-[0.7rem] w-full"></div>
+    <!-- e.g. RAM: same first row + line-under as labeled gauges, with blank text (invisible) -->
+    <div class="w-full shrink-0 text-center {divider}" aria-hidden="true">
+      <span
+        class="invisible block truncate font-medium {miniFillCell
+          ? 'w-full max-w-full text-[10px] uppercase tracking-wide'
+          : 'max-w-[4.75rem] text-[10px] uppercase tracking-wide'}"
+        >&#xA0;</span
+      >
     </div>
   {/if}
   <div class="flex shrink-0 justify-center">
