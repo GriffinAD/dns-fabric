@@ -4,6 +4,7 @@
 
   import type { PerfSummaryResponse } from "../api/types";
   import SemicircleGauge from "../components/SemicircleGauge.svelte";
+  import { columnSpansOn } from "../dashboard/gaugeGridLayout";
   import { clampGridColSpan, GRID_COLUMNS } from "../dashboard/gridPlacement";
   import { DataGateway } from "../dataGateway";
   import type { DashboardTile } from "../dashboard/types";
@@ -14,6 +15,8 @@
     metric,
     liveCpuPercent,
     onGridHint,
+    /** Parent container width in dashboard columns (e.g. group colSpan=8). */
+    alignColumnCount = 12,
   }: {
     gateway: DataGateway;
     tile: DashboardTile;
@@ -21,6 +24,7 @@
     liveCpuPercent?: number | null;
     /** Dashboard grid: colSpan matches intratile gauge column count (capped; single-gauge = 1×1). */
     onGridHint?: (hint: { colSpan: number; rowSpan: number }) => void;
+    alignColumnCount?: number;
   } = $props();
 
   let summary = $state<PerfSummaryResponse | null>(null);
@@ -31,7 +35,8 @@
   );
 
   const opts = $derived(tile.options);
-  const cpuTotal = $derived(opts?.cpu_total !== false);
+  /** `cpu_total === true` = one combined gauge; omitted/false = one mini gauge per core (default). */
+  const cpuTotal = $derived(opts?.cpu_total === true);
   const byAdapter = $derived(Boolean(opts?.network_by_adapter));
   const byVolume = $derived(Boolean(opts?.disk_by_volume));
   const percentOnly = $derived(opts?.display_style === "percent_only");
@@ -59,12 +64,37 @@
     return { gaugeCols, dashboardCols, effectKey: `i${gaugeCols}-d${dashboardCols}` as const };
   });
 
-  const gaugeGridStyle = $derived(
-    `grid-template-columns: repeat(${layoutMeta.gaugeCols}, minmax(0, 1fr)); justify-items: center; align-items: stretch;`,
-  );
-
-  /** Wide intratile grid: stretch gauges into cells when multiple minis sit in one row. */
   const stretchGaugesToCells = $derived(layoutMeta.gaugeCols > 1);
+
+  /** Actual number of semicircles shown (can exceed `layoutMeta.gaugeCols` when many CPU cores; dashboard hint is capped at 12). */
+  const nGaugeCells = $derived.by(() => {
+    if (!summary || percentOnly) return 0;
+    if (metric === "cpu") {
+      return cpuTotal ? 1 : Math.max(1, summary.cpu_core_percent?.length ?? 1);
+    }
+    if (metric === "ram") return 1;
+    if (metric === "network") {
+      return byAdapter && summary.network_adapters?.length ? summary.network_adapters.length : 1;
+    }
+    return byVolume && summary.disk_volumes?.length ? summary.disk_volumes.length : 1;
+  });
+
+  const layoutTracks = $derived(
+    Math.max(1, Math.min(GRID_COLUMNS, Math.floor(alignColumnCount || 12))),
+  );
+  const intratileColSpans = $derived(
+    nGaugeCells <= 0 ? null : columnSpansOn(layoutTracks, nGaugeCells),
+  );
+  const gaugeFrFallback = $derived(
+    intratileColSpans == null
+      ? `grid-template-columns: repeat(${Math.max(1, nGaugeCells)}, minmax(0, 1fr)); justify-items: center; align-items: stretch;`
+      : null,
+  );
+  const alignGridStyle = $derived(
+    intratileColSpans == null
+      ? gaugeFrFallback
+      : `grid-template-columns: repeat(${layoutTracks}, minmax(0, 1fr)); column-gap: 0; justify-items: stretch; align-items: stretch;`,
+  );
 
   onMount(() => {
     void gateway
@@ -95,11 +125,13 @@
 
 <Card
   size="xl"
-  class="box-border h-full !max-w-full w-full min-w-0 flex-1 min-h-0 flex-col overflow-auto"
+  class="box-border h-full !max-w-full w-full min-w-0 flex-1 min-h-0 flex-col overflow-x-hidden overflow-y-auto"
 >
   {#snippet children()}
-    <div class="flex h-full min-h-0 w-full flex-col p-2 sm:p-3">
-      <h3 class="mb-2 shrink-0 text-center text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
+    <div class="flex h-full min-h-0 w-full min-w-0 flex-col px-1.5 py-1 sm:px-2 sm:py-1.5">
+      <h3 class="mb-0.5 shrink-0 text-center text-xs font-semibold leading-tight text-gray-900 dark:text-white">
+        {title}
+      </h3>
       {#if err}
         <p
           class="flex flex-1 items-center justify-center text-center text-xs text-red-600 dark:text-red-400"
@@ -139,97 +171,146 @@
         </div>
       {:else}
         <div
-          class="flex min-h-0 w-full flex-1 flex-col items-center justify-center"
+          class="flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center"
           data-testid="perf-metric-body"
         >
           {#if metric === "cpu"}
             <div
-              class="grid w-full max-w-full gap-x-1 gap-y-2"
-              style={gaugeGridStyle}
+              class="grid w-full min-w-0 max-w-full [row-gap:0.25rem]"
+              style={alignGridStyle}
               data-testid="perf-metric-gauges"
             >
               {#if cpuTotal}
-                <SemicircleGauge
-                  labelBlank
-                  percent={cpuDisplay}
-                  mini
-                  miniFillCell={stretchGaugesToCells}
-                />
-              {:else}
-                {#each summary.cpu_core_percent ?? [cpuDisplay] as pct, i (i)}
+                <div
+                  class="min-w-0"
+                  style:grid-column={intratileColSpans?.[0] == null
+                    ? undefined
+                    : `span ${intratileColSpans[0]!}`}
+                >
                   <SemicircleGauge
-                    label="Core {i}"
-                    percent={pct}
+                    labelBlank
+                    percent={cpuDisplay}
                     mini
                     miniFillCell={stretchGaugesToCells}
                   />
+                </div>
+              {:else}
+                {#each summary.cpu_core_percent ?? [cpuDisplay] as pct, i (i)}
+                  <div
+                    class="min-w-0"
+                    style:grid-column={intratileColSpans?.[i] == null
+                      ? undefined
+                      : `span ${intratileColSpans[i]!}`}
+                  >
+                    <SemicircleGauge
+                      label="Core {i}"
+                      percent={pct}
+                      mini
+                      miniFillCell={stretchGaugesToCells}
+                    />
+                  </div>
                 {/each}
               {/if}
             </div>
           {:else if metric === "ram"}
             <div
-              class="grid w-full max-w-full justify-items-center"
-              style={gaugeGridStyle}
+              class="grid w-full min-w-0 max-w-full justify-items-stretch"
+              style={alignGridStyle}
               data-testid="perf-metric-gauges"
             >
-              <SemicircleGauge
-                labelBlank
-                percent={summary.memory_used_percent}
-                mini
-                miniFillCell={stretchGaugesToCells}
-                sublabel={summary.memory_total_bytes != null && summary.memory_used_bytes != null
-                  ? `${(summary.memory_used_bytes / 1e9).toFixed(1)} / ${(summary.memory_total_bytes / 1e9).toFixed(1)} GiB`
-                  : undefined}
-              />
+              <div
+                class="min-w-0"
+                style:grid-column={intratileColSpans?.[0] == null
+                  ? undefined
+                  : `span ${intratileColSpans[0]!}`}
+              >
+                <SemicircleGauge
+                  labelBlank
+                  percent={summary.memory_used_percent}
+                  mini
+                  miniFillCell={stretchGaugesToCells}
+                  sublabel={summary.memory_total_bytes != null && summary.memory_used_bytes != null
+                    ? `${(summary.memory_used_bytes / 1e9).toFixed(1)} / ${(summary.memory_total_bytes / 1e9).toFixed(1)} GiB`
+                    : undefined}
+                />
+              </div>
             </div>
           {:else if metric === "network"}
             <div
-              class="grid w-full max-w-full gap-x-1 gap-y-2"
-              style={gaugeGridStyle}
+              class="grid w-full min-w-0 max-w-full [row-gap:0.25rem]"
+              style={alignGridStyle}
               data-testid="perf-metric-gauges"
             >
               {#if byAdapter && summary.network_adapters?.length}
-                {#each summary.network_adapters as a (a.name)}
-                  <SemicircleGauge
-                    label={a.name}
-                    percent={Math.min(100, (a.in_mbps + a.out_mbps) * 2)}
-                    mini
-                    miniFillCell={stretchGaugesToCells}
-                    sublabel={`↓${a.in_mbps.toFixed(1)} ↑${a.out_mbps.toFixed(1)}`}
-                  />
+                {#each summary.network_adapters as a, i (a.name)}
+                  <div
+                    class="min-w-0"
+                    style:grid-column={intratileColSpans?.[i] == null
+                      ? undefined
+                      : `span ${intratileColSpans[i]!}`}
+                  >
+                    <SemicircleGauge
+                      label={a.name}
+                      percent={Math.min(100, (a.in_mbps + a.out_mbps) * 2)}
+                      mini
+                      miniFillCell={stretchGaugesToCells}
+                      sublabel={`↓${a.in_mbps.toFixed(1)} ↑${a.out_mbps.toFixed(1)}`}
+                    />
+                  </div>
                 {/each}
               {:else}
-                <SemicircleGauge
-                  labelBlank
-                  percent={Math.min(100, ((summary.network_in_mbps ?? 0) + (summary.network_out_mbps ?? 0)) * 2)}
-                  mini
-                  miniFillCell={stretchGaugesToCells}
-                  sublabel={`↑${(summary.network_out_mbps ?? 0).toFixed(2)} ↓${(summary.network_in_mbps ?? 0).toFixed(2)} Mb/s`}
-                />
+                <div
+                  class="min-w-0"
+                  style:grid-column={intratileColSpans?.[0] == null
+                    ? undefined
+                    : `span ${intratileColSpans[0]!}`}
+                >
+                  <SemicircleGauge
+                    labelBlank
+                    percent={Math.min(100, ((summary.network_in_mbps ?? 0) + (summary.network_out_mbps ?? 0)) * 2)}
+                    mini
+                    miniFillCell={stretchGaugesToCells}
+                    sublabel={`↑${(summary.network_out_mbps ?? 0).toFixed(2)} ↓${(summary.network_in_mbps ?? 0).toFixed(2)} Mb/s`}
+                  />
+                </div>
               {/if}
             </div>
           {:else}
             <div
-              class="grid w-full max-w-full gap-x-1 gap-y-2"
-              style={gaugeGridStyle}
+              class="grid w-full min-w-0 max-w-full [row-gap:0.25rem]"
+              style={alignGridStyle}
               data-testid="perf-metric-gauges"
             >
               {#if byVolume && summary.disk_volumes?.length}
                 {#each summary.disk_volumes as v, i (`${i}-${v.label}`)}
+                  <div
+                    class="min-w-0"
+                    style:grid-column={intratileColSpans?.[i] == null
+                      ? undefined
+                      : `span ${intratileColSpans[i]!}`}
+                  >
+                    <SemicircleGauge
+                      label={v.label}
+                      percent={v.used_percent}
+                      mini
+                      miniFillCell={stretchGaugesToCells}
+                    />
+                  </div>
+                {/each}
+              {:else}
+                <div
+                  class="min-w-0"
+                  style:grid-column={intratileColSpans?.[0] == null
+                    ? undefined
+                    : `span ${intratileColSpans[0]!}`}
+                >
                   <SemicircleGauge
-                    label={v.label}
-                    percent={v.used_percent}
+                    labelBlank
+                    percent={summary.disk_used_percent ?? 0}
                     mini
                     miniFillCell={stretchGaugesToCells}
                   />
-                {/each}
-              {:else}
-                <SemicircleGauge
-                  labelBlank
-                  percent={summary.disk_used_percent ?? 0}
-                  mini
-                  miniFillCell={stretchGaugesToCells}
-                />
+                </div>
               {/if}
             </div>
           {/if}

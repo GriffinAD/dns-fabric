@@ -412,6 +412,8 @@ components:
         rowSpan:
           type: integer
           minimum: 1
+          maximum: 12
+          description: Tile height in grid rows (same cap as layout.schema.json).
     DashboardTile:
       type: object
       additionalProperties: false
@@ -430,22 +432,78 @@ components:
         region:
           type: string
           nullable: true
+        rowPanel:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: v1 only; optional row panel id. v2 uses DashboardGroup instead.
+        kind:
+          type: string
+          enum: [tile]
+          description: v2 root tiles may set kind to `tile` (optional; same fields as inner tiles).
         grid:
           $ref: "#/components/schemas/GridPlacement"
         options:
           $ref: "#/components/schemas/TileOptions"
-    DashboardLayout:
+    DashboardGroup:
+      type: object
+      additionalProperties: false
+      required: [kind, id, children]
+      description: >
+        Root-level container on the 12-column grid; inner tiles share the same column contract
+        as the main dashboard (see specs/dashboard/layout.schema.json).
+      properties:
+        kind:
+          type: string
+          enum: [group]
+        id:
+          type: string
+          minLength: 1
+        showBorder:
+          type: boolean
+          description: When true, draw a border on the group and hide inner tile card chrome. Default true if omitted.
+        grid:
+          $ref: "#/components/schemas/GridPlacement"
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardTile"
+    RootLayoutItem:
+      oneOf:
+        - $ref: "#/components/schemas/DashboardGroup"
+        - $ref: "#/components/schemas/DashboardTile"
+      description: v2 root row is an array of groups and/or tiles (kind discriminates group vs tile).
+    DashboardLayoutV1:
       type: object
       additionalProperties: false
       required: [version, tiles]
       properties:
         version:
           type: integer
-          minimum: 1
+          enum: [1]
         tiles:
           type: array
           items:
             $ref: "#/components/schemas/DashboardTile"
+    DashboardLayoutV2:
+      type: object
+      additionalProperties: false
+      required: [version, items]
+      properties:
+        version:
+          type: integer
+          enum: [2]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RootLayoutItem"
+    DashboardLayout:
+      oneOf:
+        - $ref: "#/components/schemas/DashboardLayoutV1"
+        - $ref: "#/components/schemas/DashboardLayoutV2"
+      description: >
+        v1 is a flat `tiles` array. v2 uses `items` with nested `group` containers and optional
+        `kind` on root tiles. Validated server-side against specs/dashboard/layout.schema.json.
     DiscoveryPauseRequest:
       type: object
       additionalProperties: false

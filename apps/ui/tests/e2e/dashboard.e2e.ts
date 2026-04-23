@@ -69,6 +69,38 @@ test("layout editor persists perf display style after leaving edit mode", async 
   await expect(page.getByText(/^RAM:/)).toBeVisible();
 });
 
+test("tile settings parent: move tile from container to dashboard root", async ({ page }) => {
+  /* App GETs server layout on mount and overwrites localStorage; keep the seeded fixture authoritative. */
+  await page.route("**/api/v1/dashboards/*/layout", (route) => {
+    if (route.request().method() === "GET") {
+      return route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
+    }
+    return route.continue();
+  });
+  await page.goto("/");
+  await expect(page.getByTestId("dashboard-host")).toBeVisible();
+  await page.getByRole("button", { name: "Edit layout", exact: true }).click();
+  await expect(page.getByTestId("editor-drop-zone")).toBeVisible();
+  await page
+    .locator('[data-testid="editor-tile"][data-tile-id="tile-perf-ram"]')
+    .getByTestId("tile-edit-button")
+    .click();
+  await expect(page.getByTestId("tile-settings-overlay")).toBeVisible();
+  const parent = page.getByTestId("tile-settings-parent");
+  await expect(parent).toBeVisible();
+  await expect(parent).toHaveValue("group-status");
+  await parent.selectOption("__dashboard__");
+  await page.getByTestId("tile-settings-overlay").getByRole("button", { name: "Save" }).click();
+  await expect(page.getByTestId("tile-settings-overlay")).not.toBeVisible();
+  const raw = await page.evaluate(() => localStorage.getItem("kea-fabric-dashboard-layout"));
+  expect(raw).toBeTruthy();
+  const stored = JSON.parse(raw!) as { version: number; items: { kind: string; id: string; children?: { id: string }[]; pluginId?: string }[] };
+  expect(stored.version).toBe(2);
+  expect(stored.items.some((i) => i.kind === "tile" && i.id === "tile-perf-ram")).toBe(true);
+  const groupStatus = stored.items.find((i) => i.kind === "group" && i.id === "group-status");
+  expect(groupStatus?.children?.some((c) => c.id === "tile-perf-ram")).toBe(false);
+});
+
 test("layout editor lists tiles in layout order (DnD targets)", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Edit layout" }).click();

@@ -8,12 +8,14 @@
     tile,
     liveCpuPercent,
     onGridHint,
+    alignColumnCount = 12,
   }: {
     gateway: DataGateway;
     tile: DashboardTile;
     liveCpuPercent?: number | null;
     onGridHint?: (hint: { colSpan: number; rowSpan: number }) => void;
+    alignColumnCount?: number;
   } = $props();
 </script>
 
-<PerfMetricTile {gateway} {tile} metric="cpu" {liveCpuPercent} {onGridHint} />
+<PerfMetricTile {gateway} {tile} metric="cpu" {liveCpuPercent} {onGridHint} {alignColumnCount} />

@@ -81,6 +81,21 @@ html[data-color-preset="emerald"] {
     align-self: stretch;
     justify-self: stretch;
   }
+
+  /* Row panel: one border around a subgrid group; inner Flowbite cards drop their own border. */
+  [data-dashboard-tile-grid] [data-row-panel],
+  [data-dashboard-tile-grid] [data-dashboard-group] {
+    min-width: 0;
+    align-self: stretch;
+    justify-self: stretch;
+    overflow: visible;
+  }
+
+  [data-dashboard-tile-grid] [data-in-row-panel="true"] [data-scope="card"] {
+    border-width: 0 !important;
+    box-shadow: none !important;
+    --tw-shadow: 0 0 #0000 !important;
+  }
 }
 
 /*

@@ -7,11 +7,13 @@
     gateway,
     tile,
     onGridHint,
+    alignColumnCount = 12,
   }: {
     gateway: DataGateway;
     tile: DashboardTile;
     onGridHint?: (hint: { colSpan: number; rowSpan: number }) => void;
+    alignColumnCount?: number;
   } = $props();
 </script>
 
-<PerfMetricTile {gateway} {tile} metric="network" {onGridHint} />
+<PerfMetricTile {gateway} {tile} metric="network" {onGridHint} {alignColumnCount} />

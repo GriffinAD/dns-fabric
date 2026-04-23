@@ -7,6 +7,7 @@ export type DisplayMode = "compact" | "full";
 export type TileDisplayStyle = "gauge" | "percent_only";
 
 export interface TileOptions {
+  /** `true` = one combined CPU gauge; omitted/false = one gauge per core (default). */
   cpu_total?: boolean;
   network_by_adapter?: boolean;
   disk_by_volume?: boolean;

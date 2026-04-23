@@ -23,10 +23,10 @@ describe("dashboardSettings", () => {
       expect(clampGapPx(2.4)).toBe(2);
     });
 
-    it("returns default for non-finite values", () => {
-      expect(clampGapPx(Number.NaN)).toBe(0);
-      expect(clampGapPx(Number.POSITIVE_INFINITY)).toBe(0);
-      expect(clampGapPx(Number.NEGATIVE_INFINITY)).toBe(0);
+    it("returns default gap (8px) for non-finite values", () => {
+      expect(clampGapPx(Number.NaN)).toBe(8);
+      expect(clampGapPx(Number.POSITIVE_INFINITY)).toBe(8);
+      expect(clampGapPx(Number.NEGATIVE_INFINITY)).toBe(8);
     });
   });
 
@@ -69,7 +69,7 @@ describe("dashboardSettings localStorage", () => {
   });
 
   it("returns defaults when empty", () => {
-    expect(loadDashboardSettings()).toEqual({ version: 1, gapPx: 0 });
+    expect(loadDashboardSettings()).toEqual({ version: 1, gapPx: 8 });
   });
 
   it("roundtrips a valid value", () => {
@@ -79,17 +79,17 @@ describe("dashboardSettings localStorage", () => {
 
   it("falls back to defaults on invalid JSON", () => {
     store[KEY] = "nope";
-    expect(loadDashboardSettings().gapPx).toBe(0);
+    expect(loadDashboardSettings().gapPx).toBe(8);
   });
 
   it("falls back to defaults when gapPx is out of range", () => {
     store[KEY] = JSON.stringify({ version: 1, gapPx: 999 });
-    expect(loadDashboardSettings().gapPx).toBe(0);
+    expect(loadDashboardSettings().gapPx).toBe(8);
   });
 
   it("falls back to defaults when gapPx is not an integer", () => {
     store[KEY] = JSON.stringify({ version: 1, gapPx: 1.5 });
-    expect(loadDashboardSettings().gapPx).toBe(0);
+    expect(loadDashboardSettings().gapPx).toBe(8);
   });
 });
 
@@ -100,7 +100,7 @@ describe("dashboardSettings without localStorage", () => {
 
   it("load returns defaults and save is a no-op", () => {
     vi.stubGlobal("localStorage", undefined);
-    expect(loadDashboardSettings()).toEqual({ version: 1, gapPx: 0 });
+    expect(loadDashboardSettings()).toEqual({ version: 1, gapPx: 8 });
     expect(() => saveDashboardSettings({ version: 1, gapPx: 4 })).not.toThrow();
   });
 });

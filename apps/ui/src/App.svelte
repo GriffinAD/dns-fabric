@@ -12,6 +12,7 @@
     clampGridColSpan,
     clampGridRowSpan,
     layoutWithGrid,
+    reorderRootLayoutItemsPreservingSlotOrigins,
     tileColSpan,
   } from "./lib/dashboard/gridPlacement";
   import {
@@ -19,20 +20,30 @@
     parseDashboardLayout,
     saveDashboardLayout,
   } from "./lib/dashboard/layoutStorage";
+  import {
+    findTileInLayout,
+    mapRootItemsReplaceGroup,
+    mapTileInLayout,
+    moveTileToParent,
+    PARENT_ID_DASHBOARD,
+  } from "./lib/dashboard/layoutTree";
+  import GroupSettingsOverlay from "./lib/dashboard/GroupSettingsOverlay.svelte";
   import TileSettingsOverlay from "./lib/dashboard/TileSettingsOverlay.svelte";
-  import type { DashboardLayout, DashboardTile } from "./lib/dashboard/types";
+  import type { DashboardGroup, DashboardLayout, DashboardLayoutV2, DashboardTile, RootLayoutItem } from "./lib/dashboard/types";
+  import { isLayoutV2 } from "./lib/dashboard/types";
   import { UI_VERSION } from "./lib/uiVersion";
   import DashboardControls from "./lib/dashboard/DashboardControls.svelte";
   import ThemeControls from "./lib/theme/ThemeControls.svelte";
   import { loadThemePreferences, resyncDocumentThemeFromStorage } from "./lib/theme/themeStorage";
 
   let plugins = $state<PluginEntry[]>([]);
-  let layout = $state<DashboardLayout>(initialDashboardLayout());
+  let layout = $state<DashboardLayoutV2>(initialDashboardLayout());
   let editorOpen = $state(false);
   let loadError = $state<string | null>(null);
   let liveCpuPercent = $state<number | null>(null);
   let route = $state<"home" | "admin">("home");
   let settingsTile = $state<DashboardTile | null>(null);
+  let settingsGroup = $state<DashboardGroup | null>(null);
 
   const gateway = new DataGateway();
 
@@ -51,6 +62,7 @@
   }
 
   function openTileSettings(tile: DashboardTile) {
+    settingsGroup = null;
     settingsTile = tile;
   }
 
@@ -58,12 +70,79 @@
     settingsTile = null;
   }
 
-  function saveTileFromOverlay(updated: DashboardTile) {
-    applyLayoutStructure({
-      ...layout,
-      tiles: layout.tiles.map((t) => (t.id === updated.id ? updated : t)),
-    });
+  function openGroupSettings(g: DashboardGroup) {
+    settingsTile = null;
+    settingsGroup = g;
+  }
+
+  function closeGroupSettings() {
+    settingsGroup = null;
+  }
+
+  function saveGroupFromOverlay(next: DashboardGroup) {
+    const replaced = mapRootItemsReplaceGroup(layout.items, next.id, next);
+    const reordered = reorderRootLayoutItemsPreservingSlotOrigins(layout.items, replaced);
+    applyLayoutStructure({ version: 2, items: reordered }, { preserveRootPlacementIfComplete: true });
+    closeGroupSettings();
+  }
+
+  function saveTileFromOverlay(updated: DashboardTile, parentId: string) {
+    const cleaned: DashboardTile = { ...updated };
+    delete (cleaned as { rowPanel?: string }).rowPanel;
+    const found = findTileInLayout(layout.items, updated.id);
+    const prevGroup = found?.inGroup?.id ?? null;
+    const nextGroup = parentId === PARENT_ID_DASHBOARD ? null : parentId;
+    if (prevGroup === nextGroup) {
+      applyLayoutStructure({
+        version: 2,
+        items: mapTileInLayout(layout.items, updated.id, () => cleaned),
+      });
+    } else {
+      const items = moveTileToParent(
+        layout.items,
+        updated.id,
+        nextGroup === null ? { type: "root" } : { type: "group", groupId: nextGroup },
+        cleaned,
+      );
+      applyLayoutStructure({ version: 2, items });
+    }
     closeTileSettings();
+  }
+
+  const settingsParentId = $derived.by(() => {
+    if (!settingsTile) return PARENT_ID_DASHBOARD;
+    const f = findTileInLayout(layout.items, settingsTile.id);
+    return f?.inGroup ? f.inGroup.id : PARENT_ID_DASHBOARD;
+  });
+
+  const parentOptions = $derived([
+    { value: PARENT_ID_DASHBOARD, label: "Dashboard (root)" },
+    ...layout.items
+      .filter((it): it is DashboardGroup => it.kind === "group")
+      .map((g) => ({ value: g.id, label: `Container: ${g.id}` })),
+  ]);
+
+  function deleteRootLayoutItem(id: string) {
+    const next = layout.items.filter((it) => it.id !== id);
+    if (settingsGroup?.id === id) {
+      closeGroupSettings();
+    }
+    if (settingsTile && !findTileInLayout(next, settingsTile.id)) {
+      closeTileSettings();
+    }
+    applyLayoutStructure({ version: 2, items: next });
+  }
+
+  function deleteGroupChildTile(groupId: string, tileId: string) {
+    const next = layout.items.map((it) =>
+      it.kind === "group" && it.id === groupId
+        ? { ...it, children: it.children.filter((c) => c.id !== tileId) }
+        : it,
+    );
+    if (settingsTile && !findTileInLayout(next, settingsTile.id)) {
+      closeTileSettings();
+    }
+    applyLayoutStructure({ version: 2, items: next });
   }
 
   function selectDashboardView() {
@@ -96,7 +175,9 @@
       .then((raw) => {
         const parsed = parseDashboardLayout(raw);
         if (!parsed) return;
-        layout = layoutWithGrid(parsed);
+        const withGrid = layoutWithGrid(parsed);
+        if (!isLayoutV2(withGrid)) return;
+        layout = withGrid;
         saveDashboardLayout(layout);
       })
       .catch(() => {
@@ -123,27 +204,59 @@
   });
 
   function addTile(pluginId: string) {
-    const id = `tile-${layout.tiles.length + 1}-${Date.now()}`;
-    const next: DashboardLayout = {
-      ...layout,
-      tiles: [
-        ...layout.tiles,
-        {
-          id,
-          pluginId,
-          hostControl: "single-panel",
-          displayMode: "full",
-        },
-      ],
+    const n = layout.items.length;
+    const id = `tile-${n + 1}-${Date.now()}`;
+    const next: RootLayoutItem = {
+      kind: "tile",
+      id,
+      pluginId,
+      hostControl: "single-panel",
+      displayMode: "full",
     };
-    applyLayoutStructure(next);
+    applyLayoutStructure({ version: 2, items: [...layout.items, next] });
   }
 
-  function applyLayoutStructure(next: DashboardLayout) {
-    const normalized = layoutWithGrid(next);
-    layout = normalized;
-    saveDashboardLayout(normalized);
-    void gateway.putDashboardLayout("default", normalized).catch(() => {});
+  function addGroup() {
+    const n = layout.items.length;
+    const id = `group-${n + 1}-${Date.now()}`;
+    const next: DashboardGroup = { kind: "group", id, showBorder: true, children: [] };
+    applyLayoutStructure({ version: 2, items: [...layout.items, next] });
+  }
+
+  function addTileToGroup(groupId: string, pluginId: string) {
+    const tId = `tile-in-${groupId}-${Date.now()}`;
+    const newTile: DashboardTile = {
+      id: tId,
+      pluginId,
+      hostControl: "single-panel",
+      displayMode: "full",
+    };
+    const items = layout.items.map((it) => {
+      if (it.kind === "group" && it.id === groupId) {
+        return { ...it, children: [...it.children, newTile] } satisfies DashboardGroup;
+      }
+      return it;
+    });
+    applyLayoutStructure({ version: 2, items });
+  }
+
+  function applyLayoutStructure(
+    next: DashboardLayout,
+    opts?: { preserveRootPlacementIfComplete?: boolean },
+  ) {
+    try {
+      const normalized = layoutWithGrid(next, opts);
+      if (!isLayoutV2(normalized)) {
+        loadError = "Layout update was ignored (invalid structure).";
+        return;
+      }
+      loadError = null;
+      layout = normalized;
+      saveDashboardLayout(normalized);
+      void gateway.putDashboardLayout("default", normalized).catch(() => {});
+    } catch (e: unknown) {
+      loadError = e instanceof Error ? e.message : String(e);
+    }
   }
 
   async function resetLayoutToBaseline() {
@@ -164,30 +277,31 @@
   function onPerfTileGridHint(tileId: string, hint: { colSpan: number; rowSpan: number }) {
     const wantCs = clampGridColSpan(hint.colSpan);
     const wantRs = clampGridRowSpan(hint.rowSpan);
-    const t = layout.tiles.find((x) => x.id === tileId);
-    if (!t) return;
+    const found = findTileInLayout(layout.items, tileId);
+    if (!found) return;
+    const t = found.tile;
     const prevCs = t.grid?.colSpan ?? tileColSpan(t);
     const prevRs = t.grid?.rowSpan ?? 1;
-    /* Hint is “content would like this many columns”; do not *shrink* a saved (or user) colSpan. */
-    const nextCs = clampGridColSpan(Math.max(prevCs, wantCs));
+    const nextCs =
+      t.pluginId === "perf.ram"
+        ? clampGridColSpan(Math.max(prevCs, wantCs))
+        : wantCs === 1
+          ? 1
+          : clampGridColSpan(Math.max(prevCs, wantCs));
     const nextRs = clampGridRowSpan(Math.max(prevRs, wantRs));
     if (prevCs === nextCs && prevRs === nextRs) return;
     const g = t.grid;
     applyLayoutStructure({
-      ...layout,
-      tiles: layout.tiles.map((x) =>
-        x.id === tileId
-          ? {
-              ...x,
-              grid: {
-                col: g?.col ?? 0,
-                row: g?.row ?? 0,
-                colSpan: nextCs,
-                rowSpan: nextRs,
-              },
-            }
-          : x,
-      ),
+      version: 2,
+      items: mapTileInLayout(layout.items, tileId, (x) => ({
+        ...x,
+        grid: {
+          col: g?.col ?? 0,
+          row: g?.row ?? 0,
+          colSpan: nextCs,
+          rowSpan: nextRs,
+        },
+      })),
     });
   }
 </script>
@@ -254,19 +368,33 @@
           {plugins}
           editLayout={editorOpen}
           onAddTile={addTile}
+          onAddGroup={addGroup}
+          onAddTileToGroup={addTileToGroup}
           onLayoutStructureChange={applyLayoutStructure}
           onEditTile={openTileSettings}
+          onEditGroup={openGroupSettings}
+          onDeleteRootItem={deleteRootLayoutItem}
+          onDeleteGroupChildTile={deleteGroupChildTile}
           onPerfTileGridHint={onPerfTileGridHint}
         />
       {/if}
 
       {#if settingsTile}
-        <TileSettingsOverlay
-          tile={settingsTile}
-          {plugins}
-          onClose={closeTileSettings}
-          onSave={saveTileFromOverlay}
-        />
+        {#key settingsTile.id}
+          <TileSettingsOverlay
+            tile={settingsTile}
+            {plugins}
+            parentOptions={parentOptions}
+            initialParentId={settingsParentId}
+            onClose={closeTileSettings}
+            onSave={saveTileFromOverlay}
+          />
+        {/key}
+      {/if}
+      {#if settingsGroup}
+        {#key settingsGroup.id}
+          <GroupSettingsOverlay group={settingsGroup} onClose={closeGroupSettings} onSave={saveGroupFromOverlay} />
+        {/key}
       {/if}
     {/if}
   </div>

@@ -16,6 +16,7 @@ export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
       displayMode: "full",
       region: "status-zone",
       grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+      rowPanel: "status",
       options: { cpu_total: false, display_style: "gauge" },
     },
     {
@@ -25,6 +26,7 @@ export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
       displayMode: "full",
       region: "status-zone",
       grid: { col: 4, row: 0, colSpan: 2, rowSpan: 1 },
+      rowPanel: "status",
       options: { display_style: "gauge" },
     },
     {
@@ -34,6 +36,7 @@ export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
       displayMode: "compact",
       region: "status-zone",
       grid: { col: 6, row: 0, colSpan: 2, rowSpan: 1 },
+      rowPanel: "status",
       options: { network_by_adapter: true, display_style: "gauge" },
     },
     {
@@ -43,6 +46,7 @@ export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
       displayMode: "compact",
       region: "status-zone",
       grid: { col: 8, row: 0, colSpan: 2, rowSpan: 1 },
+      rowPanel: "status",
       options: { disk_by_volume: true, display_style: "gauge" },
     },
     {

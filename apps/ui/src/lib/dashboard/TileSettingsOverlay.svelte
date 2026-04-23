@@ -8,18 +8,25 @@
     GRID_COLUMNS,
     tileColSpan,
   } from "./gridPlacement";
+  import { PARENT_ID_DASHBOARD } from "./layoutTree";
   import type { DashboardTile } from "./types";
 
   let {
     tile,
     plugins,
+    parentOptions,
+    initialParentId,
     onClose,
     onSave,
   }: {
     tile: DashboardTile;
     plugins: PluginEntry[];
+    /** Dashboard (root) plus each container group on the layout. */
+    parentOptions: { value: string; label: string }[];
+    /** Where this tile currently lives (`PARENT_ID_DASHBOARD` = root grid). */
+    initialParentId: string;
     onClose: () => void;
-    onSave: (next: DashboardTile) => void;
+    onSave: (next: DashboardTile, parentId: string) => void;
   } = $props();
 
   function cloneDraft(from: DashboardTile): DashboardTile {
@@ -35,6 +42,12 @@
 
   // svelte-ignore state_referenced_locally
   let draft = $state(cloneDraft(tile));
+  let selectedParentId = $state(PARENT_ID_DASHBOARD);
+
+  $effect(() => {
+    draft = cloneDraft(tile);
+    selectedParentId = initialParentId;
+  });
 
   function manifestFor(pluginId: string): PluginEntry | undefined {
     return plugins.find((p) => p.id === pluginId);
@@ -48,15 +61,19 @@
   function save() {
     if (!draft) return;
     const g = draft.grid!;
-    onSave({
-      ...draft,
-      grid: {
-        col: g.col,
-        row: g.row,
-        colSpan: clampGridColSpan(g.colSpan),
-        rowSpan: clampGridRowSpan(g.rowSpan),
+    const { rowPanel: _rp, ...rest } = draft as DashboardTile & { rowPanel?: string };
+    onSave(
+      {
+        ...rest,
+        grid: {
+          col: g.col,
+          row: g.row,
+          colSpan: clampGridColSpan(g.colSpan),
+          rowSpan: clampGridRowSpan(g.rowSpan),
+        },
       },
-    });
+      selectedParentId,
+    );
   }
 
   function onBackdropClick(e: MouseEvent) {
@@ -212,19 +229,40 @@
             </select>
           </label>
 
+          <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
+            <span>Parent</span>
+            <select
+              class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              data-testid="tile-settings-parent"
+              value={selectedParentId}
+              onchange={(e) => {
+                selectedParentId = (e.currentTarget as HTMLSelectElement).value;
+              }}
+            >
+              {#each parentOptions as o (o.value)}
+                <option value={o.value}>{o.label}</option>
+              {/each}
+            </select>
+            <span class="text-[11px] leading-snug text-gray-500 dark:text-gray-500">
+              {PARENT_ID_DASHBOARD === selectedParentId
+                ? "Tile sits on the main dashboard grid."
+                : "Tile sits inside the selected container’s inner grid."}
+            </span>
+          </label>
+
           {#if draft.pluginId === "perf.summary"}
             <div class="space-y-3 border-t border-gray-200 pt-3 dark:border-gray-600">
               <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Performance</span>
               <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <input
                   type="checkbox"
-                  checked={draft.options?.cpu_total !== false}
+                  checked={draft.options?.cpu_total !== true}
                   onchange={() => {
-                    const cur = draft!.options?.cpu_total !== false;
-                    draft = { ...draft!, options: { ...draft!.options, cpu_total: !cur } };
+                    const perCore = draft!.options?.cpu_total !== true;
+                    draft = { ...draft!, options: { ...draft!.options, cpu_total: perCore ? true : false } };
                   }}
                 />
-                CPU single total
+                One gauge per core
               </label>
               <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <input
@@ -270,13 +308,13 @@
               <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <input
                   type="checkbox"
-                  checked={draft.options?.cpu_total !== false}
+                  checked={draft.options?.cpu_total !== true}
                   onchange={() => {
-                    const cur = draft!.options?.cpu_total !== false;
-                    draft = { ...draft!, options: { ...draft!.options, cpu_total: !cur } };
+                    const perCore = draft!.options?.cpu_total !== true;
+                    draft = { ...draft!, options: { ...draft!.options, cpu_total: perCore ? true : false } };
                   }}
                 />
-                Single CPU gauge (total)
+                One gauge per core
               </label>
               <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
                 <span>Presentation</span>

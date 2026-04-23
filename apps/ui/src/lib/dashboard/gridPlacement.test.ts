@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_DASHBOARD_LAYOUT } from "./defaultLayout";
 import {
   clampGridColSpan,
   clampGridRowSpan,
@@ -10,25 +9,45 @@ import {
   hasCompleteGrid,
   layoutWithGrid,
   normalizeDashboardTiles,
+  packRootLayoutItems,
   packTilesToGrid,
   packTilesWithFixedAndFloating,
   placementsOverlap,
+  reorderRootLayoutItemsPreservingSlotOrigins,
   reorderTilesPreservingSlotOrigins,
   tileColSpan,
 } from "./gridPlacement";
-import type { DashboardLayout, DashboardTile } from "./types";
+import type {
+  DashboardGroup,
+  DashboardLayout,
+  DashboardLayoutV1,
+  RootLayoutItem,
+  DashboardTile,
+} from "./types";
+
+const flatDefaultLikePackOrder: DashboardTile[] = [
+  { id: "1", pluginId: "perf.cpu", hostControl: "single-panel", displayMode: "compact" },
+  { id: "2", pluginId: "perf.ram", hostControl: "single-panel", displayMode: "compact" },
+  { id: "3", pluginId: "perf.network", hostControl: "single-panel", displayMode: "compact" },
+  { id: "4", pluginId: "perf.disk", hostControl: "single-panel", displayMode: "compact" },
+  { id: "5", pluginId: "dhcp.pools", hostControl: "single-panel", displayMode: "full" },
+  { id: "6", pluginId: "discovery.records", hostControl: "single-panel", displayMode: "full" },
+  { id: "7", pluginId: "dhcp.clients", hostControl: "single-panel", displayMode: "full" },
+  { id: "8", pluginId: "dhcp.reservations", hostControl: "single-panel", displayMode: "full" },
+];
 
 describe("packTilesToGrid", () => {
-  it("matches default dashboard layout geometry", () => {
-    const packed = packTilesToGrid(DEFAULT_DASHBOARD_LAYOUT.tiles);
+  it("packs a classic flat 8-tile set (four perf 1-cols, then default 6-col DHCP/discovery rows)", () => {
+    const packed = packTilesToGrid(flatDefaultLikePackOrder);
     expect(packed[0].grid).toEqual({ col: 0, row: 0, colSpan: 1, rowSpan: 1 });
     expect(packed[1].grid).toEqual({ col: 1, row: 0, colSpan: 1, rowSpan: 1 });
     expect(packed[2].grid).toEqual({ col: 2, row: 0, colSpan: 1, rowSpan: 1 });
     expect(packed[3].grid).toEqual({ col: 3, row: 0, colSpan: 1, rowSpan: 1 });
-    expect(packed[4].grid).toEqual({ col: 4, row: 0, colSpan: 3, rowSpan: 1 });
-    expect(packed[5].grid).toEqual({ col: 7, row: 0, colSpan: 3, rowSpan: 1 });
-    expect(packed[6].grid).toEqual({ col: 0, row: 1, colSpan: 3, rowSpan: 1 });
-    expect(packed[7].grid).toEqual({ col: 0, row: 2, colSpan: 12, rowSpan: 1 });
+    /* Default colSpan for dhcp.* / discovery is 6 when no explicit grid (not 3). */
+    expect(packed[4].grid).toEqual({ col: 4, row: 0, colSpan: 6, rowSpan: 1 });
+    expect(packed[5].grid).toEqual({ col: 0, row: 1, colSpan: 6, rowSpan: 1 });
+    expect(packed[6].grid).toEqual({ col: 6, row: 1, colSpan: 6, rowSpan: 1 });
+    expect(packed[7].grid).toEqual({ col: 0, row: 2, colSpan: 6, rowSpan: 1 });
   });
 
   it("packs only non-perf tiles as half-width when they follow a full-width row", () => {
@@ -266,17 +285,222 @@ describe("tileColSpan and gridColumnSpanStyle", () => {
   });
 });
 
+describe("reorderRootLayoutItemsPreservingSlotOrigins", () => {
+  it("returns reordered item unchanged when id matches but kind mismatches in same order (corrupt state)", () => {
+    const prev: RootLayoutItem[] = [t("xid", 0, 0, 6, 1)];
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "xid",
+      showBorder: true,
+      children: [],
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+    };
+    const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, [g]);
+    expect(out[0]).toBe(g);
+  });
+
+  it("preserves a group in sameSequence when previous outer grid was incomplete", () => {
+    const gPrev: DashboardGroup = { kind: "group", id: "g1", showBorder: true, children: [] };
+    const gReo: DashboardGroup = { kind: "group", id: "g1", showBorder: true, children: [] };
+    const out = reorderRootLayoutItemsPreservingSlotOrigins([gPrev], [gReo]);
+    expect((out[0] as DashboardGroup).grid).toBeUndefined();
+  });
+  const t = (id: string, c: number, r: number, cs: number, rs: number) =>
+    ({
+      kind: "tile" as const,
+      id,
+      pluginId: "dhcp.pools",
+      hostControl: "single-panel" as const,
+      displayMode: "full" as const,
+      grid: { col: c, row: r, colSpan: cs, rowSpan: rs },
+    }) satisfies RootLayoutItem;
+
+  it("keeps the same list when reordered matches previous order and outer grids are complete", () => {
+    const prev: RootLayoutItem[] = [t("a", 0, 0, 6, 1), t("b", 6, 0, 6, 1)];
+    const reo = [structuredClone(prev[0]!), structuredClone(prev[1]!)] as RootLayoutItem[];
+    const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, reo);
+    expect(out[0]!.grid?.col).toBe(0);
+    expect(out[1]!.grid?.col).toBe(6);
+  });
+
+  it("permutes root slots when top-level order changes", () => {
+    const prev: RootLayoutItem[] = [t("a", 0, 0, 6, 1), t("b", 6, 0, 6, 1)];
+    const reo: RootLayoutItem[] = [prev[1]!, prev[0]!];
+    const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, reo);
+    expect(out[0]!.id).toBe("b");
+    expect(out[0]!.grid?.col).toBe(0);
+    expect(out[1]!.id).toBe("a");
+    expect(out[1]!.grid?.col).toBe(6);
+  });
+
+  it("repacks when previous root items lack complete outer grids", () => {
+    const prev: RootLayoutItem[] = [
+      { kind: "tile", id: "a", pluginId: "dhcp.pools", hostControl: "single-panel", displayMode: "full" },
+      t("b", 6, 0, 6, 1),
+    ];
+    const reo: RootLayoutItem[] = [prev[1]!, prev[0]!];
+    const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, reo);
+    expect(out.length).toBe(2);
+  });
+
+  it("repacks when root item count changes", () => {
+    const prev: RootLayoutItem[] = [t("a", 0, 0, 6, 1)];
+    const reo: RootLayoutItem[] = [t("a", 0, 0, 6, 1), t("b", 0, 0, 6, 1)];
+    const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, reo);
+    expect(out.length).toBe(2);
+  });
+
+  it("in sameSequence clamps a tile when the previous slot had no complete grid", () => {
+    const prev: RootLayoutItem[] = [
+      { kind: "tile", id: "a", pluginId: "dhcp.pools", hostControl: "single-panel", displayMode: "full" },
+    ];
+    const reo: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "a",
+        pluginId: "dhcp.pools",
+        hostControl: "single-panel",
+        displayMode: "full",
+        grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+      },
+    ];
+    const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, reo);
+    expect(out[0]!.grid!.colSpan).toBe(6);
+  });
+
+  it("swaps the outer root slots of two complete groups", () => {
+    const g1: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      children: [],
+    };
+    const g2: DashboardGroup = {
+      kind: "group",
+      id: "g2",
+      showBorder: true,
+      grid: { col: 0, row: 1, colSpan: 12, rowSpan: 1 },
+      children: [],
+    };
+    const prev: RootLayoutItem[] = [g1, g2];
+    const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, [g2, g1]);
+    expect(out[0]!.id).toBe("g2");
+    expect(out[0]!.grid?.row).toBe(0);
+    expect(out[1]!.id).toBe("g1");
+    expect(out[1]!.grid?.row).toBe(1);
+  });
+
+  it("updates two groups in sameSequence without permuting children", () => {
+    const g1: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      children: [],
+    };
+    const g2: DashboardGroup = {
+      kind: "group",
+      id: "g2",
+      showBorder: true,
+      grid: { col: 0, row: 1, colSpan: 12, rowSpan: 1 },
+      children: [],
+    };
+    const prev: RootLayoutItem[] = [g1, g2];
+    const reo = prev.map((x) => structuredClone(x)) as RootLayoutItem[];
+    const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, reo);
+    expect(out[0]!.kind).toBe("group");
+    expect(out[0]!.grid?.row).toBe(0);
+  });
+});
+
+describe("packRootLayoutItems", () => {
+  it("treats a root item without kind as a tile", () => {
+    const raw = {
+      id: "z",
+      pluginId: "dhcp.pools",
+      hostControl: "single-panel",
+      displayMode: "full",
+    } as unknown as RootLayoutItem;
+    const out = packRootLayoutItems([raw]);
+    expect(out[0]?.kind).toBe("tile");
+  });
+});
+
 describe("layoutWithGrid", () => {
-  it("returns a new layout object with packed tiles", () => {
-    const base: DashboardLayout = {
+  it("migrates v1 and returns v2 with packed items", () => {
+    const base: DashboardLayoutV1 = {
       version: 1,
-      tiles: DEFAULT_DASHBOARD_LAYOUT.tiles.map((t) => {
-        const { grid: _g, ...rest } = t;
-        return rest;
-      }),
+      tiles: [
+        { id: "a", pluginId: "perf.cpu", hostControl: "single-panel", displayMode: "compact" },
+      ],
     };
     const next = layoutWithGrid(base);
-    expect(next.tiles[0].grid?.colSpan).toBe(1);
+    expect(next.version).toBe(2);
+    expect(next.items[0]?.kind).toBe("tile");
+    if (next.items[0]?.kind === "tile") {
+      expect(next.items[0].grid?.colSpan).toBe(1);
+    }
+  });
+
+  it("preserveRootPlacementIfComplete keeps non-overlapping root placement and repacks group children", () => {
+    const t: RootLayoutItem = {
+      kind: "tile",
+      id: "t1",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+    };
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      grid: { col: 6, row: 0, colSpan: 6, rowSpan: 1 },
+      children: [
+        {
+          id: "c1",
+          pluginId: "perf.ram",
+          hostControl: "single-panel",
+          displayMode: "compact",
+        },
+      ],
+    };
+    const next = layoutWithGrid({ version: 2, items: [t, g] }, { preserveRootPlacementIfComplete: true });
+    expect(next.items[0]?.kind).toBe("tile");
+    if (next.items[0]?.kind === "tile") {
+      expect(next.items[0].grid).toMatchObject({ col: 0, row: 0, colSpan: 6, rowSpan: 1 });
+    }
+    expect(next.items[1]?.kind).toBe("group");
+    if (next.items[1]?.kind === "group") {
+      expect(next.items[1].grid).toMatchObject({ col: 6, row: 0, colSpan: 6, rowSpan: 1 });
+      expect(next.items[1].children[0]?.grid).toBeDefined();
+    }
+  });
+
+  it("preserveRootPlacementIfComplete falls back to full pack when root placements overlap", () => {
+    const a: RootLayoutItem = {
+      kind: "tile",
+      id: "a",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+    };
+    const b: RootLayoutItem = {
+      kind: "tile",
+      id: "b",
+      pluginId: "perf.ram",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+    };
+    const out = layoutWithGrid({ version: 2, items: [a, b] }, { preserveRootPlacementIfComplete: true });
+    expect(out.items.length).toBe(2);
+    /* Second tile must be on a different row after pack (no same-cell overlap). */
+    const g0 = out.items[0]?.kind === "tile" ? out.items[0].grid : null;
+    const g1 = out.items[1]?.kind === "tile" ? out.items[1].grid : null;
+    expect(g0 && g1 && (g0.row !== g1.row || g0.col !== g1.col)).toBe(true);
   });
 });
 
