@@ -103,3 +103,5 @@ export function createOverlayActions(deps: OverlayActionsDeps) {
     },
   };
 }
+
+export type OverlayActions = ReturnType<typeof createOverlayActions>;

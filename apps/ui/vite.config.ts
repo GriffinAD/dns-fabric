@@ -32,6 +32,7 @@ export default defineConfig({
       exclude: [
         "src/lib/**/types.ts",
         "src/lib/**/rowPanelLayout.ts",
+        "src/lib/appDashboardShell.ts",
         "src/lib/components/tablePluginShell.ts",
       ],
       /* Root reorder overlap fallback (pack when placementsOverlap) is hard to hit without
