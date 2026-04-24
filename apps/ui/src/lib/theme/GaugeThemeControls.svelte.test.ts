@@ -30,7 +30,7 @@ beforeEach(() => {
     gaugeSegmentDivisions: 0,
     gaugeSegmentGapPx: 0.15,
   });
-  applyDocumentTheme("light", "default", false, "flat", 0, 0.15);
+  applyDocumentTheme("light", "default", false, "flat", false, 0, 0.15);
 });
 
 afterEach(() => {
