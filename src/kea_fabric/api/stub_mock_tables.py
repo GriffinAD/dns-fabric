@@ -44,30 +44,8 @@ def _shuffle_in_place(arr: list[Any], rng: _Rng) -> None:
 
 
 def _build_dhcp_client_items() -> list[dict[str, Any]]:
+    """Active leases only (pool range). Static assignments are in reservations."""
     out: list[dict[str, Any]] = []
-    for i in range(50):
-        last_octet = 2 + i
-        lease_start_sec = -3600 * (i + 1)
-        lease_days = 1 + (i % 5)
-        out.append(
-            {
-                "id": f"cli-static-{i + 1}",
-                "hardware_address": _mac_for_index("52:54:00", 0x1000 + i),
-                "assigned_address": f"192.168.2.{last_octet}",
-                "pool_id": POOL_ID,
-                "hostname": f"static-host-{i + 1}",
-                "client_category": ("workstation", "server", "iot")[i % 3],
-                "vendor_name": "LAB" if i % 2 == 0 else "QEMU",
-                "scan_status": "seen",
-                "lease_started_at": _iso_plus_seconds(lease_start_sec),
-                "lease_expires_at": _iso_plus_seconds(
-                    lease_start_sec + 86400 * lease_days,
-                ),
-                "subnet_cidr": MOCK_SUBNET_CIDR,
-                "services": ["ssh", "dhcp"] if i % 4 == 0 else ["dhcp"],
-            }
-        )
-
     pool_hosts = list(range(100, 255))
     _shuffle_in_place(pool_hosts, _Rng(42_001))
     chosen = pool_hosts[:100]
@@ -108,8 +86,8 @@ def dhcp_client_items() -> list[dict[str, Any]]:
 
 def dhcp_reservation_items() -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
-    for i in range(28):
-        last_octet = 52 + i
+    for i in range(78):
+        last_octet = 2 + i
         out.append(
             {
                 "id": f"res-{i + 1}",

@@ -38,28 +38,9 @@ function shuffleInPlace<T>(arr: T[], rnd: () => number): void {
   }
 }
 
+/** Active leases only (pool range). Static assignments belong in reservations, not this list. */
 function buildDhcpClientItemsUncached(): DhcpClient[] {
   const out: DhcpClient[] = [];
-
-  for (let i = 0; i < 50; i++) {
-    const lastOctet = 2 + i;
-    const leaseStartSec = -3600 * (i + 1);
-    const leaseDays = 1 + (i % 5);
-    out.push({
-      id: `cli-static-${i + 1}`,
-      hardware_address: macForIndex("52:54:00", 0x1000 + i),
-      assigned_address: `192.168.2.${lastOctet}`,
-      pool_id: POOL_ID,
-      hostname: `static-host-${i + 1}`,
-      client_category: i % 3 === 0 ? "workstation" : i % 3 === 1 ? "server" : "iot",
-      vendor_name: i % 2 === 0 ? "LAB" : "QEMU",
-      scan_status: "seen",
-      lease_started_at: isoPlusSeconds(leaseStartSec),
-      lease_expires_at: isoPlusSeconds(leaseStartSec + 86400 * leaseDays),
-      subnet_cidr: MOCK_SUBNET_CIDR,
-      services: i % 4 === 0 ? ["ssh", "dhcp"] : ["dhcp"],
-    });
-  }
 
   const poolHosts: number[] = [];
   for (let h = 100; h <= 254; h++) poolHosts.push(h);
@@ -95,11 +76,11 @@ export function buildDhcpClientItems(): DhcpClient[] {
   return _cachedClients;
 }
 
-/** Reservations 192.168.2.52 – .79 (no overlap with static .2–.51 or dynamic pool). */
+/** Static/reserved hosts 192.168.2.2 – .79 (outside the dynamic pool .100–.254). */
 export function buildDhcpReservationItems(): DhcpReservation[] {
   const out: DhcpReservation[] = [];
-  for (let i = 0; i < 28; i++) {
-    const lastOctet = 52 + i;
+  for (let i = 0; i < 78; i++) {
+    const lastOctet = 2 + i;
     out.push({
       id: `res-${i + 1}`,
       hardware_address: macForIndex("52:54:02", 0x3000 + i),
