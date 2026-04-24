@@ -24,7 +24,6 @@
   import PerfTile from "../plugins/PerfTile.svelte";
   import RamTile from "../plugins/RamTile.svelte";
   import {
-    alignGaugeColumnCount,
     effectiveColSpan,
     effectiveRowSpan,
     gridAreaStyle,
@@ -284,7 +283,6 @@
 </script>
 
 {#snippet renderTile(tile: DashboardTile, inGroup: boolean)}
-  {@const ac = alignGaugeColumnCount(null, tile)}
   {#if tile.pluginId === "dhcp.pools"}
     <DhcpPoolsTile {gateway} {tile} />
   {:else if tile.pluginId === "dhcp.clients"}
@@ -298,44 +296,30 @@
       onOpenSettings={editLayout && onEditTile ? () => onEditTile(tile) : undefined}
     />
   {:else if tile.pluginId === "perf.summary"}
-    <PerfTile
-      {gateway}
-      {tile}
-      {liveCpuPercent}
-      alignColumnCount={inGroup ? 12 : ac}
-      dashboardGaugeAlign={!inGroup}
-    />
+    <PerfTile {gateway} {tile} {liveCpuPercent} />
   {:else if tile.pluginId === "perf.cpu"}
     <CpuTile
       {gateway}
       {tile}
       {liveCpuPercent}
-      alignColumnCount={inGroup ? 12 : ac}
-      dashboardGaugeAlign={!inGroup}
       onGridHint={onPerfTileGridHint ? (hint) => onPerfTileGridHint(tile.id, hint) : undefined}
     />
   {:else if tile.pluginId === "perf.ram"}
     <RamTile
       {gateway}
       {tile}
-      alignColumnCount={inGroup ? 12 : ac}
-      dashboardGaugeAlign={!inGroup}
       onGridHint={onPerfTileGridHint ? (hint) => onPerfTileGridHint(tile.id, hint) : undefined}
     />
   {:else if tile.pluginId === "perf.network"}
     <NwTile
       {gateway}
       {tile}
-      alignColumnCount={inGroup ? 12 : ac}
-      dashboardGaugeAlign={!inGroup}
       onGridHint={onPerfTileGridHint ? (hint) => onPerfTileGridHint(tile.id, hint) : undefined}
     />
   {:else if tile.pluginId === "perf.disk"}
     <DiskTile
       {gateway}
       {tile}
-      alignColumnCount={inGroup ? 12 : ac}
-      dashboardGaugeAlign={!inGroup}
       onGridHint={onPerfTileGridHint ? (hint) => onPerfTileGridHint(tile.id, hint) : undefined}
     />
   {:else}

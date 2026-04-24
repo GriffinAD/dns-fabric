@@ -492,9 +492,9 @@ export function groupEditInnerColumnCount(g: DashboardGroup): number {
 }
 
 /**
- * For **root** perf tiles: number of `1fr` sub-columns so gauge edges line up with the main
- * 12-col grid (roughly = effective col span in root columns). **Tiles inside a container**
- * ignore this in the UI (`dashboardGaugeAlign={false}`) and only equal-split the card width.
+ * Legacy helper: effective width of a tile in root columns (rounded). Perf metric tiles no longer
+ * use this for intratile gauge splits (they use equal `1fr` per gauge); kept for tests and any
+ * future alignment work.
  */
 export function alignGaugeColumnCount(parentGroup: DashboardGroup | null, tile: DashboardTile): number {
   const T = effectiveColSpan(tile);

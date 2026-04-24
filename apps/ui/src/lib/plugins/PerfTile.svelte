@@ -4,8 +4,7 @@
 
   import type { PerfSummaryResponse } from "../api/types";
   import SemicircleGauge from "../components/SemicircleGauge.svelte";
-  import { columnSpansOn } from "../dashboard/gaugeGridLayout";
-  import { GRID_COLUMNS } from "../dashboard/gridPlacement";
+  import { clampGridColSpan, tileColSpan } from "../dashboard/gridPlacement";
   import { DataGateway } from "../dataGateway";
   import type { DashboardTile } from "../dashboard/types";
 
@@ -13,15 +12,10 @@
     gateway,
     tile,
     liveCpuPercent,
-    alignColumnCount = 12,
-    /** false in a container: equal-width gauges only, no root-grid virtual column alignment. */
-    dashboardGaugeAlign = true,
   }: {
     gateway: DataGateway;
     tile: DashboardTile;
     liveCpuPercent?: number | null;
-    alignColumnCount?: number;
-    dashboardGaugeAlign?: boolean;
   } = $props();
 
   let summary = $state<PerfSummaryResponse | null>(null);
@@ -102,20 +96,16 @@
     return out;
   });
 
-  const alignTracks = $derived(
-    Math.max(1, Math.min(GRID_COLUMNS, Math.floor(alignColumnCount || 12))),
+  const tileColSpanEff = $derived(
+    Math.max(1, tile.grid?.colSpan != null ? clampGridColSpan(tile.grid.colSpan) : tileColSpan(tile)),
   );
-  const layoutTracks = $derived(
-    summarySlots.length === 0
-      ? alignTracks
-      : Math.max(alignTracks, Math.min(GRID_COLUMNS, summarySlots.length)),
+  const tileRowSpan = $derived(Math.max(1, tile.grid?.rowSpan ?? 1));
+  const fillGauges = $derived(
+    summarySlots.length > 1 || tileRowSpan > 1 || (summarySlots.length === 1 && tileColSpanEff > 1),
   );
-  const gaugeSpans = $derived(
-    !dashboardGaugeAlign || summarySlots.length === 0
-      ? null
-      : columnSpansOn(layoutTracks, summarySlots.length),
+  const summaryGridStyle = $derived(
+    `grid-template-columns: repeat(${Math.max(1, summarySlots.length)}, minmax(0, 1fr)); column-gap: 0.25rem; justify-items: stretch; align-items: stretch;`,
   );
-  const fillGauges = $derived(summarySlots.length > 1);
 </script>
 
 {#snippet oneGauge(s: SummarySlot)}
@@ -158,20 +148,9 @@
           <li>Disk: {(summary.disk_used_percent ?? 0).toFixed(1)}%</li>
         </ul>
       {:else if summarySlots.length}
-        <div
-          class="grid w-full min-w-0 [row-gap:0.25rem]"
-          style={gaugeSpans == null
-            ? `grid-template-columns: repeat(${summarySlots.length}, minmax(0, 1fr)); column-gap: 0.125rem;`
-            : `grid-template-columns: repeat(${layoutTracks}, minmax(0, 1fr)); column-gap: 0;`}
-          data-testid="perf-gauges"
-        >
-          {#each summarySlots as s, i (s.key)}
-            <div
-              class="min-w-0"
-              style:grid-column={gaugeSpans == null || gaugeSpans[i] == null
-                ? undefined
-                : `span ${gaugeSpans[i]!}`}
-            >
+        <div class="grid w-full min-w-0 [row-gap:0.25rem]" style={summaryGridStyle} data-testid="perf-gauges">
+          {#each summarySlots as s (s.key)}
+            <div class="min-w-0">
               {@render oneGauge(s)}
             </div>
           {/each}

@@ -4,8 +4,7 @@
 
   import type { PerfSummaryResponse } from "../api/types";
   import SemicircleGauge from "../components/SemicircleGauge.svelte";
-  import { columnSpansOn } from "../dashboard/gaugeGridLayout";
-  import { clampGridColSpan, GRID_COLUMNS } from "../dashboard/gridPlacement";
+  import { clampGridColSpan, GRID_COLUMNS, tileColSpan } from "../dashboard/gridPlacement";
   import { DataGateway } from "../dataGateway";
   import type { DashboardTile } from "../dashboard/types";
 
@@ -15,9 +14,6 @@
     metric,
     liveCpuPercent,
     onGridHint,
-    /** Root grid: align semicircle sub-grid to main 12-col rhythm. In a container, set false so gauges only fill the tile (no extra virtual column math). */
-    alignColumnCount = 12,
-    dashboardGaugeAlign = true,
   }: {
     gateway: DataGateway;
     tile: DashboardTile;
@@ -25,8 +21,6 @@
     liveCpuPercent?: number | null;
     /** Dashboard grid: colSpan matches intratile gauge column count (capped; single-gauge = 1×1). */
     onGridHint?: (hint: { colSpan: number; rowSpan: number }) => void;
-    alignColumnCount?: number;
-    dashboardGaugeAlign?: boolean;
   } = $props();
 
   let summary = $state<PerfSummaryResponse | null>(null);
@@ -37,7 +31,7 @@
   );
 
   const opts = $derived(tile.options);
-  /** `cpu_total === true` = one combined gauge; omitted/false = one mini gauge per core (default). */
+  /** `cpu_total === true` = single combined gauge (Show as total); omitted/false = per-core (default). */
   const cpuTotal = $derived(opts?.cpu_total === true);
   const byAdapter = $derived(Boolean(opts?.network_by_adapter));
   const byVolume = $derived(Boolean(opts?.disk_by_volume));
@@ -66,7 +60,11 @@
     return { gaugeCols, dashboardCols, effectKey: `i${gaugeCols}-d${dashboardCols}` as const };
   });
 
-  const stretchGaugesToCells = $derived(layoutMeta.gaugeCols > 1);
+  /** Effective dashboard column span (saved grid wins over plugin default). */
+  const tileColSpanEff = $derived(
+    Math.max(1, tile.grid?.colSpan != null ? clampGridColSpan(tile.grid.colSpan) : tileColSpan(tile)),
+  );
+  const tileRowSpan = $derived(Math.max(1, tile.grid?.rowSpan ?? 1));
 
   /** Actual number of semicircles shown (can exceed `layoutMeta.gaugeCols` when many CPU cores; dashboard hint is capped at 12). */
   const nGaugeCells = $derived.by(() => {
@@ -81,28 +79,23 @@
     return byVolume && summary.disk_volumes?.length ? summary.disk_volumes.length : 1;
   });
 
-  const alignTracks = $derived(
-    Math.max(1, Math.min(GRID_COLUMNS, Math.floor(alignColumnCount || 12))),
-  );
-  /** At least the dashboard align count, and at least one column per semicircle so `columnSpansOn` is solvable. */
-  const layoutTracks = $derived(
-    nGaugeCells <= 0 ? alignTracks : Math.max(alignTracks, Math.min(GRID_COLUMNS, nGaugeCells)),
-  );
-  const intratileColSpans = $derived(
-    nGaugeCells <= 0 || !dashboardGaugeAlign
-      ? null
-      : columnSpansOn(layoutTracks, nGaugeCells),
-  );
-  const gaugeFrFallback = $derived(
-    intratileColSpans == null
-      ? `grid-template-columns: repeat(${Math.max(1, nGaugeCells)}, minmax(0, 1fr)); justify-items: stretch; align-items: stretch;`
-      : null,
-  );
-  const alignGridStyle = $derived(
-    intratileColSpans == null
-      ? gaugeFrFallback
-      : `grid-template-columns: repeat(${layoutTracks}, minmax(0, 1fr)); column-gap: 0; justify-items: stretch; align-items: stretch;`,
-  );
+  /** Expand mini gauges to fill the tile when multiple semicircles, extra row span, or a wide single-gauge tile. */
+  const stretchGaugesToCells = $derived.by(() => {
+    if (percentOnly) return false;
+    if (layoutMeta.gaugeCols > 1) return true;
+    if (tileRowSpan > 1) return true;
+    if (nGaugeCells === 1 && tileColSpanEff > 1) return true;
+    return false;
+  });
+
+  /** Equal-width columns per visible gauge (avoid remainder skew from root-column alignment). */
+  const alignGridStyle = $derived.by(() => {
+    const n = Math.max(1, nGaugeCells);
+    if (n === 1) {
+      return `grid-template-columns: minmax(0, 1fr); justify-items: stretch; align-items: stretch;`;
+    }
+    return `grid-template-columns: repeat(${n}, minmax(0, 1fr)); column-gap: 0.25rem; justify-items: stretch; align-items: stretch;`;
+  });
 
   onMount(() => {
     void gateway
@@ -189,12 +182,7 @@
               data-testid="perf-metric-gauges"
             >
               {#if cpuTotal}
-                <div
-                  class="min-w-0"
-                  style:grid-column={intratileColSpans?.[0] == null
-                    ? undefined
-                    : `span ${intratileColSpans[0]!}`}
-                >
+                <div class="min-w-0">
                   <SemicircleGauge
                     labelBlank
                     percent={cpuDisplay}
@@ -204,12 +192,7 @@
                 </div>
               {:else}
                 {#each summary.cpu_core_percent ?? [cpuDisplay] as pct, i (i)}
-                  <div
-                    class="min-w-0"
-                    style:grid-column={intratileColSpans?.[i] == null
-                      ? undefined
-                      : `span ${intratileColSpans[i]!}`}
-                  >
+                  <div class="min-w-0">
                     <SemicircleGauge
                       label="Core {i}"
                       percent={pct}
@@ -226,12 +209,7 @@
               style={alignGridStyle}
               data-testid="perf-metric-gauges"
             >
-              <div
-                class="min-w-0"
-                style:grid-column={intratileColSpans?.[0] == null
-                  ? undefined
-                  : `span ${intratileColSpans[0]!}`}
-              >
+              <div class="min-w-0">
                 <SemicircleGauge
                   labelBlank
                   percent={summary.memory_used_percent}
@@ -251,12 +229,7 @@
             >
               {#if byAdapter && summary.network_adapters?.length}
                 {#each summary.network_adapters as a, i (a.name)}
-                  <div
-                    class="min-w-0"
-                    style:grid-column={intratileColSpans?.[i] == null
-                      ? undefined
-                      : `span ${intratileColSpans[i]!}`}
-                  >
+                  <div class="min-w-0">
                     <SemicircleGauge
                       label={a.name}
                       percent={Math.min(100, (a.in_mbps + a.out_mbps) * 2)}
@@ -267,12 +240,7 @@
                   </div>
                 {/each}
               {:else}
-                <div
-                  class="min-w-0"
-                  style:grid-column={intratileColSpans?.[0] == null
-                    ? undefined
-                    : `span ${intratileColSpans[0]!}`}
-                >
+                <div class="min-w-0">
                   <SemicircleGauge
                     labelBlank
                     percent={Math.min(100, ((summary.network_in_mbps ?? 0) + (summary.network_out_mbps ?? 0)) * 2)}
@@ -291,12 +259,7 @@
             >
               {#if byVolume && summary.disk_volumes?.length}
                 {#each summary.disk_volumes as v, i (`${i}-${v.label}`)}
-                  <div
-                    class="min-w-0"
-                    style:grid-column={intratileColSpans?.[i] == null
-                      ? undefined
-                      : `span ${intratileColSpans[i]!}`}
-                  >
+                  <div class="min-w-0">
                     <SemicircleGauge
                       label={v.label}
                       percent={v.used_percent}
@@ -306,12 +269,7 @@
                   </div>
                 {/each}
               {:else}
-                <div
-                  class="min-w-0"
-                  style:grid-column={intratileColSpans?.[0] == null
-                    ? undefined
-                    : `span ${intratileColSpans[0]!}`}
-                >
+                <div class="min-w-0">
                   <SemicircleGauge
                     labelBlank
                     percent={summary.disk_used_percent ?? 0}

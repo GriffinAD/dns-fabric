@@ -155,6 +155,8 @@
         </p>
 
         <div class="space-y-4">
+          <PerfOptionsForm bind:draft />
+
           <TilePlacementForm
             bind:draft
             bind:selectedParentId
@@ -165,8 +167,6 @@
           />
 
           <TileGenericFields bind:draft {hosts} {showCompact} {showFull} />
-
-          <PerfOptionsForm bind:draft />
         </div>
       </div>
 
