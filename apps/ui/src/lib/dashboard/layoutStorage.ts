@@ -1,177 +1,29 @@
 import { DEFAULT_DASHBOARD_LAYOUT } from "./defaultLayout";
+import { parseDashboardLayoutZod } from "./layoutZod";
+import { stripLegacyPerfSummaryTiles } from "./migrations/stripLegacyPerfSummary";
 import { ensureLayoutV2, iterateTilesInLayout } from "./layoutTree";
-import { cloneLayoutJson, isCompleteGroupChildGrid, layoutWithGrid } from "./gridPlacement";
-import type {
-  DashboardLayout,
-  DashboardLayoutV1,
-  DashboardLayoutV2,
-  DashboardGroup,
-  DashboardTile,
-  GridPlacement,
-  RootLayoutItem,
-  RootTileItem,
-} from "./types";
+import { cloneLayoutJson, layoutWithGrid } from "./gridPlacement";
+import type { DashboardLayout, DashboardLayoutV2, DashboardTile, RootTileItem } from "./types";
 
 const STORAGE_KEY = "kea-fabric-dashboard-layout";
 
-const LEGACY_PLUGIN_IDS = new Set(["perf.summary"]);
-
-const HOST_CONTROLS = new Set(["single-panel", "tab-control", "vertical-stack", "split-grid"]);
-const DISPLAY_MODES = new Set(["compact", "full"]);
-
-function validGridCell(value: unknown): boolean {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const g = value as Record<string, unknown>;
-  const col = g.col;
-  const row = g.row;
-  const cspan = g.colSpan;
-  const rspan = g.rowSpan;
-  if (
-    typeof col !== "number" ||
-    typeof row !== "number" ||
-    typeof cspan !== "number" ||
-    typeof rspan !== "number"
-  ) {
-    return false;
+/** When set, stored JSON is newer than this app supports (see UI_ENGINE_PLAN P3.7). */
+export function layoutJsonUnsupportedVersionMessage(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  const v = value as Record<string, unknown>;
+  if (typeof v.version !== "number") return null;
+  if (v.version > 2) {
+    return `Dashboard layout version ${v.version} is not supported (this app accepts versions 1–2 only).`;
   }
-  if (
-    !Number.isInteger(col) ||
-    !Number.isInteger(row) ||
-    !Number.isInteger(cspan) ||
-    !Number.isInteger(rspan)
-  ) {
-    return false;
-  }
-  if (!(col >= 0 && col <= 11 && cspan >= 1 && cspan <= 12 && col + cspan <= 12)) return false;
-  if (row < 0 || rspan < 1 || rspan > 12) return false;
-  return true;
-}
-
-function isTileOptions(value: unknown): boolean {
-  if (value === undefined) return true;
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const o = value as Record<string, unknown>;
-  if (o.cpu_total !== undefined && typeof o.cpu_total !== "boolean") return false;
-  if (o.network_by_adapter !== undefined && typeof o.network_by_adapter !== "boolean") return false;
-  if (o.disk_by_volume !== undefined && typeof o.disk_by_volume !== "boolean") return false;
-  if (o.display_style !== undefined && o.display_style !== "gauge" && o.display_style !== "percent_only") {
-    return false;
-  }
-  if (o.perf_max_cols !== undefined) {
-    if (typeof o.perf_max_cols !== "number" || !Number.isInteger(o.perf_max_cols)) return false;
-    if (o.perf_max_cols < 1 || o.perf_max_cols > 12) return false;
-  }
-  return true;
-}
-
-function isTile(value: unknown): value is DashboardTile {
-  if (!value || typeof value !== "object") return false;
-  const t = value as Record<string, unknown>;
-  if (typeof t.id !== "string" || !t.id) return false;
-  if (typeof t.pluginId !== "string" || !t.pluginId) return false;
-  if (typeof t.hostControl !== "string" || !HOST_CONTROLS.has(t.hostControl)) return false;
-  if (typeof t.displayMode !== "string" || !DISPLAY_MODES.has(t.displayMode)) return false;
-  if (t.region !== undefined && typeof t.region !== "string") return false;
-  if (t.rowPanel !== undefined) {
-    if (typeof t.rowPanel !== "string" || t.rowPanel.length < 1 || t.rowPanel.length > 64) {
-      return false;
-    }
-  }
-  if (t.grid !== undefined && t.grid !== null && !validGridCell(t.grid)) return false;
-  if (!isTileOptions(t.options)) return false;
-  return true;
-}
-
-/** Group child: `parentAutoWrap === true` → same 12 cell as root; else wide horizontal strip. */
-function isGroupChildTile(value: unknown, parentAutoWrap: boolean): value is DashboardTile {
-  if (!value || typeof value !== "object") return false;
-  const t = value as Record<string, unknown>;
-  if (typeof t.id !== "string" || !t.id) return false;
-  if (typeof t.pluginId !== "string" || !t.pluginId) return false;
-  if (typeof t.hostControl !== "string" || !HOST_CONTROLS.has(t.hostControl)) return false;
-  if (typeof t.displayMode !== "string" || !DISPLAY_MODES.has(t.displayMode)) return false;
-  if (t.region !== undefined && typeof t.region !== "string") return false;
-  if (t.rowPanel !== undefined) {
-    if (typeof t.rowPanel !== "string" || t.rowPanel.length < 1 || t.rowPanel.length > 64) {
-      return false;
-    }
-  }
-  if (t.grid !== undefined && t.grid !== null) {
-    if (!isCompleteGroupChildGrid(t.grid as GridPlacement, parentAutoWrap)) return false;
-  }
-  if (!isTileOptions(t.options)) return false;
-  return true;
-}
-
-function isGroupNodeJson(value: unknown): boolean {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const o = value as Record<string, unknown>;
-  if (o.kind !== "group") return false;
-  if (typeof o.id !== "string" || !o.id) return false;
-  if (o.showBorder !== undefined && typeof o.showBorder !== "boolean") return false;
-  if (o.innerWrap !== undefined && typeof o.innerWrap !== "boolean") return false;
-  if (o.grid !== undefined && o.grid != null && !validGridCell(o.grid)) return false;
-  if (!Array.isArray(o.children)) return false;
-  const parentAutoWrap = o.innerWrap === true;
-  for (const c of o.children) {
-    if (!isGroupChildTile(c, parentAutoWrap)) return false;
-  }
-  return true;
-}
-
-function isRootTileV2(value: unknown): value is RootTileItem {
-  if (!isTile(value)) return false;
-  const t = value as unknown as Record<string, unknown>;
-  if (t.kind !== "tile" && t.kind !== undefined) return false;
-  return true;
-}
-
-function isRootItemV2(value: unknown): value is RootLayoutItem {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const o = value as Record<string, unknown>;
-  if (o.kind === "group") return isGroupNodeJson(value);
-  if (o.kind === "tile" || o.kind === undefined) return isRootTileV2(value);
-  return false;
-}
-
-function parseV2(value: Record<string, unknown>): DashboardLayoutV2 | null {
-  if (value.version !== 2 || !Array.isArray(value.items)) return null;
-  const items: RootLayoutItem[] = [];
-  for (const item of value.items) {
-    if (!isRootItemV2(item)) return null;
-    const o = item as unknown as Record<string, unknown>;
-    if (o.kind === "group") {
-      const g: DashboardGroup = { ...(item as object as DashboardGroup) };
-      g.showBorder = g.showBorder !== false;
-      items.push(g);
-    } else {
-      const t: Record<string, unknown> = { ...o };
-      t.kind = "tile";
-      items.push(t as unknown as RootTileItem);
-    }
-  }
-  return { version: 2, items };
-}
-
-function parseV1(value: Record<string, unknown>): DashboardLayoutV1 | null {
-  if (!Array.isArray(value.tiles)) return null;
-  const tiles: DashboardTile[] = [];
-  for (const item of value.tiles) {
-    if (!isTile(item)) return null;
-    tiles.push(item);
-  }
-  return { version: 1, tiles };
+  return null;
 }
 
 export function parseDashboardLayout(value: unknown): DashboardLayout | null {
   if (!value || typeof value !== "object") return null;
   const v = value as Record<string, unknown>;
   if (typeof v.version !== "number" || v.version < 1) return null;
-  if (v.version >= 2) {
-    if (v.version !== 2) return null;
-    return parseV2(v);
-  }
-  return parseV1(v);
+  if (layoutJsonUnsupportedVersionMessage(value) != null) return null;
+  return parseDashboardLayoutZod(value);
 }
 
 export function loadDashboardLayout(): DashboardLayout | null {
@@ -179,7 +31,13 @@ export function loadDashboardLayout(): DashboardLayout | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    return parseDashboardLayout(JSON.parse(raw) as unknown);
+    const parsed = JSON.parse(raw) as unknown;
+    const unsup = layoutJsonUnsupportedVersionMessage(parsed);
+    if (unsup != null) {
+      console.warn(`[layoutStorage] ${unsup} — ignoring stored layout.`);
+      return null;
+    }
+    return parseDashboardLayout(parsed);
   } catch {
     return null;
   }
@@ -221,22 +79,6 @@ export function mergeMissingDefaultPlugins(layout: DashboardLayout): DashboardLa
   return { version: 2, items };
 }
 
-function withoutLegacyTiles(layout: DashboardLayout): DashboardLayoutV2 {
-  const v2 = ensureLayoutV2(layout);
-  const items: RootLayoutItem[] = [];
-  for (const it of v2.items) {
-    if (it.kind === "group") {
-      const children = it.children.filter((c) => !LEGACY_PLUGIN_IDS.has(c.pluginId));
-      if (children.length === 0) continue;
-      items.push({ ...it, children });
-    } else {
-      if (LEGACY_PLUGIN_IDS.has(it.pluginId)) continue;
-      items.push(it);
-    }
-  }
-  return { version: 2, items };
-}
-
 function countAllTiles(l: DashboardLayoutV2): number {
   return [...iterateTilesInLayout(l.items)].length;
 }
@@ -248,7 +90,7 @@ export function initialDashboardLayout(): DashboardLayoutV2 {
       return layoutWithGrid(cloneLayoutJson(DEFAULT_DASHBOARD_LAYOUT));
     }
     const v2raw = ensureLayoutV2(stored);
-    const base = withoutLegacyTiles(stored);
+    const base = stripLegacyPerfSummaryTiles(stored);
     const strippedAny = countAllTiles(v2raw) !== countAllTiles(base);
     const merged = mergeMissingDefaultPlugins(base);
     const mergedGrew = countAllTiles(merged) > countAllTiles(base);

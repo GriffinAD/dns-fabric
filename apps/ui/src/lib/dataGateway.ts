@@ -1,3 +1,18 @@
+import { z } from "zod";
+
+import {
+  dhcpClientListResponseSchema,
+  dhcpPoolListResponseSchema,
+  dhcpReservationListResponseSchema,
+  discoveryRecordListResponseSchema,
+  discoveryScanResponseSchema,
+  fabricEventSchema,
+  healthResponseSchema,
+  metaResponseSchema,
+  perfSummaryResponseSchema,
+  pluginListResponseSchema,
+} from "./api/openapiZod";
+import { dashboardLayoutJsonSchema, normalizeLayoutFromJson } from "./dashboard/layoutZod";
 import type {
   DhcpClientListResponse,
   DhcpPoolListResponse,
@@ -11,6 +26,31 @@ import type {
   PluginListResponse,
 } from "./api/types";
 import type { DashboardLayout } from "./dashboard/types";
+
+export type GatewayErrorCode = "http_error" | "parse_failed";
+
+/** Typed failure from `DataGateway` (HTTP or response shape). See UI_ENGINE_PLAN P3.4. */
+export class GatewayError extends Error {
+  readonly code: GatewayErrorCode;
+  readonly path: string;
+  readonly status?: number;
+  readonly zodError?: z.ZodError;
+
+  constructor(init: {
+    code: GatewayErrorCode;
+    path: string;
+    message: string;
+    status?: number;
+    zodError?: z.ZodError;
+  }) {
+    super(init.message);
+    this.name = "GatewayError";
+    this.code = init.code;
+    this.path = init.path;
+    this.status = init.status;
+    this.zodError = init.zodError;
+  }
+}
 
 export type DataGatewayOptions = {
   /** Bearer token for operator/viewer (never commit real secrets; use .env.local). */
@@ -39,12 +79,37 @@ export class DataGateway {
     return { Authorization: `Bearer ${this.authToken}` };
   }
 
-  private async getJson<T>(path: string): Promise<T> {
+  private async getJsonValidated<T>(path: string, schema: z.ZodType<T>): Promise<T> {
     const res = await fetch(this.url(path), { headers: { ...this.authHeaders() } });
     if (!res.ok) {
-      throw new Error(`GET ${path} failed: ${res.status} ${res.statusText}`);
+      throw new GatewayError({
+        code: "http_error",
+        path,
+        message: `GET ${path} failed: ${res.status} ${res.statusText}`,
+        status: res.status,
+      });
     }
-    return res.json() as Promise<T>;
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      throw new GatewayError({
+        code: "parse_failed",
+        path,
+        message: `GET ${path} returned non-JSON`,
+      });
+    }
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      console.warn(`[DataGateway] Zod parse failed for ${path}`, parsed.error.flatten());
+      throw new GatewayError({
+        code: "parse_failed",
+        path,
+        message: `Invalid response shape for ${path}`,
+        zodError: parsed.error,
+      });
+    }
+    return parsed.data;
   }
 
   private async putJson(path: string, body: unknown): Promise<void> {
@@ -54,36 +119,68 @@ export class DataGateway {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      throw new Error(`PUT ${path} failed: ${res.status} ${res.statusText}`);
+      throw new GatewayError({
+        code: "http_error",
+        path,
+        message: `PUT ${path} failed: ${res.status} ${res.statusText}`,
+        status: res.status,
+      });
     }
   }
 
-  private async postJson<T>(path: string, body: unknown): Promise<T> {
+  private async postJsonValidated<T>(path: string, reqBody: unknown, schema: z.ZodType<T>): Promise<T> {
     const res = await fetch(this.url(path), {
       method: "POST",
       headers: { "Content-Type": "application/json", ...this.authHeaders() },
-      body: JSON.stringify(body),
+      body: JSON.stringify(reqBody),
     });
     if (!res.ok) {
-      throw new Error(`POST ${path} failed: ${res.status} ${res.statusText}`);
+      throw new GatewayError({
+        code: "http_error",
+        path,
+        message: `POST ${path} failed: ${res.status} ${res.statusText}`,
+        status: res.status,
+      });
     }
-    return res.json() as Promise<T>;
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      throw new GatewayError({
+        code: "parse_failed",
+        path,
+        message: `POST ${path} returned non-JSON`,
+      });
+    }
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      console.warn(`[DataGateway] Zod parse failed for ${path}`, parsed.error.flatten());
+      throw new GatewayError({
+        code: "parse_failed",
+        path,
+        message: `Invalid response shape for ${path}`,
+        zodError: parsed.error,
+      });
+    }
+    return parsed.data;
   }
 
   getHealth(): Promise<HealthResponse> {
-    return this.getJson<HealthResponse>("/api/v1/health");
+    return this.getJsonValidated("/api/v1/health", healthResponseSchema);
   }
 
   getMeta(): Promise<MetaResponse> {
-    return this.getJson<MetaResponse>("/api/v1/meta");
+    return this.getJsonValidated("/api/v1/meta", metaResponseSchema);
   }
 
   listPlugins(): Promise<PluginListResponse> {
-    return this.getJson<PluginListResponse>("/api/v1/plugins");
+    return this.getJsonValidated("/api/v1/plugins", pluginListResponseSchema);
   }
 
-  getDashboardLayout(dashboardId: string): Promise<DashboardLayout> {
-    return this.getJson<DashboardLayout>(`/api/v1/dashboards/${encodeURIComponent(dashboardId)}/layout`);
+  async getDashboardLayout(dashboardId: string): Promise<DashboardLayout> {
+    const path = `/api/v1/dashboards/${encodeURIComponent(dashboardId)}/layout`;
+    const raw = await this.getJsonValidated(path, dashboardLayoutJsonSchema);
+    return normalizeLayoutFromJson(raw);
   }
 
   putDashboardLayout(dashboardId: string, layout: DashboardLayout): Promise<void> {
@@ -91,46 +188,69 @@ export class DataGateway {
   }
 
   /** Restores layout from ``dashboard-layouts.orig.json`` (server never writes that file). */
-  resetDashboardLayout(dashboardId: string): Promise<DashboardLayout> {
+  async resetDashboardLayout(dashboardId: string): Promise<DashboardLayout> {
     const path = `/api/v1/dashboards/${encodeURIComponent(dashboardId)}/layout/reset`;
-    return (async () => {
-      const res = await fetch(this.url(path), {
-        method: "POST",
-        headers: { ...this.authHeaders() },
+    const res = await fetch(this.url(path), {
+      method: "POST",
+      headers: { ...this.authHeaders() },
+    });
+    if (!res.ok) {
+      throw new GatewayError({
+        code: "http_error",
+        path,
+        message: `POST ${path} failed: ${res.status} ${res.statusText}`,
+        status: res.status,
       });
-      if (!res.ok) {
-        throw new Error(`POST ${path} failed: ${res.status} ${res.statusText}`);
-      }
-      return res.json() as Promise<DashboardLayout>;
-    })();
+    }
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      throw new GatewayError({
+        code: "parse_failed",
+        path,
+        message: `POST ${path} returned non-JSON`,
+      });
+    }
+    const parsed = dashboardLayoutJsonSchema.safeParse(body);
+    if (!parsed.success) {
+      console.warn(`[DataGateway] Zod parse failed for ${path}`, parsed.error.flatten());
+      throw new GatewayError({
+        code: "parse_failed",
+        path,
+        message: `Invalid response shape for ${path}`,
+        zodError: parsed.error,
+      });
+    }
+    return normalizeLayoutFromJson(parsed.data);
   }
 
   listDhcpPools(): Promise<DhcpPoolListResponse> {
-    return this.getJson<DhcpPoolListResponse>("/api/v1/dhcp/pools");
+    return this.getJsonValidated("/api/v1/dhcp/pools", dhcpPoolListResponseSchema);
   }
 
   listDhcpClients(): Promise<DhcpClientListResponse> {
-    return this.getJson<DhcpClientListResponse>("/api/v1/dhcp/clients");
+    return this.getJsonValidated("/api/v1/dhcp/clients", dhcpClientListResponseSchema);
   }
 
   listDhcpReservations(): Promise<DhcpReservationListResponse> {
-    return this.getJson<DhcpReservationListResponse>("/api/v1/dhcp/reservations");
+    return this.getJsonValidated("/api/v1/dhcp/reservations", dhcpReservationListResponseSchema);
   }
 
   listDiscoveryRecords(): Promise<DiscoveryRecordListResponse> {
-    return this.getJson<DiscoveryRecordListResponse>("/api/v1/discovery/records");
+    return this.getJsonValidated("/api/v1/discovery/records", discoveryRecordListResponseSchema);
   }
 
   getDiscoveryScan(): Promise<DiscoveryScanResponse> {
-    return this.getJson<DiscoveryScanResponse>("/api/v1/discovery/scan");
+    return this.getJsonValidated("/api/v1/discovery/scan", discoveryScanResponseSchema);
   }
 
   pauseDiscoveryScan(paused: boolean): Promise<DiscoveryScanResponse> {
-    return this.postJson<DiscoveryScanResponse>("/api/v1/discovery/scan/pause", { paused });
+    return this.postJsonValidated("/api/v1/discovery/scan/pause", { paused }, discoveryScanResponseSchema);
   }
 
   getPerfSummary(): Promise<PerfSummaryResponse> {
-    return this.getJson<PerfSummaryResponse>("/api/v1/perf/summary");
+    return this.getJsonValidated("/api/v1/perf/summary", perfSummaryResponseSchema);
   }
 
   /**
@@ -149,8 +269,14 @@ export class DataGateway {
     const es = new EventSource(this.url(streamPath));
     es.onmessage = (ev) => {
       try {
-        const parsed = JSON.parse(ev.data) as FabricEvent;
-        onEvent(parsed);
+        const raw = JSON.parse(ev.data) as unknown;
+        const parsed = fabricEventSchema.safeParse(raw);
+        if (!parsed.success) {
+          console.warn("[DataGateway] invalid SSE payload", parsed.error.flatten());
+          onError?.("invalid event payload");
+          return;
+        }
+        onEvent(parsed.data as FabricEvent);
       } catch {
         onError?.("invalid event payload");
       }

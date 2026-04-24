@@ -53,6 +53,126 @@ describe("DataGateway", () => {
     });
   });
 
+  it("throws GatewayError parse_failed when GET body fails Zod", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ items: "not-array" }),
+      }),
+    );
+    const gw = new DataGateway("");
+    await expect(gw.listPlugins()).rejects.toMatchObject({
+      name: "GatewayError",
+      code: "parse_failed",
+    });
+  });
+
+  it("throws GatewayError parse_failed when GET returns non-JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.reject(new SyntaxError("bad json")),
+      }),
+    );
+    const gw = new DataGateway("");
+    await expect(gw.getMeta()).rejects.toMatchObject({
+      code: "parse_failed",
+      message: expect.stringContaining("non-JSON"),
+    });
+  });
+
+  it("getDashboardLayout throws GatewayError when layout JSON is invalid", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ version: 2, items: "bad" }),
+      }),
+    );
+    const gw = new DataGateway("");
+    await expect(gw.getDashboardLayout("default")).rejects.toMatchObject({ code: "parse_failed" });
+  });
+
+  it("resetDashboardLayout throws GatewayError when response is not valid layout", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ version: 99, items: [] }),
+      }),
+    );
+    const gw = new DataGateway("");
+    await expect(gw.resetDashboardLayout("x")).rejects.toMatchObject({ code: "parse_failed" });
+  });
+
+  it("resetDashboardLayout throws parse_failed when POST body is non-JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.reject(new Error("empty")),
+      }),
+    );
+    const gw = new DataGateway("");
+    await expect(gw.resetDashboardLayout("default")).rejects.toMatchObject({
+      code: "parse_failed",
+      message: expect.stringContaining("non-JSON"),
+    });
+  });
+
+  it("pauseDiscoveryScan throws parse_failed when response is non-JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.reject(new SyntaxError("eof")),
+      }),
+    );
+    const gw = new DataGateway("");
+    await expect(gw.pauseDiscoveryScan(true)).rejects.toMatchObject({
+      code: "parse_failed",
+      message: expect.stringContaining("non-JSON"),
+    });
+  });
+
+  it("pauseDiscoveryScan throws parse_failed when response fails Zod", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ state: "bogus", updated_at: "t" }),
+      }),
+    );
+    const gw = new DataGateway("");
+    await expect(gw.pauseDiscoveryScan(false)).rejects.toMatchObject({ code: "parse_failed" });
+  });
+
+  it("subscribeFabricEvents reports Zod-invalid JSON objects", () => {
+    class MockES {
+      onmessage: ((ev: MessageEvent) => void) | null = null;
+      onerror: (() => void) | null = null;
+      close = vi.fn();
+    }
+    const instances: MockES[] = [];
+    vi.stubGlobal(
+      "EventSource",
+      vi.fn().mockImplementation(() => {
+        const inst = new MockES();
+        instances.push(inst);
+        return inst;
+      }),
+    );
+    const onErr = vi.fn();
+    const gw = new DataGateway("");
+    gw.subscribeFabricEvents(() => {}, onErr);
+    instances[0].onmessage?.({
+      data: JSON.stringify({ topic: "t", occurred_at: "now" }),
+    } as MessageEvent);
+    expect(onErr).toHaveBeenCalledWith("invalid event payload");
+  });
+
   it("throws on non-OK response", async () => {
     vi.stubGlobal(
       "fetch",

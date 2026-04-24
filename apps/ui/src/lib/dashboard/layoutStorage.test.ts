@@ -5,6 +5,7 @@ import * as gridPlacement from "./gridPlacement";
 import { iterateTilesInLayout } from "./layoutTree";
 import {
   initialDashboardLayout,
+  layoutJsonUnsupportedVersionMessage,
   loadDashboardLayout,
   mergeMissingDefaultPlugins,
   parseDashboardLayout,
@@ -23,7 +24,23 @@ function countAllTilesV2(d: DashboardLayoutV2): number {
   return allTilesIn(d).length;
 }
 
+describe("layoutJsonUnsupportedVersionMessage", () => {
+  it("returns message for layout version > 2", () => {
+    expect(layoutJsonUnsupportedVersionMessage({ version: 3, items: [] })).toContain("version 3");
+    expect(layoutJsonUnsupportedVersionMessage({ version: 2, items: [] })).toBeNull();
+  });
+
+  it("returns null for non-objects or missing version", () => {
+    expect(layoutJsonUnsupportedVersionMessage(null)).toBeNull();
+    expect(layoutJsonUnsupportedVersionMessage({ items: [] })).toBeNull();
+  });
+});
+
 describe("parseDashboardLayout", () => {
+  it("rejects layout version > 2", () => {
+    expect(parseDashboardLayout({ version: 4, items: [] })).toBeNull();
+  });
+
   it("rejects v2 with unknown root item kind", () => {
     expect(
       parseDashboardLayout({
@@ -333,6 +350,14 @@ describe("localStorage persistence", () => {
   it("loadDashboardLayout returns null on invalid JSON", () => {
     store["kea-fabric-dashboard-layout"] = "{";
     expect(loadDashboardLayout()).toBeNull();
+  });
+
+  it("loadDashboardLayout returns null and warns when stored version is unsupported", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    store["kea-fabric-dashboard-layout"] = JSON.stringify({ version: 5, items: [] });
+    expect(loadDashboardLayout()).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("version 5"));
+    warn.mockRestore();
   });
 
   it("initialDashboardLayout clears storage and re-applies default when layoutWithGrid throws", () => {

@@ -149,6 +149,23 @@ const diskVolumeSample = z
   })
   .strict();
 
+export const discoveryScanResponseSchema = z
+  .object({
+    state: z.enum(["idle", "running", "paused"]),
+    updated_at: z.string(),
+    record_count: z.number().nullable().optional(),
+  })
+  .strict();
+
+/** SSE `data:` payloads on `/api/v1/events/stream`. */
+export const fabricEventSchema = z
+  .object({
+    topic: z.string(),
+    occurred_at: z.string(),
+    payload: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+
 export const perfSummaryResponseSchema = z
   .object({
     cpu_percent_total: z.number(),
