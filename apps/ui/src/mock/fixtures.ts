@@ -1,11 +1,16 @@
 /**
  * Baseline OpenAPI-shaped fixtures. Handler may override per request (empty/error, PUT layout).
+ * Table lists and perf tick 0 are built once (simulate mode: stable inventory, live perf via SSE).
  */
+
+import { buildDefaultPool, buildDhcpClientItems, buildDhcpReservationItems, buildDiscoveryRecordItems } from "./generateTableFixtures";
+import { MOCK_T0_ISO } from "./mockConstants";
+import { perfSummaryForTick } from "./perfSimulate";
 
 export const baseFixtures: Record<string, unknown> = {
   "/api/v1/health": {
     status: "ok",
-    checked_at: "2026-04-22T10:00:00Z",
+    checked_at: MOCK_T0_ISO,
     dependencies: [{ name: "api", status: "ok", detail: null }],
   },
   "/api/v1/meta": {
@@ -144,77 +149,16 @@ export const baseFixtures: Record<string, unknown> = {
     ],
   },
   "/api/v1/dhcp/pools": {
-    items: [
-      {
-        id: "pool-default",
-        subnet_cidr: "192.0.2.0/24",
-        range_start: "192.0.2.100",
-        range_end: "192.0.2.199",
-        dns_domain: "example.test",
-      },
-    ],
+    items: [buildDefaultPool()],
   },
   "/api/v1/dhcp/clients": {
-    items: [
-      {
-        id: "cli-1",
-        hardware_address: "52:54:00:ab:cd:ef",
-        assigned_address: "192.0.2.110",
-        pool_id: "pool-default",
-        hostname: "test-host",
-        client_category: "workstation",
-        vendor_name: "QEMU",
-        scan_status: "seen",
-        lease_started_at: "2026-04-22T08:00:00Z",
-        lease_expires_at: "2026-04-23T12:00:00Z",
-        subnet_cidr: "192.0.2.0/24",
-        services: ["ssh"],
-      },
-    ],
+    items: buildDhcpClientItems(),
   },
   "/api/v1/dhcp/reservations": {
-    items: [
-      {
-        id: "res-1",
-        hardware_address: "52:54:00:11:22:33",
-        reserved_address: "192.0.2.50",
-        hostname: "reserved",
-        category: "STATIC",
-        subnet_cidr: "192.0.2.0/24",
-        vendor_name: "LAB",
-        scan_status: "seen",
-        services: ["dhcp"],
-      },
-    ],
+    items: buildDhcpReservationItems(),
   },
   "/api/v1/discovery/records": {
-    items: [
-      {
-        id: "disc-1",
-        last_seen_at: "2026-04-22T10:00:00Z",
-        state: "active",
-        addresses: ["192.0.2.88"],
-        labels: { vendor: "lab" },
-      },
-    ],
+    items: buildDiscoveryRecordItems(),
   },
-  "/api/v1/perf/summary": {
-    cpu_percent_total: 24.5,
-    cpu_core_percent: [22.0, 31.0, 18.0, 27.0],
-    memory_used_percent: 61.0,
-    memory_used_bytes: 8_000_000_000,
-    memory_total_bytes: 16_000_000_000,
-    network_in_mbps: 12.3,
-    network_out_mbps: 4.1,
-    network_adapters: [
-      { name: "eth0", in_mbps: 10.0, out_mbps: 3.5 },
-      { name: "eth1", in_mbps: 2.3, out_mbps: 0.6 },
-    ],
-    disk_used_percent: 44.0,
-    disk_volumes: [
-      { label: "/", used_percent: 44.0 },
-      { label: "/var", used_percent: 72.0 },
-    ],
-    collected_at: "2026-04-22T10:05:00Z",
-  },
+  "/api/v1/perf/summary": perfSummaryForTick(0),
 };

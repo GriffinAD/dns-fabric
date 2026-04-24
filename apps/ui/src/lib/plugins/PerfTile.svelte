@@ -6,7 +6,7 @@
   import MetricList from "../components/MetricList.svelte";
   import SemicircleGauge from "../components/SemicircleGauge.svelte";
   import { clampGridColSpan, tileColSpanForPlugin } from "./builtinMeta";
-  import { FABRIC_EVENT_BUS, perfUpdatedCpuPercent, type FabricEventBus } from "../dashboard/eventBus";
+  import { FABRIC_EVENT_BUS, perfUpdatedFullSummary, type FabricEventBus } from "../dashboard/eventBus";
   import { DataGateway } from "../dataGateway";
   import type { DashboardTile } from "../dashboard/types";
 
@@ -16,7 +16,7 @@
 
   let summary = $state<PerfSummaryResponse | null>(null);
   let err = $state<string | null>(null);
-  let liveCpuPercent = $state<number | null>(null);
+  let liveSummary = $state<PerfSummaryResponse | null>(null);
 
   const opts = $derived(tile.options);
   const cpuTotal = $derived(opts?.cpu_total === true);
@@ -35,25 +35,25 @@
       });
 
     if (!fabricBus) return;
-    return fabricBus.subscribe("fabric.perf.updated", perfUpdatedCpuPercent, (v) => {
-      liveCpuPercent = v;
+    return fabricBus.subscribe("fabric.perf.updated", perfUpdatedFullSummary, (snap) => {
+      liveSummary = snap;
     });
   });
 
-  const cpuDisplay = $derived(
-    liveCpuPercent != null && Number.isFinite(liveCpuPercent) ? liveCpuPercent : (summary?.cpu_percent_total ?? 0),
-  );
+  const effective = $derived(liveSummary ?? summary);
+
+  const cpuDisplay = $derived(effective?.cpu_percent_total ?? 0);
 
   const percentLines = $derived.by((): string[] => {
-    if (!summary) return [];
-    const cores = (summary.cpu_core_percent ?? []).map((p) => p.toFixed(0) + "%").join(", ");
+    if (!effective) return [];
+    const cores = (effective.cpu_core_percent ?? []).map((p) => p.toFixed(0) + "%").join(", ");
     const cpuLine = cpuTotal
       ? `CPU (total): ${cpuDisplay.toFixed(1)}%`
       : `CPU (per-core): ${cores || cpuDisplay.toFixed(1) + "%"}`;
     return [
       cpuLine,
-      `RAM: ${summary.memory_used_percent.toFixed(1)}%`,
-      `Disk: ${(summary.disk_used_percent ?? 0).toFixed(1)}%`,
+      `RAM: ${effective.memory_used_percent.toFixed(1)}%`,
+      `Disk: ${(effective.disk_used_percent ?? 0).toFixed(1)}%`,
     ];
   });
 
@@ -67,23 +67,23 @@
     | { key: string; kind: "disk-one"; percent: number };
 
   const summarySlots = $derived.by((): SummarySlot[] => {
-    if (!summary || percentOnly) return [];
+    if (!effective || percentOnly) return [];
     const out: SummarySlot[] = [];
     if (cpuTotal) {
       out.push({ key: "cpu-total", kind: "cpu-total", percent: cpuDisplay });
     } else {
-      const cores = summary.cpu_core_percent ?? [cpuDisplay];
+      const cores = effective.cpu_core_percent ?? [cpuDisplay];
       for (let i = 0; i < cores.length; i++) {
         out.push({ key: `core-${i}`, kind: "core", i, percent: cores[i]! });
       }
     }
     const ramSub =
-      summary.memory_total_bytes != null && summary.memory_used_bytes != null
-        ? `${(summary.memory_used_bytes / 1e9).toFixed(1)} / ${(summary.memory_total_bytes / 1e9).toFixed(1)} GiB`
+      effective.memory_total_bytes != null && effective.memory_used_bytes != null
+        ? `${(effective.memory_used_bytes / 1e9).toFixed(1)} / ${(effective.memory_total_bytes / 1e9).toFixed(1)} GiB`
         : undefined;
-    out.push({ key: "ram", kind: "ram", percent: summary.memory_used_percent, sublabel: ramSub });
-    if (byAdapter && summary.network_adapters?.length) {
-      for (const a of summary.network_adapters) {
+    out.push({ key: "ram", kind: "ram", percent: effective.memory_used_percent, sublabel: ramSub });
+    if (byAdapter && effective.network_adapters?.length) {
+      for (const a of effective.network_adapters) {
         out.push({
           key: `na-${a.name}`,
           kind: "net-adapter",
@@ -96,17 +96,17 @@
       out.push({
         key: "net",
         kind: "net-one",
-        percent: Math.min(100, ((summary.network_in_mbps ?? 0) + (summary.network_out_mbps ?? 0)) * 2),
-        sublabel: `↓${(summary.network_in_mbps ?? 0).toFixed(1)} ↑${(summary.network_out_mbps ?? 0).toFixed(1)} Mb/s`,
+        percent: Math.min(100, ((effective.network_in_mbps ?? 0) + (effective.network_out_mbps ?? 0)) * 2),
+        sublabel: `↓${(effective.network_in_mbps ?? 0).toFixed(1)} ↑${(effective.network_out_mbps ?? 0).toFixed(1)} Mb/s`,
       });
     }
-    if (byVolume && summary.disk_volumes?.length) {
-      for (let i = 0; i < summary.disk_volumes.length; i++) {
-        const v = summary.disk_volumes[i]!;
+    if (byVolume && effective.disk_volumes?.length) {
+      for (let i = 0; i < effective.disk_volumes.length; i++) {
+        const v = effective.disk_volumes[i]!;
         out.push({ key: `dv-${i}-${v.label}`, kind: "disk-vol", label: v.label, percent: v.used_percent });
       }
     } else {
-      out.push({ key: "disk", kind: "disk-one", percent: summary.disk_used_percent ?? 0 });
+      out.push({ key: "disk", kind: "disk-one", percent: effective.disk_used_percent ?? 0 });
     }
     return out;
   });

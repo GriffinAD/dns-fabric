@@ -5,11 +5,12 @@ from __future__ import annotations
 import copy
 from typing import Any, Protocol
 
-from kea_fabric.api.stub_data import (
+from kea_fabric.api import state
+from kea_fabric.api.perf_simulate import perf_summary_for_tick
+from kea_fabric.api.stub_data import STUB_PLUGINS
+from kea_fabric.api.stub_mock_tables import (
     STUB_CLIENTS,
     STUB_DISCOVERY_RECORDS,
-    STUB_PERF,
-    STUB_PLUGINS,
     STUB_POOLS,
     STUB_RESERVATIONS,
 )
@@ -50,4 +51,4 @@ class MockDhcpAdapter:
         return copy.deepcopy(STUB_PLUGINS)
 
     def perf_payload(self) -> dict[str, Any]:
-        return copy.deepcopy(STUB_PERF)
+        return copy.deepcopy(perf_summary_for_tick(state.get_perf_tick()))

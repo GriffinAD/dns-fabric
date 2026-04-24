@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 
 import { parseDashboardLayout } from "../lib/dashboard/layoutStorage";
 import { baseFixtures } from "./fixtures";
-import { getDiscoveryScan, getSavedLayout, nextPerfTick, setDiscoveryPaused, setSavedLayout } from "./state";
+import { perfSummaryForTick } from "./perfSimulate";
+import { getDiscoveryScan, getPerfTick, getSavedLayout, nextPerfTick, setDiscoveryPaused, setSavedLayout } from "./state";
 
 const _mockDir = dirname(fileURLToPath(import.meta.url));
 /** Repo-root ``.fabric-data/dashboard-layouts.orig.json`` (read-only; never written by the mock). */
@@ -64,10 +65,11 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
 
     const tick = () => {
       const n = nextPerfTick();
+      const snap = perfSummaryForTick(n);
       send({
         topic: "fabric.perf.updated",
         occurred_at: new Date().toISOString(),
-        payload: { tick: n, cpu_percent_total: 20 + (n % 15) },
+        payload: { ...snap, tick: n },
       });
     };
 
@@ -165,6 +167,11 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
   const mockMode = url.searchParams.get("mock");
   if (mockMode === "error") {
     sendJson(res, 503, { type: "about:blank", title: "mock error", status: 503, detail: "mock=error" });
+    return true;
+  }
+
+  if (pathOnly === "/api/v1/perf/summary") {
+    sendJson(res, 200, perfSummaryForTick(getPerfTick()));
     return true;
   }
 

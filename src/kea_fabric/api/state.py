@@ -4,8 +4,15 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from kea_fabric.api.stub_mock_tables import MOCK_DISCOVERY_RECORD_COUNT
+
 _discovery_paused: bool = False
 _perf_tick: int = 0
+
+
+def get_perf_tick() -> int:
+    """Last perf tick (0 before first SSE `next_perf_tick`)."""
+    return _perf_tick
 
 
 def get_discovery_scan() -> dict[str, object]:
@@ -13,7 +20,7 @@ def get_discovery_scan() -> dict[str, object]:
     return {
         "state": state,
         "updated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-        "record_count": 1,
+        "record_count": MOCK_DISCOVERY_RECORD_COUNT,
     }
 
 

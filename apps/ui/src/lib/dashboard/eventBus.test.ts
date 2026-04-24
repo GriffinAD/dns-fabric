@@ -3,7 +3,8 @@ import { get } from "svelte/store";
 
 import type { FabricEvent } from "../api/types";
 import { DataGateway } from "../dataGateway";
-import { createFabricEventBus, perfUpdatedCpuPercent } from "./eventBus";
+import { perfSummaryForTick } from "../../mock/perfSimulate";
+import { createFabricEventBus, perfUpdatedCpuPercent, perfUpdatedFullSummary } from "./eventBus";
 
 describe("createFabricEventBus", () => {
   it("returns the same disconnect when connect is called twice", () => {
@@ -139,5 +140,24 @@ describe("perfUpdatedCpuPercent", () => {
 
   it("returns finite numbers", () => {
     expect(perfUpdatedCpuPercent({ cpu_percent_total: 3.5 })).toBe(3.5);
+  });
+});
+
+describe("perfUpdatedFullSummary", () => {
+  it("returns null for non-object payloads", () => {
+    expect(perfUpdatedFullSummary(null)).toBeNull();
+    expect(perfUpdatedFullSummary("nope")).toBeNull();
+  });
+
+  it("strips tick and parses a full mock snapshot", () => {
+    const snap = perfSummaryForTick(2);
+    const parsed = perfUpdatedFullSummary({ ...snap, tick: 2 });
+    expect(parsed).not.toBeNull();
+    expect(parsed!.cpu_percent_total).toBe(snap.cpu_percent_total);
+    expect(parsed!.collected_at).toBe(snap.collected_at);
+  });
+
+  it("returns null when shape is invalid", () => {
+    expect(perfUpdatedFullSummary({ tick: 1, cpu_percent_total: 1 })).toBeNull();
   });
 });

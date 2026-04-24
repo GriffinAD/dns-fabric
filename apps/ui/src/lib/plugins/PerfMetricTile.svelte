@@ -6,7 +6,7 @@
   import MetricList from "../components/MetricList.svelte";
   import SemicircleGauge from "../components/SemicircleGauge.svelte";
   import { clampGridColSpan, GRID_COLUMNS, tileColSpanForPlugin } from "./builtinMeta";
-  import { FABRIC_EVENT_BUS, perfUpdatedCpuPercent, type FabricEventBus } from "../dashboard/eventBus";
+  import { FABRIC_EVENT_BUS, perfUpdatedFullSummary, type FabricEventBus } from "../dashboard/eventBus";
   import { DataGateway } from "../dataGateway";
   import type { DashboardTile } from "../dashboard/types";
 
@@ -26,7 +26,9 @@
 
   let summary = $state<PerfSummaryResponse | null>(null);
   let err = $state<string | null>(null);
-  let liveCpuPercent = $state<number | null>(null);
+  let liveSummary = $state<PerfSummaryResponse | null>(null);
+
+  const effective = $derived(liveSummary ?? summary);
 
   const title = $derived(
     metric === "cpu" ? "CPU" : metric === "ram" ? "RAM" : metric === "network" ? "Network" : "Disk",
@@ -43,17 +45,17 @@
   );
 
   const layoutMeta = $derived.by(() => {
-    if (!summary) return { gaugeCols: 1, dashboardCols: 1, effectKey: null as string | null };
+    if (!effective) return { gaugeCols: 1, dashboardCols: 1, effectKey: null as string | null };
     if (percentOnly) return { gaugeCols: 1, dashboardCols: 1, effectKey: "pct" as const };
     let n = 1;
     if (metric === "cpu") {
-      n = cpuTotal ? 1 : Math.max(1, summary.cpu_core_percent?.length ?? 1);
+      n = cpuTotal ? 1 : Math.max(1, effective.cpu_core_percent?.length ?? 1);
     } else if (metric === "ram") {
       n = 1;
     } else if (metric === "network") {
-      n = byAdapter ? Math.max(1, summary.network_adapters?.length ?? 1) : 1;
+      n = byAdapter ? Math.max(1, effective.network_adapters?.length ?? 1) : 1;
     } else {
-      n = byVolume ? Math.max(1, summary.disk_volumes?.length ?? 1) : 1;
+      n = byVolume ? Math.max(1, effective.disk_volumes?.length ?? 1) : 1;
     }
     const gaugeCols = clampGridColSpan(Math.min(Math.max(1, n), perfMaxCols));
     const dashboardCols = gaugeCols;
@@ -66,15 +68,15 @@
   const tileRowSpan = $derived(Math.max(1, tile.grid?.rowSpan ?? 1));
 
   const nGaugeCells = $derived.by(() => {
-    if (!summary || percentOnly) return 0;
+    if (!effective || percentOnly) return 0;
     if (metric === "cpu") {
-      return cpuTotal ? 1 : Math.max(1, summary.cpu_core_percent?.length ?? 1);
+      return cpuTotal ? 1 : Math.max(1, effective.cpu_core_percent?.length ?? 1);
     }
     if (metric === "ram") return 1;
     if (metric === "network") {
-      return byAdapter && summary.network_adapters?.length ? summary.network_adapters.length : 1;
+      return byAdapter && effective.network_adapters?.length ? effective.network_adapters.length : 1;
     }
-    return byVolume && summary.disk_volumes?.length ? summary.disk_volumes.length : 1;
+    return byVolume && effective.disk_volumes?.length ? effective.disk_volumes.length : 1;
   });
 
   const stretchGaugesToCells = $derived.by(() => {
@@ -104,37 +106,35 @@
       });
 
     if (!fabricBus) return;
-    return fabricBus.subscribe("fabric.perf.updated", perfUpdatedCpuPercent, (v) => {
-      liveCpuPercent = v;
+    return fabricBus.subscribe("fabric.perf.updated", perfUpdatedFullSummary, (snap) => {
+      liveSummary = snap;
     });
   });
 
-  const cpuDisplay = $derived(
-    liveCpuPercent != null && Number.isFinite(liveCpuPercent) ? liveCpuPercent : (summary?.cpu_percent_total ?? 0),
-  );
+  const cpuDisplay = $derived(effective?.cpu_percent_total ?? 0);
 
   const percentLines = $derived.by((): string[] => {
-    if (!summary) return [];
+    if (!effective) return [];
     if (metric === "cpu") {
-      const cores = (summary.cpu_core_percent ?? []).map((p) => p.toFixed(0) + "%").join(", ");
+      const cores = (effective.cpu_core_percent ?? []).map((p) => p.toFixed(0) + "%").join(", ");
       const line = cpuTotal
         ? `CPU (total): ${cpuDisplay.toFixed(1)}%`
         : `CPU (per-core): ${cores || cpuDisplay.toFixed(1) + "%"}`;
       return [line];
     }
-    if (metric === "ram") return [`RAM: ${summary.memory_used_percent.toFixed(1)}%`];
+    if (metric === "ram") return [`RAM: ${effective.memory_used_percent.toFixed(1)}%`];
     if (metric === "network") {
       return [
-        `Network: ${((summary.network_in_mbps ?? 0) + (summary.network_out_mbps ?? 0)).toFixed(1)} Mb/s (Σ)`,
+        `Network: ${((effective.network_in_mbps ?? 0) + (effective.network_out_mbps ?? 0)).toFixed(1)} Mb/s (Σ)`,
       ];
     }
-    return [`Disk: ${(summary.disk_used_percent ?? 0).toFixed(1)}%`];
+    return [`Disk: ${(effective.disk_used_percent ?? 0).toFixed(1)}%`];
   });
 
   let lastGridKey = $state<string | null>(null);
 
   $effect(() => {
-    if (!onGridHint || !summary) return;
+    if (!onGridHint || !effective) return;
     const { effectKey, dashboardCols } = layoutMeta;
     if (effectKey === null) return;
     if (lastGridKey === effectKey) return;
@@ -145,7 +145,7 @@
 
 <GaugeTileLayout {title} {err} loading={!summary} bodyClass="flex min-h-0 w-full min-w-0 flex-1 flex-col items-stretch justify-center">
   {#snippet children()}
-    {#if summary}
+    {#if effective}
       {#if percentOnly}
         <div class="flex min-h-0 flex-1 flex-col items-stretch justify-center sm:items-center">
           <MetricList lines={percentLines} />
@@ -171,7 +171,7 @@
                   />
                 </div>
               {:else}
-                {#each summary.cpu_core_percent ?? [cpuDisplay] as pct, i (i)}
+                {#each effective.cpu_core_percent ?? [cpuDisplay] as pct, i (i)}
                   <div class="min-w-0">
                     <SemicircleGauge
                       label="Core {i}"
@@ -192,11 +192,11 @@
               <div class="min-w-0">
                 <SemicircleGauge
                   labelBlank
-                  percent={summary.memory_used_percent}
+                  percent={effective.memory_used_percent}
                   mini
                   miniFillCell={stretchGaugesToCells}
-                  sublabel={summary.memory_total_bytes != null && summary.memory_used_bytes != null
-                    ? `${(summary.memory_used_bytes / 1e9).toFixed(1)} / ${(summary.memory_total_bytes / 1e9).toFixed(1)} GiB`
+                  sublabel={effective.memory_total_bytes != null && effective.memory_used_bytes != null
+                    ? `${(effective.memory_used_bytes / 1e9).toFixed(1)} / ${(effective.memory_total_bytes / 1e9).toFixed(1)} GiB`
                     : undefined}
                 />
               </div>
@@ -207,8 +207,8 @@
               style={alignGridStyle}
               data-testid="perf-metric-gauges"
             >
-              {#if byAdapter && summary.network_adapters?.length}
-                {#each summary.network_adapters as a, i (a.name)}
+              {#if byAdapter && effective.network_adapters?.length}
+                {#each effective.network_adapters as a, i (a.name)}
                   <div class="min-w-0">
                     <SemicircleGauge
                       label={a.name}
@@ -223,10 +223,10 @@
                 <div class="min-w-0">
                   <SemicircleGauge
                     labelBlank
-                    percent={Math.min(100, ((summary.network_in_mbps ?? 0) + (summary.network_out_mbps ?? 0)) * 2)}
+                    percent={Math.min(100, ((effective.network_in_mbps ?? 0) + (effective.network_out_mbps ?? 0)) * 2)}
                     mini
                     miniFillCell={stretchGaugesToCells}
-                    sublabel={`↑${(summary.network_out_mbps ?? 0).toFixed(2)} ↓${(summary.network_in_mbps ?? 0).toFixed(2)} Mb/s`}
+                    sublabel={`↑${(effective.network_out_mbps ?? 0).toFixed(2)} ↓${(effective.network_in_mbps ?? 0).toFixed(2)} Mb/s`}
                   />
                 </div>
               {/if}
@@ -237,8 +237,8 @@
               style={alignGridStyle}
               data-testid="perf-metric-gauges"
             >
-              {#if byVolume && summary.disk_volumes?.length}
-                {#each summary.disk_volumes as v, i (`${i}-${v.label}`)}
+              {#if byVolume && effective.disk_volumes?.length}
+                {#each effective.disk_volumes as v, i (`${i}-${v.label}`)}
                   <div class="min-w-0">
                     <SemicircleGauge
                       label={v.label}
@@ -252,7 +252,7 @@
                 <div class="min-w-0">
                   <SemicircleGauge
                     labelBlank
-                    percent={summary.disk_used_percent ?? 0}
+                    percent={effective.disk_used_percent ?? 0}
                     mini
                     miniFillCell={stretchGaugesToCells}
                   />

@@ -5,7 +5,10 @@ Vite + Svelte 5 bootstrap for the operator shell. Local dev proxies `/api` to
 handled first by the **Vite mock middleware** (`vite-plugin-mock-api.ts`), which
 serves JSON aligned with `specs/api/openapi.yaml` from `src/mock/fixtures.ts`.
 
-Mock extras:
+Mock extras (**simulate mode**): DHCP/discovery list payloads are generated once per dev server
+(stable IPs and timestamps); **`GET /api/v1/perf/summary`** and SSE **`fabric.perf.updated`**
+carry synthetic, tick-advancing CPU/RAM/network/disk (see `src/mock/perfSimulate.ts`). With
+**`KEA_FABRIC_UI_PROXY_API=1`**, the mock is skipped and a real API answers instead.
 
 - **`GET /api/v1/events/stream`** — `text/event-stream` with synthetic
   `fabric.perf.updated` events (used by `DataGateway.subscribeFabricEvents`).

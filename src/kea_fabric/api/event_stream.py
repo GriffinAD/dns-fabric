@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from fastapi import Request
 
 from kea_fabric.api import state
+from kea_fabric.api.perf_simulate import perf_summary_for_tick
 from kea_fabric.settings import ApiSettings
 
 _log = logging.getLogger(__name__)
@@ -39,10 +40,11 @@ async def fabric_sse_lines(request: Request) -> AsyncIterator[str]:
             yield ": sse-heartbeat\n\n"
             await asyncio.sleep(interval)
             n = state.next_perf_tick()
+            snap = perf_summary_for_tick(n)
             payload = {
                 "topic": "fabric.perf.updated",
                 "occurred_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-                "payload": {"tick": n, "cpu_percent_total": 20 + (n % 15)},
+                "payload": {**snap, "tick": n},
             }
             yield f"data: {json.dumps(payload)}\n\n"
             data_events += 1

@@ -1,6 +1,7 @@
 import { readonly, writable, type Readable } from "svelte/store";
 
-import type { FabricEvent } from "../api/types";
+import { perfSummaryResponseSchema } from "../api/openapiZod";
+import type { FabricEvent, PerfSummaryResponse } from "../api/types";
 import { DataGateway } from "../dataGateway";
 
 /** Svelte context key for the fabric SSE fan-out bus (`docs/planning/UI_ENGINE_PLAN.md` P5). */
@@ -89,4 +90,13 @@ export function perfUpdatedCpuPercent(payload: unknown): number | null {
   if (!payload || typeof payload !== "object") return null;
   const v = (payload as Record<string, unknown>).cpu_percent_total;
   return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+/** Full perf snapshot from SSE (mock adds `tick`; stripped before Zod). */
+export function perfUpdatedFullSummary(payload: unknown): PerfSummaryResponse | null {
+  if (!payload || typeof payload !== "object") return null;
+  const p = { ...(payload as Record<string, unknown>) };
+  delete p.tick;
+  const parsed = perfSummaryResponseSchema.safeParse(p);
+  return parsed.success ? parsed.data : null;
 }
