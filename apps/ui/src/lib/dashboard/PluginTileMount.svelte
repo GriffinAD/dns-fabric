@@ -2,6 +2,7 @@
   import type { PluginEntry } from "../api/types";
   import type { DataGateway } from "../dataGateway";
   import { resolvePluginTileMount } from "../plugins/registry";
+  import { tileOptionsSchemaForPlugin } from "../plugins/tileOptionsZod";
   import TileErrorBoundary from "./TileErrorBoundary.svelte";
   import TileFallback from "./TileFallback.svelte";
   import TileHostControl from "./TileHostControl.svelte";
@@ -34,12 +35,20 @@
       onPerfTileGridHint,
     }),
   );
+
+  const optionsResult = $derived(tileOptionsSchemaForPlugin(tile.pluginId).safeParse(tile.options ?? {}));
 </script>
 
 {#if pluginEntry && pluginEntry.enabled === false}
   <TileFallback reason="disabled" pluginId={tile.pluginId} />
 {:else if resolved == null}
   <TileFallback reason="unknown" pluginId={tile.pluginId} />
+{:else if !optionsResult.success}
+  <TileFallback
+    reason="error"
+    pluginId={tile.pluginId}
+    details={optionsResult.error.issues.map((i) => i.message).join("; ")}
+  />
 {:else}
   <TileHostControl hostControl={tile.hostControl} pluginId={tile.pluginId}>
     {#snippet children()}

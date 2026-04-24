@@ -9,8 +9,8 @@
     clampTileGridPlacement,
     tileColSpan,
   } from "./gridPlacement";
+  import { resolvePluginTileSettings } from "../plugins/registry";
   import { PARENT_ID_DASHBOARD } from "./layoutTree";
-  import PerfOptionsForm from "./PerfOptionsForm.svelte";
   import TileGenericFields from "./TileGenericFields.svelte";
   import TilePlacementForm from "./TilePlacementForm.svelte";
   import type { DashboardTile } from "./types";
@@ -131,6 +131,7 @@
   {@const ud = manifest?.ui_dashboard}
   {@const showCompact = ud?.supports_compact !== false}
   {@const showFull = ud?.supports_full !== false}
+  {@const perfSettings = resolvePluginTileSettings(draft.pluginId)}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -155,7 +156,10 @@
         </p>
 
         <div class="space-y-4">
-          <PerfOptionsForm bind:draft />
+          {#if perfSettings}
+            {@const PerfForm = perfSettings}
+            <PerfForm bind:draft />
+          {/if}
 
           <TilePlacementForm
             bind:draft

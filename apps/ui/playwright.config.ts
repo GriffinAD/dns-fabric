@@ -17,7 +17,8 @@ export default defineConfig({
   webServer: {
     command: "npm run dev -- --host 127.0.0.1 --port 5173",
     url: "http://127.0.0.1:5173/",
-    reuseExistingServer: !process.env.CI,
+    /* Default false so `VITE_E2E_THROWING` from `env` below is always applied (reuse skips webServer). */
+    reuseExistingServer: process.env.PW_REUSE_DEV_SERVER === "1",
     timeout: 120_000,
     env: {
       ...process.env,

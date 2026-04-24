@@ -9,7 +9,7 @@ while IFS= read -r hit; do
   [[ -z "${hit}" ]] && continue
   line="${hit#*:}"
   line="${line#*:}"
-  if echo "${line}" | grep -qE 'from[[:space:]]+['\''\"]\.\./dashboard/(types|eventBus)['\''\"]'; then
+  if echo "${line}" | grep -qE 'from[[:space:]]+['\''\"][^'\''\"]*dashboard/(types|eventBus)['\''\"]'; then
     continue
   fi
   if echo "${line}" | grep -qE '\.\./dashboard/'; then

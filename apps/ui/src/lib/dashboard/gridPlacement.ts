@@ -476,18 +476,6 @@ export function groupEditInnerColumnCount(g: DashboardGroup): number {
   );
 }
 
-/**
- * Legacy helper: effective width of a tile in root columns (rounded). Perf metric tiles no longer
- * use this for intratile gauge splits (they use equal `1fr` per gauge); kept for tests and any
- * future alignment work.
- */
-export function alignGaugeColumnCount(parentGroup: DashboardGroup | null, tile: DashboardTile): number {
-  const T = effectiveColSpan(tile);
-  const gRoot = parentGroup == null ? GRID_COLUMNS : groupOuterColSpan(parentGroup);
-  const w = (gRoot * T) / 12;
-  return Math.max(1, Math.min(GRID_COLUMNS, Math.round(w)));
-}
-
 function groupOuterRowSpan(g: DashboardGroup, innerH: number): number {
   const cg = g.grid;
   if (cg != null && Number.isInteger(cg.rowSpan) && cg.rowSpan >= 1) {

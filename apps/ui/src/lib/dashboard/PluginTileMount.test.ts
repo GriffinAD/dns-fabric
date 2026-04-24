@@ -36,6 +36,25 @@ describe("PluginTileMount", () => {
     el.remove();
   });
 
+  it("shows error fallback when tile.options fails Zod for perf plugin", () => {
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    const app = mount(PluginTileMount, {
+      target: el,
+      props: {
+        gateway,
+        tile: {
+          ...baseTile("perf.cpu"),
+          options: { not_a_valid_key: true } as unknown as DashboardTile["options"],
+        },
+        plugins: [],
+      },
+    });
+    expect(el.querySelector('[data-testid="tile-fallback"][data-fallback-reason="error"]')).toBeTruthy();
+    unmount(app);
+    el.remove();
+  });
+
   it("shows disabled fallback when manifest marks plugin disabled", () => {
     const plugins: PluginEntry[] = [{ id: "perf.cpu", name: "CPU", enabled: false }];
     const el = document.createElement("div");

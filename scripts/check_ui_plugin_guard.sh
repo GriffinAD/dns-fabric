@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 # UI engine guard: plugin-id equality checks belong in lib/plugins/ (registry/settings), not the dashboard host.
-# Phase 0–1: informational only (exit 0). Phase 8: set ENFORCE_UI_PLUGIN_GUARD=1 in CI to fail on violations.
+# CI sets ENFORCE_UI_PLUGIN_GUARD=1 (`.github/workflows/ui.yml`).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 UI_SRC="$ROOT/apps/ui/src"
 # Match strict pluginId comparisons outside plugins (dashboard, App, etc.)
 PATTERN='pluginId ==='
-matches="$(grep -R --include='*.svelte' --include='*.ts' -n "$PATTERN" "$UI_SRC" 2>/dev/null | grep -v '/lib/plugins/' || true)"
+matches="$(
+  grep -R --include='*.svelte' --include='*.ts' -n "$PATTERN" "$UI_SRC" 2>/dev/null \
+    | grep -v '/lib/plugins/' \
+    | grep -vE '\.(test|spec)\.ts:' \
+    | grep -v '/tests/e2e/' \
+    || true
+)"
 if [[ -z "${matches// }" ]]; then
   count=0
 else

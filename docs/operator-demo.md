@@ -66,6 +66,10 @@ VITE_API_AUTH_TOKEN=same-value-as-KEA_FABRIC_API_TOKEN
 `DataGateway` sends `Authorization: Bearer …` on fetch and `access_token=…` on SSE
 (`EventSource` cannot set headers).
 
+## Playwright (`npm run check:ui-e2e`)
+
+By default Playwright starts Vite on `127.0.0.1:5173` with `VITE_E2E_THROWING=1` so the plugin-isolation spec can register the throwing tile. Free that port before running e2e, or set **`PW_REUSE_DEV_SERVER=1`** only if you already have a dev server on that URL **and** it was started with `VITE_E2E_THROWING=1`.
+
 ## Stop
 
 Interrupt both terminals (`Ctrl+C`). Layout files remain under **`KEA_FABRIC_DATA_DIR`**

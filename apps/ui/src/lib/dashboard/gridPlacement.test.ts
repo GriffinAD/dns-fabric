@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { alignPerfGridAlignment } from "./alignPerfGridAlignment";
 import {
-  alignGaugeColumnCount,
   clampGridColSpan,
   clampGridRowSpan,
   clampGroupChildGridPlacement,
@@ -226,7 +226,7 @@ describe("packTilesToGrid", () => {
   });
 });
 
-describe("alignGaugeColumnCount", () => {
+describe("alignPerfGridAlignment", () => {
   const tileSpanT = (T: number): DashboardTile => ({
     id: "t",
     pluginId: "perf.cpu",
@@ -244,13 +244,13 @@ describe("alignGaugeColumnCount", () => {
   });
 
   it("at root, width in root cols equals T; in a G-wide group, (G×T)/12 (not T alone)", () => {
-    expect(alignGaugeColumnCount(null, tileSpanT(12))).toBe(12);
-    expect(alignGaugeColumnCount(null, tileSpanT(3))).toBe(3);
-    expect(alignGaugeColumnCount(groupRootW(12), tileSpanT(12))).toBe(12);
+    expect(alignPerfGridAlignment(null, tileSpanT(12))).toBe(12);
+    expect(alignPerfGridAlignment(null, tileSpanT(3))).toBe(3);
+    expect(alignPerfGridAlignment(groupRootW(12), tileSpanT(12))).toBe(12);
     /* Full-width in 6 root cols → 6 align tracks, not 12, so sub-columns are one root wide. */
-    expect(alignGaugeColumnCount(groupRootW(6), tileSpanT(12))).toBe(6);
+    expect(alignPerfGridAlignment(groupRootW(6), tileSpanT(12))).toBe(6);
     /* T=3 in 6-wide group: 3×6/12 = 1.5 → 2 */
-    expect(alignGaugeColumnCount(groupRootW(6), tileSpanT(3))).toBe(2);
+    expect(alignPerfGridAlignment(groupRootW(6), tileSpanT(3))).toBe(2);
   });
 });
 

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { TileDisplayStyle } from "../api/types";
-  import { clampGridColSpan } from "./gridPlacement";
-  import type { DashboardTile } from "./types";
+  import type { TileDisplayStyle } from "../../api/types";
+  import type { DashboardTile } from "../../dashboard/types";
+  import { clampGridColSpan } from "../builtinMeta";
 
   let { draft = $bindable() }: { draft: DashboardTile } = $props();
 

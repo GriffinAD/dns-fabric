@@ -3,8 +3,13 @@ import { describe, expect, it } from "vitest";
 
 import type { DashboardTile } from "../dashboard/types";
 import type { DataGateway } from "../dataGateway";
-import DhcpPoolsTile from "./DhcpPoolsTile.svelte";
-import { manifestRegistry, registerDynamicPluginResolver, resolvePluginTileMount } from "./registry";
+import DataTableTile from "./DataTableTile.svelte";
+import {
+  manifestRegistry,
+  registerDynamicPluginResolver,
+  resolvePluginTileMount,
+  resolvePluginTileSettings,
+} from "./registry";
 
 const BUILTIN_TILE_IDS = [
   "dhcp.pools",
@@ -29,6 +34,13 @@ function tile(pluginId: string): DashboardTile {
 
 const gateway = {} as DataGateway;
 
+describe("resolvePluginTileSettings", () => {
+  it("returns perf settings component for perf plugin ids", () => {
+    expect(resolvePluginTileSettings("perf.cpu")).not.toBeNull();
+    expect(resolvePluginTileSettings("dhcp.pools")).toBeNull();
+  });
+});
+
 describe("ManifestRegistry", () => {
   it("lists built-in plugin ids", () => {
     const ids = manifestRegistry.list().map((r) => r.id);
@@ -51,6 +63,17 @@ describe("resolvePluginTileMount", () => {
     expect(m).not.toBeNull();
     expect(m!.props.gateway).toBe(gateway);
     expect(m!.props.tile).toBe(t);
+  });
+
+  it("dhcp.pools uses DataTableTile pools kind", () => {
+    const m = resolvePluginTileMount({ gateway, tile: tile("dhcp.pools"), editLayout: false });
+    expect(m!.component).toBe(DataTableTile);
+    expect(m!.props.kind).toBe("pools");
+  });
+
+  it("perf.cpu uses PerfMetricTile with metric cpu", () => {
+    const m = resolvePluginTileMount({ gateway, tile: tile("perf.cpu"), editLayout: false });
+    expect(m!.props.metric).toBe("cpu");
   });
 
   it("returns null for unknown plugin", () => {
@@ -158,8 +181,8 @@ describe("registerDynamicPluginResolver", () => {
   it("resolves until teardown", () => {
     const id = `dynamic.${Math.random().toString(36).slice(2, 10)}`;
     const teardown = registerDynamicPluginResolver(id, (ctx) => ({
-      component: DhcpPoolsTile as Component<Record<string, unknown>>,
-      props: { gateway: ctx.gateway, tile: ctx.tile },
+      component: DataTableTile as Component<Record<string, unknown>>,
+      props: { gateway: ctx.gateway, tile: ctx.tile, kind: "pools" },
     }));
     const m = resolvePluginTileMount({ gateway, tile: tile(id), editLayout: false });
     expect(m).not.toBeNull();

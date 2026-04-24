@@ -32,6 +32,12 @@ jobs:
       - name: Unit/component tests (Vitest + coverage)
         run: npm run check:ui-unit
 
+      - name: UI plugin id guard (no pluginId === outside lib/plugins)
+        run: ENFORCE_UI_PLUGIN_GUARD=1 npm run check:ui-plugin-guard
+
+      - name: UI plugin dashboard import guard
+        run: npm run check:ui-plugin-dashboard-imports
+
       - name: Install Playwright browsers
         run: npm --prefix apps/ui exec playwright install chromium --with-deps
 

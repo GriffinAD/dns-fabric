@@ -3,19 +3,14 @@ import type { Component } from "svelte";
 import type { DataGateway } from "../dataGateway";
 import type { DashboardTile } from "../dashboard/types";
 import { applyPerfCompactAsPercentOnly } from "./tileDisplay";
-import CpuTile from "./CpuTile.svelte";
-import DhcpClientsTile from "./DhcpClientsTile.svelte";
-import DhcpPoolsTile from "./DhcpPoolsTile.svelte";
-import DhcpReservationsTile from "./DhcpReservationsTile.svelte";
-import DiskTile from "./DiskTile.svelte";
+import DataTableTile from "./DataTableTile.svelte";
 import DiscoveryTile from "./DiscoveryTile.svelte";
-import NwTile from "./NwTile.svelte";
+import PerfMetricTile from "./PerfMetricTile.svelte";
 import PerfTile from "./PerfTile.svelte";
-import RamTile from "./RamTile.svelte";
+import PerfTileSettingsForm from "./perf/PerfOptionsForm.svelte";
 
 /**
- * Runtime plugin registration (built-ins). See `docs/planning/UI_ENGINE_SPEC.md` §3.4 — full type will grow
- * (optionsSchema, settings fragment, gridPolicy hooks) in later Phase 2 items.
+ * Runtime plugin registration (built-ins). See `docs/planning/UI_ENGINE_SPEC.md` §3.4.
  */
 export type PluginRegistration = {
   id: string;
@@ -46,15 +41,29 @@ const BUILTIN_IDS = [
   "perf.disk",
 ] as const;
 
+const TILE_SETTINGS_IDS = new Set<string>([
+  "perf.summary",
+  "perf.cpu",
+  "perf.ram",
+  "perf.network",
+  "perf.disk",
+]);
+
+/** Tile settings body for `TileSettingsOverlay` (perf plugins only). */
+export function resolvePluginTileSettings(
+  pluginId: string,
+): Component<{ draft: DashboardTile }> | null {
+  if (!TILE_SETTINGS_IDS.has(pluginId)) return null;
+  return PerfTileSettingsForm as Component<{ draft: DashboardTile }>;
+}
+
 export class ManifestRegistry {
-  /** Built-ins plus any `register()` calls (e.g. future dynamic plugins). */
   private readonly ids = new Set<string>(BUILTIN_IDS);
 
   register(_r: PluginRegistration): void {
     this.ids.add(_r.id);
   }
 
-  /** Remove a runtime-registered id (dynamic / E2E teardown). Built-ins are ignored if missing. */
   unregister(id: string): void {
     this.ids.delete(id);
   }
@@ -70,18 +79,32 @@ export class ManifestRegistry {
 
 export const manifestRegistry = new ManifestRegistry();
 
+function gridHint(
+  ctx: TileHostContext,
+): ((hint: { colSpan: number; rowSpan: number }) => void) | undefined {
+  return ctx.onPerfTileGridHint
+    ? (hint: { colSpan: number; rowSpan: number }) => ctx.onPerfTileGridHint!(ctx.tile.id, hint)
+    : undefined;
+}
+
 function dhcpPools(ctx: TileHostContext): ResolvedPluginMount {
-  return { component: DhcpPoolsTile as Component<Record<string, unknown>>, props: { gateway: ctx.gateway, tile: ctx.tile } };
+  return {
+    component: DataTableTile as Component<Record<string, unknown>>,
+    props: { gateway: ctx.gateway, tile: ctx.tile, kind: "pools" },
+  };
 }
 
 function dhcpClients(ctx: TileHostContext): ResolvedPluginMount {
-  return { component: DhcpClientsTile as Component<Record<string, unknown>>, props: { gateway: ctx.gateway, tile: ctx.tile } };
+  return {
+    component: DataTableTile as Component<Record<string, unknown>>,
+    props: { gateway: ctx.gateway, tile: ctx.tile, kind: "clients" },
+  };
 }
 
 function dhcpReservations(ctx: TileHostContext): ResolvedPluginMount {
   return {
-    component: DhcpReservationsTile as Component<Record<string, unknown>>,
-    props: { gateway: ctx.gateway, tile: ctx.tile },
+    component: DataTableTile as Component<Record<string, unknown>>,
+    props: { gateway: ctx.gateway, tile: ctx.tile, kind: "reservations" },
   };
 }
 
@@ -106,53 +129,34 @@ function perfSummary(ctx: TileHostContext): ResolvedPluginMount {
 
 function perfCpu(ctx: TileHostContext): ResolvedPluginMount {
   return {
-    component: CpuTile as Component<Record<string, unknown>>,
-    props: {
-      gateway: ctx.gateway,
-      tile: ctx.tile,
-      onGridHint: ctx.onPerfTileGridHint
-        ? (hint: { colSpan: number; rowSpan: number }) => ctx.onPerfTileGridHint!(ctx.tile.id, hint)
-        : undefined,
-    },
+    component: PerfMetricTile as Component<Record<string, unknown>>,
+    props: { gateway: ctx.gateway, tile: ctx.tile, metric: "cpu", onGridHint: gridHint(ctx) },
   };
 }
 
 function perfRam(ctx: TileHostContext): ResolvedPluginMount {
   return {
-    component: RamTile as Component<Record<string, unknown>>,
-    props: {
-      gateway: ctx.gateway,
-      tile: ctx.tile,
-      onGridHint: ctx.onPerfTileGridHint
-        ? (hint: { colSpan: number; rowSpan: number }) => ctx.onPerfTileGridHint!(ctx.tile.id, hint)
-        : undefined,
-    },
+    component: PerfMetricTile as Component<Record<string, unknown>>,
+    props: { gateway: ctx.gateway, tile: ctx.tile, metric: "ram", onGridHint: gridHint(ctx) },
   };
 }
 
 function perfNw(ctx: TileHostContext): ResolvedPluginMount {
   return {
-    component: NwTile as Component<Record<string, unknown>>,
+    component: PerfMetricTile as Component<Record<string, unknown>>,
     props: {
       gateway: ctx.gateway,
       tile: ctx.tile,
-      onGridHint: ctx.onPerfTileGridHint
-        ? (hint: { colSpan: number; rowSpan: number }) => ctx.onPerfTileGridHint!(ctx.tile.id, hint)
-        : undefined,
+      metric: "network",
+      onGridHint: gridHint(ctx),
     },
   };
 }
 
 function perfDisk(ctx: TileHostContext): ResolvedPluginMount {
   return {
-    component: DiskTile as Component<Record<string, unknown>>,
-    props: {
-      gateway: ctx.gateway,
-      tile: ctx.tile,
-      onGridHint: ctx.onPerfTileGridHint
-        ? (hint: { colSpan: number; rowSpan: number }) => ctx.onPerfTileGridHint!(ctx.tile.id, hint)
-        : undefined,
-    },
+    component: PerfMetricTile as Component<Record<string, unknown>>,
+    props: { gateway: ctx.gateway, tile: ctx.tile, metric: "disk", onGridHint: gridHint(ctx) },
   };
 }
 
@@ -168,10 +172,8 @@ const TILE_RESOLVERS: Record<string, (ctx: TileHostContext) => ResolvedPluginMou
   "perf.disk": perfDisk,
 };
 
-/** E2E / dev-only mounts (see `VITE_E2E_THROWING` in `main.ts`). */
 const dynamicResolvers: Record<string, (ctx: TileHostContext) => ResolvedPluginMount> = {};
 
-/** Register a resolver at runtime (Playwright throwing-plugin spec). Returns teardown. */
 export function registerDynamicPluginResolver(
   id: string,
   resolver: (ctx: TileHostContext) => ResolvedPluginMount,
@@ -184,7 +186,6 @@ export function registerDynamicPluginResolver(
   };
 }
 
-/** Resolve built-in tile component + props for `PluginTileMount.svelte`. */
 export function resolvePluginTileMount(ctx: TileHostContext): ResolvedPluginMount | null {
   const tile = applyPerfCompactAsPercentOnly(ctx.tile);
   const fn = TILE_RESOLVERS[tile.pluginId] ?? dynamicResolvers[tile.pluginId];
