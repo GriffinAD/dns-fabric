@@ -426,6 +426,7 @@ as the canonical contract. Runtime types mirror it exactly.
 ### 6.3 Pipeline
 
 `load`:
+
 1. `gateway.getDashboardLayout("default")` → raw.
 2. `Zod.parse(raw)`; on failure: report and fall back to localStorage.
 3. `migrate(raw)` → V2.
@@ -434,6 +435,7 @@ as the canonical contract. Runtime types mirror it exactly.
    `local-cache`).
 
 `mutate`:
+
 1. Caller invokes a `LayoutStore` method.
 2. Store applies the pure mutation, runs `layoutWithGrid`, updates in-memory.
 3. Mirrors to localStorage immediately (unlimited frequency; cheap).
@@ -441,6 +443,7 @@ as the canonical contract. Runtime types mirror it exactly.
 5. On edit exit, route change, unload: `flush()` waits for the pending PUT.
 
 `reset`:
+
 1. `gateway.resetDashboardLayout("default")` → raw.
 2. Same validate + migrate + normalize as `load`.
 

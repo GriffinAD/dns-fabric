@@ -7,3 +7,6 @@ config:
   MD040: false
   MD041: false
   MD046: false
+  # markdownlint 0.40+ (pulled by markdownlint-cli2): table pipe spacing/alignment;
+  # repo has many compact/aligned tables; fix in a dedicated pass if desired.
+  MD060: false
