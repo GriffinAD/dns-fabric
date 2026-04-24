@@ -7,7 +7,8 @@
     title,
     err,
     loading,
-    children,
+    /** Default slot; aliased so `{#snippet children()}` for `Card` does not shadow this binding. */
+    children: tileBody,
     bodyClass = "flex min-h-0 flex-1 flex-col items-stretch justify-center sm:items-center",
   }: {
     title: string;
@@ -40,7 +41,7 @@
         </p>
       {:else}
         <div class={bodyClass}>
-          {#if children}{@render children()}{/if}
+          {#if tileBody}{@render tileBody()}{/if}
         </div>
       {/if}
     </div>

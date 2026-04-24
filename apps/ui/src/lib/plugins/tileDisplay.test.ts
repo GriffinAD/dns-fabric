@@ -15,6 +15,37 @@ describe("applyPerfCompactAsPercentOnly", () => {
     expect(t.options?.cpu_total).toBe(true);
   });
 
+  it("keeps gauge display for compact network/disk multi-series options", () => {
+    const net = applyPerfCompactAsPercentOnly({
+      id: "n",
+      pluginId: "perf.network",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      options: { network_by_adapter: true, display_style: "gauge" },
+    });
+    expect(net.options?.display_style).toBe("gauge");
+
+    const disk = applyPerfCompactAsPercentOnly({
+      id: "d",
+      pluginId: "perf.disk",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      options: { disk_by_volume: true, display_style: "gauge" },
+    });
+    expect(disk.options?.display_style).toBe("gauge");
+  });
+
+  it("still forces percent_only for compact perf.network without by_adapter", () => {
+    const t = applyPerfCompactAsPercentOnly({
+      id: "n",
+      pluginId: "perf.network",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      options: { display_style: "gauge" },
+    });
+    expect(t.options?.display_style).toBe("percent_only");
+  });
+
   it("leaves full mode and non-perf tiles unchanged", () => {
     const full = applyPerfCompactAsPercentOnly({
       id: "x",
