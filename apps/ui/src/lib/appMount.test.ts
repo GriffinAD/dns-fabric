@@ -63,6 +63,11 @@ describe("attachOperatorShellLifecycle", () => {
       version: 1,
       mode: "system",
       colorPreset: "default",
+      gaugeCapStyle: "flat",
+      gaugeSegmentEnabled: false,
+      gaugeSegmentDivisions: 0,
+      gaugeSegmentLines: false,
+      gaugeSegmentGapPx: 0.2,
     });
     const resyncSpy = vi.spyOn(themeStorage, "resyncDocumentThemeFromStorage").mockImplementation(() => {});
 

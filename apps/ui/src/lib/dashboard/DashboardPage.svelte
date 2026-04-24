@@ -112,7 +112,8 @@
     onAddTile={ls.addRootTile}
     onAddGroup={ls.addGroup}
     onAddTileToGroup={ls.addTileToGroup}
-    onLayoutStructureChange={ls.applyStructure}
+    onLayoutStructureChange={(next) =>
+      ls.applyStructure(next, { preserveRootPlacementIfComplete: true })}
     onEditTile={overlay.openTileSettings}
     onEditGroup={overlay.openGroupSettings}
     onDeleteRootItem={overlay.deleteRootLayoutItem}

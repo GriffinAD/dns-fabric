@@ -10,7 +10,8 @@
     saveThemePreferences,
   } from "./themeStorage";
 
-  let { showAccent = true }: { showAccent?: boolean } = $props();
+  let { showAccent = true, showGaugeSegmentToggle = false }: { showAccent?: boolean; showGaugeSegmentToggle?: boolean } =
+    $props();
 
   const appearanceItems: { value: ThemeMode; name: string }[] = [
     { value: "system", name: "System" },
@@ -26,10 +27,59 @@
   const initial = loadThemePreferences();
   let mode = $state<ThemeMode>(initial.mode);
   let colorPreset = $state<ColorPreset>(initial.colorPreset);
+  let gaugeSegmentEnabled = $state(initial.gaugeSegmentEnabled);
+  let gaugeSegmentDivisions = $state(initial.gaugeSegmentDivisions);
+
+  const segmentedArc = $derived(gaugeSegmentEnabled);
+
+  /** Re-sync from storage when the document theme updates (e.g. Admin), so effective 0 in DOM does not clobber the stored block count. */
+  $effect(() => {
+    /* v8 ignore next 2 -- SSR: no `document` */
+    if (typeof document === "undefined") return;
+    const applyFromStorage = () => {
+      const p = loadThemePreferences();
+      gaugeSegmentDivisions = p.gaugeSegmentDivisions;
+      gaugeSegmentEnabled = p.gaugeSegmentEnabled;
+    };
+    applyFromStorage();
+    const root = document.documentElement;
+    const mo = new MutationObserver(applyFromStorage);
+    mo.observe(root, {
+      attributes: true,
+      attributeFilter: [
+        "data-gauge-segment-divisions",
+        "data-gauge-segment-enabled",
+        "data-gauge-segment-gap",
+      ],
+    });
+    return () => mo.disconnect();
+  });
 
   function commit() {
-    saveThemePreferences({ version: 1, mode, colorPreset });
-    applyDocumentTheme(mode, colorPreset, getSystemPrefersDark());
+    const cur = loadThemePreferences();
+    saveThemePreferences({
+      version: 1,
+      mode,
+      colorPreset,
+      gaugeCapStyle: cur.gaugeCapStyle,
+      gaugeSegmentEnabled,
+      gaugeSegmentDivisions,
+      gaugeSegmentGapPx: cur.gaugeSegmentGapPx,
+    });
+    applyDocumentTheme(
+      mode,
+      colorPreset,
+      getSystemPrefersDark(),
+      cur.gaugeCapStyle,
+      gaugeSegmentEnabled,
+      gaugeSegmentDivisions,
+      cur.gaugeSegmentGapPx,
+    );
+  }
+
+  function onSegmentedArcToggle(checked: boolean) {
+    gaugeSegmentEnabled = checked;
+    commit();
   }
 </script>
 
@@ -70,6 +120,24 @@
         items={accentItems}
         onchange={commit}
       />
+    </div>
+  {/if}
+  {#if showGaugeSegmentToggle}
+    <div class="min-w-0 sm:w-56">
+      <label
+        class="mb-1 flex cursor-pointer items-center gap-2 text-sm text-gray-700 select-none dark:text-gray-300"
+        for="theme-gauge-arc-segments"
+      >
+        <input
+          id="theme-gauge-arc-segments"
+          type="checkbox"
+          class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary-600"
+          checked={segmentedArc}
+          onchange={(e) => onSegmentedArcToggle((e.currentTarget as HTMLInputElement).checked)}
+          data-testid="header-gauge-arc-segments-toggle"
+        />
+        <span>Gauge arc segments</span>
+      </label>
     </div>
   {/if}
 </div>

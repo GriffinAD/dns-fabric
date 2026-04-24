@@ -53,10 +53,13 @@ export function createOverlayActions(deps: OverlayActionsDeps) {
       const prevGroup = found?.inGroup?.id ?? null;
       const nextGroup = parentId === PARENT_ID_DASHBOARD ? null : parentId;
       if (prevGroup === nextGroup) {
-        deps.applyLayoutStructure({
-          version: 2,
-          items: mapTileInLayout(layout.items, updated.id, (prev) => ({ ...prev, ...cleaned })),
-        });
+        deps.applyLayoutStructure(
+          {
+            version: 2,
+            items: mapTileInLayout(layout.items, updated.id, (prev) => ({ ...prev, ...cleaned })),
+          },
+          { preserveRootPlacementIfComplete: true },
+        );
       } else {
         const items = moveTileToParent(
           layout.items,
@@ -64,7 +67,10 @@ export function createOverlayActions(deps: OverlayActionsDeps) {
           nextGroup === null ? { type: "root" } : { type: "group", groupId: nextGroup },
           cleaned,
         );
-        deps.applyLayoutStructure({ version: 2, items });
+        deps.applyLayoutStructure(
+          { version: 2, items },
+          { preserveRootPlacementIfComplete: true },
+        );
       }
       deps.setSettingsTile(null);
     },
@@ -77,7 +83,10 @@ export function createOverlayActions(deps: OverlayActionsDeps) {
       if (deps.getSettingsTile() && !findTileInLayout(next, deps.getSettingsTile()!.id)) {
         deps.setSettingsTile(null);
       }
-      deps.applyLayoutStructure({ version: 2, items: next });
+      deps.applyLayoutStructure(
+        { version: 2, items: next },
+        { preserveRootPlacementIfComplete: true },
+      );
     },
     deleteGroupChildTile(groupId: string, tileId: string) {
       const layout = deps.getLayout();
@@ -89,7 +98,10 @@ export function createOverlayActions(deps: OverlayActionsDeps) {
       if (deps.getSettingsTile() && !findTileInLayout(next, deps.getSettingsTile()!.id)) {
         deps.setSettingsTile(null);
       }
-      deps.applyLayoutStructure({ version: 2, items: next });
+      deps.applyLayoutStructure(
+        { version: 2, items: next },
+        { preserveRootPlacementIfComplete: true },
+      );
     },
     selectDashboardView() {
       if (deps.getEditorOpen()) {

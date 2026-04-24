@@ -13,9 +13,11 @@ describe("builtinMeta", () => {
     expect(builtinDefaultColSpan("discovery.records")).toBeUndefined();
   });
 
-  it("perfGridHintOnlyExpandColSpan is true for perf.ram only among perf metrics", () => {
+  it("perfGridHintOnlyExpandColSpan is true for cpu, ram, network, disk (not perf.summary)", () => {
+    expect(perfGridHintOnlyExpandColSpan("perf.cpu")).toBe(true);
     expect(perfGridHintOnlyExpandColSpan("perf.ram")).toBe(true);
-    expect(perfGridHintOnlyExpandColSpan("perf.cpu")).toBe(false);
-    expect(perfGridHintOnlyExpandColSpan("perf.network")).toBe(false);
+    expect(perfGridHintOnlyExpandColSpan("perf.network")).toBe(true);
+    expect(perfGridHintOnlyExpandColSpan("perf.disk")).toBe(true);
+    expect(perfGridHintOnlyExpandColSpan("perf.summary")).toBe(false);
   });
 });

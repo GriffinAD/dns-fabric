@@ -2,6 +2,7 @@
   import type { TileDisplayStyle } from "../../api/types";
   import type { DashboardTile } from "../../dashboard/types";
   import { clampGridColSpan } from "../builtinMeta";
+  import PerfGaugeGradientSelect from "./PerfGaugeGradientSelect.svelte";
 
   let { draft = $bindable() }: { draft: DashboardTile } = $props();
 
@@ -64,6 +65,7 @@
         <option value="percent_only">Percent list</option>
       </select>
     </label>
+    <PerfGaugeGradientSelect bind:draft />
   </div>
 {:else if draft.pluginId === "perf.cpu"}
   <div class="space-y-3 border-t border-gray-200 pt-3 dark:border-gray-600">
@@ -86,6 +88,7 @@
         <option value="percent_only">Percent list</option>
       </select>
     </label>
+    <PerfGaugeGradientSelect bind:draft />
     <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
       <span>Max gauge columns (empty = 12)</span>
       <input
@@ -131,6 +134,7 @@
         <option value="percent_only">Percent list</option>
       </select>
     </label>
+    <PerfGaugeGradientSelect bind:draft />
     <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
       <span>Max gauge columns (empty = 12)</span>
       <input
@@ -172,6 +176,7 @@
         <option value="percent_only">Percent list</option>
       </select>
     </label>
+    <PerfGaugeGradientSelect bind:draft />
     <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
       <span>Max gauge columns (empty = 12)</span>
       <input
@@ -210,6 +215,7 @@
         <option value="percent_only">Percent list</option>
       </select>
     </label>
+    <PerfGaugeGradientSelect bind:draft />
     <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
       <span>Max gauge columns (empty = 12)</span>
       <input

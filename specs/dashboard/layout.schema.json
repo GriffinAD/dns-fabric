@@ -29,6 +29,7 @@
         "network_by_adapter": { "type": "boolean" },
         "disk_by_volume": { "type": "boolean" },
         "display_style": { "type": "string", "enum": ["gauge", "percent_only"] },
+        "gauge_gradient_mode": { "type": "string", "enum": ["smooth", "banded"] },
         "perf_max_cols": { "type": "integer", "minimum": 1, "maximum": 12 }
       }
     },

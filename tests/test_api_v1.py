@@ -485,6 +485,22 @@ def test_layout_validate_private_helpers() -> None:
                 "pluginId": "p",
                 "hostControl": "single-panel",
                 "displayMode": "full",
+                "rowPanel": 99,
+            },
+            inner=False,
+        )
+        is False
+    )
+    assert lv._valid_group({"kind": "group", "id": "", "children": []}) is False
+    assert lv._valid_group({"kind": "group", "children": []}) is False
+    assert lv._valid_group({"kind": "group", "id": 1, "children": []}) is False
+    assert (
+        lv._valid_tile_core(
+            {
+                "id": "a",
+                "pluginId": "p",
+                "hostControl": "single-panel",
+                "displayMode": "full",
                 "kind": "group",
             },
             inner=True,

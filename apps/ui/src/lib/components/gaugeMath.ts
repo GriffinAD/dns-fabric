@@ -1,34 +1,64 @@
 /**
- * Upper semicircle in SVG (∩): chord from (cx−r, cy) to (cx+r, cy), bulge toward smaller y.
- * Chord sits low in the mini viewBox; the arc fits above it without clipping.
+ * 240° gauge arc through the top: from −120° to +120° measured from 12 o’clock
+ * (symmetric opening at the bottom). `t` ∈ [0, 1] is uniform along the arc (0 = left, 1 = right).
  *
- * `t0`, `t1` in `describeSemicircleSegment` are a fraction in [0, 1] along the **same** track
- * as the full semicircle: 0 = start (left), 1 = end (right) along the upper arc.
+ * Uses standard math angles θ CCW from +x with y = cy − r sin θ (SVG y-down).
  */
 
-function semicirclePoint(cx: number, cy: number, r: number, t: number) {
-  if (t <= 0) {
-    return { x: cx - r, y: cy };
-  }
-  if (t >= 1) {
-    return { x: cx + r, y: cy };
-  }
-  const phi = Math.PI * (1 - t);
-  return { x: cx + r * Math.cos(phi), y: cy - r * Math.sin(phi) };
+/** Left endpoint θ = 7π/6 (210°); right endpoint θ = −π/6 (11π/6). */
+export const GAUGE_ARC_THETA_LEFT = (7 * Math.PI) / 6;
+export const GAUGE_ARC_THETA_RIGHT = -Math.PI / 6;
+/** Central angle along the track (240°). */
+export const GAUGE_ARC_SWEEP_RAD = (4 * Math.PI) / 3;
+
+/** cos(π/6); chord half-width / r for the horizontal chord through both endpoints. */
+export const GAUGE_ARC_COS_END = Math.cos(Math.PI / 6);
+
+export function gaugeArcThetaFromT(t: number): number {
+  if (t <= 0) return GAUGE_ARC_THETA_LEFT;
+  if (t >= 1) return GAUGE_ARC_THETA_RIGHT;
+  return GAUGE_ARC_THETA_LEFT - t * GAUGE_ARC_SWEEP_RAD;
 }
 
-/** Sub-arc from `t0` to `t1` (0 = left end of the upper semicircle, 1 = right). */
+export function semicirclePoint(cx: number, cy: number, r: number, t: number) {
+  const theta = gaugeArcThetaFromT(t);
+  return { x: cx + r * Math.cos(theta), y: cy - r * Math.sin(theta) };
+}
+
+/** Radial segment through the stroke band at arc parameter t (inner → outer edge of the thick arc). */
+export function gaugeRadialThroughStroke(
+  cx: number,
+  cy: number,
+  rTrack: number,
+  strokeW: number,
+  t: number,
+): { x1: number; y1: number; x2: number; y2: number } {
+  const p = semicirclePoint(cx, cy, rTrack, t);
+  const ux = (p.x - cx) / rTrack;
+  const uy = (p.y - cy) / rTrack;
+  const half = strokeW / 2;
+  return {
+    x1: cx + ux * (rTrack - half),
+    y1: cy + uy * (rTrack - half),
+    x2: cx + ux * (rTrack + half),
+    y2: cy + uy * (rTrack + half),
+  };
+}
+
+/** Sub-arc from `t0` to `t1` (0 = left end, 1 = right) along the 240° track. */
 export function describeSemicircleSegment(cx: number, cy: number, r: number, t0: number, t1: number): string {
   if (!(t1 > t0)) {
     return "";
   }
   const p0 = semicirclePoint(cx, cy, r, t0);
   const p1 = semicirclePoint(cx, cy, r, t1);
-  // Upper-semicircle sub-arcs for t in [0,1] are always at most 70% of the half circle (< 180°).
-  return `M ${p0.x} ${p0.y} A ${r} ${r} 0 0 1 ${p1.x} ${p1.y}`;
+  const sweepAngle = (t1 - t0) * GAUGE_ARC_SWEEP_RAD;
+  const largeArc = sweepAngle > Math.PI ? 1 : 0;
+  const sweep = 1;
+  return `M ${p0.x} ${p0.y} A ${r} ${r} 0 ${largeArc} ${sweep} ${p1.x} ${p1.y}`;
 }
 
-/** Full track along the upper semicircle (bulge toward smaller y). Sweep must be 1 here — sweep 0 draws the lower “U”. */
+/** Full track along the 240° arc. */
 export function describeSemicircleArc(cx: number, cy: number, r: number): string {
   return describeSemicircleSegment(cx, cy, r, 0, 1);
 }

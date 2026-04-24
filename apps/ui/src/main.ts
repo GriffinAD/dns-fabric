@@ -6,7 +6,15 @@ import {
 import { applyDocumentTheme, getSystemPrefersDark, loadThemePreferences } from "./lib/theme/themeStorage";
 
 const prefs = loadThemePreferences();
-applyDocumentTheme(prefs.mode, prefs.colorPreset, getSystemPrefersDark());
+applyDocumentTheme(
+  prefs.mode,
+  prefs.colorPreset,
+  getSystemPrefersDark(),
+  prefs.gaugeCapStyle,
+  prefs.gaugeSegmentEnabled,
+  prefs.gaugeSegmentDivisions,
+  prefs.gaugeSegmentGapPx,
+);
 
 applyDocumentDashboardSettings(loadDashboardSettings());
 

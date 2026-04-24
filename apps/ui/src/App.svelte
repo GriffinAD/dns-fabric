@@ -17,6 +17,8 @@
   let settingsTile = $state<DashboardTile | null>(null);
   let settingsGroup = $state<DashboardGroup | null>(null);
   let route = $state<"home" | "admin">("home");
+  /** Sub-path under admin, e.g. `ui/gauges` for `#/admin/ui/gauges`. */
+  let adminSubpath = $state("");
 
   const gateway = new DataGateway();
   const fabricEventBus = createFabricEventBus(gateway);
@@ -41,10 +43,19 @@
     localPersistBlockedReason,
   } = ls;
 
+  function adminTailFromHash(hash: string): string {
+    if (!hash.startsWith("#/admin")) return "";
+    const tail = hash.slice("#/admin".length);
+    if (tail === "" || tail === "/") return "";
+    return tail.replace(/^\//, "");
+  }
+
   async function syncRouteFromHash() {
-    const next = window.location.hash === "#/admin" ? "admin" : "home";
-    if (route === "home" && next === "admin") await ls.flush();
-    route = next;
+    const h = window.location.hash;
+    const isAdmin = h === "#/admin" || h.startsWith("#/admin/");
+    if (route === "home" && isAdmin) await ls.flush();
+    route = isAdmin ? "admin" : "home";
+    adminSubpath = isAdmin ? adminTailFromHash(h) : "";
   }
 
   function goHome() {
@@ -96,7 +107,7 @@
     />
 
     {#if route === "admin"}
-      <AdminPage {gateway} />
+      <AdminPage {gateway} adminSubpath={adminSubpath} />
     {:else}
       <DashboardPage
         {gateway}

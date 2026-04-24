@@ -510,6 +510,8 @@ export function reorderRootLayoutItemsPreservingSlotOrigins(
         if (!hasCompleteGrid(p)) {
           return { ...r, kind: "tile" as const, grid: clampTileGridPlacement(r) };
         }
+        const colSpan = hasCompleteGrid(r) ? effectiveColSpan(r) : effectiveColSpan(p);
+        const rowSpan = hasCompleteGrid(r) ? effectiveRowSpan(r) : effectiveRowSpan(p);
         return {
           ...r,
           kind: "tile" as const,
@@ -517,8 +519,8 @@ export function reorderRootLayoutItemsPreservingSlotOrigins(
             ...r,
             grid: {
               ...p.grid!,
-              colSpan: effectiveColSpan(r),
-              rowSpan: effectiveRowSpan(r),
+              colSpan,
+              rowSpan,
             },
           }),
         };

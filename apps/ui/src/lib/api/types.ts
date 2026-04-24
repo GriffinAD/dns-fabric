@@ -6,12 +6,20 @@ export type DisplayMode = "compact" | "full";
 
 export type TileDisplayStyle = "gauge" | "percent_only";
 
+/** How perf semicircle fills blend threshold colours along the arc. */
+export type GaugeGradientMode = "smooth" | "banded";
+
 export interface TileOptions {
   /** `true` = single combined CPU gauge (“Show as total”); omitted/false = per-core (default). */
   cpu_total?: boolean;
   network_by_adapter?: boolean;
   disk_by_volume?: boolean;
   display_style?: TileDisplayStyle;
+  /**
+   * `smooth` (default): continuous gradient across green→amber→orange→red zones.
+   * `banded`: discrete colour segments (legacy look).
+   */
+  gauge_gradient_mode?: GaugeGradientMode;
   /** Max dashboard columns for this perf tile; gauges wrap inside when count exceeds this (1–12). */
   perf_max_cols?: number;
 }

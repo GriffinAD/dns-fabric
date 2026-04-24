@@ -422,8 +422,8 @@ line target.
 
 **Done when:**
 
-- Line coverage ≥ blueprint target (100% target / 99% floor on the new
-  engine surface per `docs/architecture/testing.md`).
+- Line coverage ≥ blueprint target (**100%** on the new engine surface per
+  `docs/architecture/testing.md`).
 
 **Risk:** Near zero; tests only.
 

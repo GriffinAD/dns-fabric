@@ -19,7 +19,13 @@ const BUILTIN_DEFAULT_COL_SPAN: Record<string, number> = {
   "perf.disk": 1,
 };
 
-const GRID_HINT_ONLY_EXPAND_COL_SPAN = new Set<string>(["perf.ram"]);
+/** Perf tiles that only grow colSpan from hints — never force-shrink when a gauge reports fewer columns (e.g. CPU total = one gauge) than the user set in the editor. */
+const GRID_HINT_ONLY_EXPAND_COL_SPAN = new Set<string>([
+  "perf.cpu",
+  "perf.ram",
+  "perf.network",
+  "perf.disk",
+]);
 
 export function builtinDefaultColSpan(pluginId: string): number | undefined {
   const v = BUILTIN_DEFAULT_COL_SPAN[pluginId];

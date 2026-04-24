@@ -36,6 +36,30 @@
 
 @source "../node_modules/flowbite-svelte/dist";
 
+/* SemicircleGauge colours: smooth and banded fills share the same 70/80/90% arc thresholds. */
+:root {
+  --gauge-z-emerald: #059669;
+  --gauge-z-amber: #f59e0b;
+  --gauge-z-orange: #f97316;
+  --gauge-z-rose: #e11d48;
+  /* Unfilled track: slightly darker than the tile face, lighter than gray-400. */
+  --gauge-track-rest: var(--color-gray-300, #d1d5db);
+}
+
+.dark {
+  --gauge-z-emerald: #34d399;
+  --gauge-z-amber: #fcd34d;
+  --gauge-z-orange: #fb923c;
+  /* Align with `gaugeThresholds` HEX_DARK.rose (stronger than rose-400 on dark UIs). */
+  --gauge-z-rose: #e11d48;
+  /* Between gray-700 and 800: visible on dark tiles, a touch deeper than 700 alone. */
+  --gauge-track-rest: color-mix(
+    in srgb,
+    var(--color-gray-700, #374151) 62%,
+    var(--color-gray-800, #1f2937) 38%
+  );
+}
+
 /* Optional shell accent: maps Flowbite `--color-primary-*` to emerald (see lib/theme/themeStorage). */
 html[data-color-preset="emerald"] {
   --color-primary-50: var(--color-emerald-50);

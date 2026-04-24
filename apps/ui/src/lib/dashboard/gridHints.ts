@@ -9,8 +9,9 @@ export type ApplyLayoutStructureFn = (
 ) => void;
 
 /**
- * Applies perf-tile grid span hints from gauge layout. RAM uses “only expand” via
- * `perfGridHintOnlyExpandColSpan` (see `builtinMeta.ts`). Future: optional `gridPolicy` on registry entries.
+ * Applies perf-tile grid span hints from gauge layout. Some plugins use “only expand” via
+ * `perfGridHintOnlyExpandColSpan` (see `pluginGridPolicy.ts`) so a hint of 1 column does not
+ * overwrite a wider user width. Future: optional `gridPolicy` on registry entries.
  */
 export function handlePerfTileGridHint(
   items: DashboardLayoutV2["items"],
@@ -34,16 +35,19 @@ export function handlePerfTileGridHint(
   const nextRs = clampGridRowSpan(Math.max(prevRs, wantRs));
   if (prevCs === nextCs && prevRs === nextRs) return;
   const g = t.grid;
-  applyLayoutStructure({
-    version: 2,
-    items: mapTileInLayout(items, tileId, (x: DashboardTile) => ({
-      ...x,
-      grid: {
-        col: g?.col ?? 0,
-        row: g?.row ?? 0,
-        colSpan: nextCs,
-        rowSpan: nextRs,
-      },
-    })),
-  });
+  applyLayoutStructure(
+    {
+      version: 2,
+      items: mapTileInLayout(items, tileId, (x: DashboardTile) => ({
+        ...x,
+        grid: {
+          col: g?.col ?? 0,
+          row: g?.row ?? 0,
+          colSpan: nextCs,
+          rowSpan: nextRs,
+        },
+      })),
+    },
+    { preserveRootPlacementIfComplete: true },
+  );
 }

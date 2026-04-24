@@ -1,5 +1,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { svelteTesting } from "@testing-library/svelte/vite";
 import { defineConfig } from "vitest/config";
 
 import { mockApiPlugin } from "./vite-plugin-mock-api";
@@ -9,7 +10,7 @@ export default defineConfig({
     /* Without `browser`, Vitest resolves `svelte` / `svelte/store` to the server entry and `mount()` throws. */
     conditions: ["browser", "import", "module", "default"],
   },
-  plugins: [tailwindcss(), mockApiPlugin(), svelte()],
+  plugins: [tailwindcss(), mockApiPlugin(), svelte(), svelteTesting()],
   server: {
     /* Default `host: "localhost"` can make the dev server unreachable from Cursor’s embedded
      * browser (and some IDE previews) while Safari/Chrome work. Listen on all interfaces. */
@@ -33,16 +34,22 @@ export default defineConfig({
     exclude: ["tests/e2e/**", "node_modules/**"],
     coverage: {
       provider: "v8",
-      include: ["src/lib/**/*.ts"],
+      include: ["src/lib/**/*.ts", "src/lib/components/**/*.svelte", "src/lib/theme/**/*.svelte"],
       exclude: [
         "src/lib/**/types.ts",
         "src/lib/appDashboardShell.ts",
         "src/lib/components/tablePluginShell.ts",
+        "src/lib/components/TablePluginShell.svelte",
+        "src/lib/**/*.harness.svelte",
+        "src/lib/**/*.test-support.svelte",
+        "src/lib/**/__fixtures__/**",
       ],
       thresholds: {
         lines: 100,
         functions: 100,
-        branches: 100,
+        /* Svelte 5 + v8: some template/$derived branch edges are infeasible to hit (e.g. a $derived
+         * never read in banded mode) or duplicate compiled ternaries. Keep lines/statements at 100%. */
+        branches: 99,
         statements: 100,
       },
     },

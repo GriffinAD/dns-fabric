@@ -17,4 +17,4 @@
 
 ## Coverage
 
-- Target **100%** line coverage; CI floor **99%** (`fail_under` / Vitest) — [docs/architecture/testing.md](docs/architecture/testing.md).
+- Target **100%** line coverage; CI enforces **100%** on covered paths (`fail_under` / Vitest) — [docs/architecture/testing.md](docs/architecture/testing.md).

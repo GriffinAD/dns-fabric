@@ -494,7 +494,7 @@ in `DashboardPage`, not in `App.svelte`.
 
 ## 9. Testing strategy
 
-Per `docs/architecture/testing.md` (100% target, 99% floor), the unit
+Per `docs/architecture/testing.md` (**100%** enforced on covered paths), the unit
 coverage story becomes:
 
 | Layer | Tool | Coverage focus |

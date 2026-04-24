@@ -10,6 +10,7 @@ const perfTileOptionsSchema = z
     network_by_adapter: z.boolean().optional(),
     disk_by_volume: z.boolean().optional(),
     display_style: z.enum(["gauge", "percent_only"]).optional(),
+    gauge_gradient_mode: z.enum(["smooth", "banded"]).optional(),
     perf_max_cols: z.number().int().min(1).max(12).optional(),
   })
   .strict();

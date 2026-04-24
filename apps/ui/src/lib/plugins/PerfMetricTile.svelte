@@ -39,6 +39,7 @@
   const byAdapter = $derived(Boolean(opts?.network_by_adapter));
   const byVolume = $derived(Boolean(opts?.disk_by_volume));
   const percentOnly = $derived(opts?.display_style === "percent_only");
+  const gaugeGradientMode = $derived(opts?.gauge_gradient_mode ?? "smooth");
 
   const perfMaxCols = $derived(
     opts?.perf_max_cols !== undefined ? clampGridColSpan(opts.perf_max_cols) : GRID_COLUMNS,
@@ -168,6 +169,7 @@
                     percent={cpuDisplay}
                     mini
                     miniFillCell={stretchGaugesToCells}
+                    gradientMode={gaugeGradientMode}
                   />
                 </div>
               {:else}
@@ -178,6 +180,7 @@
                       percent={pct}
                       mini
                       miniFillCell={stretchGaugesToCells}
+                      gradientMode={gaugeGradientMode}
                     />
                   </div>
                 {/each}
@@ -195,6 +198,7 @@
                   percent={effective.memory_used_percent}
                   mini
                   miniFillCell={stretchGaugesToCells}
+                  gradientMode={gaugeGradientMode}
                   sublabel={effective.memory_total_bytes != null && effective.memory_used_bytes != null
                     ? `${(effective.memory_used_bytes / 1e9).toFixed(1)} / ${(effective.memory_total_bytes / 1e9).toFixed(1)} GiB`
                     : undefined}
@@ -215,6 +219,7 @@
                       percent={Math.min(100, (a.in_mbps + a.out_mbps) * 2)}
                       mini
                       miniFillCell={stretchGaugesToCells}
+                      gradientMode={gaugeGradientMode}
                       sublabel={`↓${a.in_mbps.toFixed(1)} ↑${a.out_mbps.toFixed(1)}`}
                     />
                   </div>
@@ -226,6 +231,7 @@
                     percent={Math.min(100, ((effective.network_in_mbps ?? 0) + (effective.network_out_mbps ?? 0)) * 2)}
                     mini
                     miniFillCell={stretchGaugesToCells}
+                    gradientMode={gaugeGradientMode}
                     sublabel={`↑${(effective.network_out_mbps ?? 0).toFixed(2)} ↓${(effective.network_in_mbps ?? 0).toFixed(2)} Mb/s`}
                   />
                 </div>
@@ -245,6 +251,7 @@
                       percent={v.used_percent}
                       mini
                       miniFillCell={stretchGaugesToCells}
+                      gradientMode={gaugeGradientMode}
                     />
                   </div>
                 {/each}
@@ -255,6 +262,7 @@
                     percent={effective.disk_used_percent ?? 0}
                     mini
                     miniFillCell={stretchGaugesToCells}
+                    gradientMode={gaugeGradientMode}
                   />
                 </div>
               {/if}

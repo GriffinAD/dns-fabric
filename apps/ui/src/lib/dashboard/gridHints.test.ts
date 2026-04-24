@@ -33,6 +33,24 @@ describe("handlePerfTileGridHint", () => {
     expect(calls).toBe(0);
   });
 
+  it("perf.network does not shrink when hint colSpan is 1 (like perf.ram)", () => {
+    const items: DashboardLayoutV2["items"] = [
+      {
+        kind: "tile",
+        id: "t1",
+        pluginId: "perf.network",
+        hostControl: "single-panel",
+        displayMode: "full",
+        grid: { col: 0, row: 0, colSpan: 2, rowSpan: 1 },
+      },
+    ];
+    let saved: DashboardLayoutV2 | null = null;
+    handlePerfTileGridHint(items, "t1", { colSpan: 1, rowSpan: 1 }, (next) => {
+      saved = next as DashboardLayoutV2;
+    });
+    expect(saved).toBeNull();
+  });
+
   it("perf.ram only expands colSpan", () => {
     const items: DashboardLayoutV2["items"] = [
       {
@@ -90,12 +108,50 @@ describe("handlePerfTileGridHint", () => {
     expect(t0 && "grid" in t0 && t0.grid).toMatchObject({ col: 0, row: 0, colSpan: 3, rowSpan: 2 });
   });
 
-  it("non-ram shrinks to 1 col when hint colSpan is 1", () => {
+  it("perf.cpu does not shrink when hint colSpan is 1 (e.g. total mode, one gauge)", () => {
     const items: DashboardLayoutV2["items"] = [
       {
         kind: "tile",
         id: "t1",
         pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "full",
+        grid: { col: 0, row: 0, colSpan: 2, rowSpan: 1 },
+      },
+    ];
+    let saved: DashboardLayoutV2 | null = null;
+    handlePerfTileGridHint(items, "t1", { colSpan: 1, rowSpan: 1 }, (next) => {
+      saved = next as DashboardLayoutV2;
+    });
+    expect(saved).toBeNull();
+  });
+
+  it("plugins not in only-expand can expand when hint colSpan is greater than 1", () => {
+    const items: DashboardLayoutV2["items"] = [
+      {
+        kind: "tile",
+        id: "t1",
+        pluginId: "perf.summary",
+        hostControl: "single-panel",
+        displayMode: "full",
+        grid: { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+      },
+    ];
+    let saved: DashboardLayoutV2 | null = null;
+    handlePerfTileGridHint(items, "t1", { colSpan: 3, rowSpan: 1 }, (next) => {
+      saved = next as DashboardLayoutV2;
+    });
+    expect(saved).not.toBeNull();
+    const t2 = saved!.items[0];
+    expect(t2 && "grid" in t2 && t2.grid?.colSpan).toBe(3);
+  });
+
+  it("plugins not in only-expand (e.g. perf.summary) still shrink to 1 col when hint colSpan is 1", () => {
+    const items: DashboardLayoutV2["items"] = [
+      {
+        kind: "tile",
+        id: "t1",
+        pluginId: "perf.summary",
         hostControl: "single-panel",
         displayMode: "full",
         grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },

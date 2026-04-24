@@ -45,6 +45,14 @@ test("admin page loads from hash route", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Administration" })).toBeVisible();
 });
 
+test("admin UI Gauges settings page loads from hash route", async ({ page }) => {
+  await page.goto("/#/admin/ui/gauges");
+  await expect(page.getByTestId("admin-page")).toBeVisible();
+  await expect(page.getByTestId("admin-ui-gauges-page")).toBeVisible();
+  await expect(page.getByTestId("gauge-theme-controls")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Gauge appearance" })).toBeVisible();
+});
+
 test("layout editor supports native drop zone", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Edit layout" }).click();

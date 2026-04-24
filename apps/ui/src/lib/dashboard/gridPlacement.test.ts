@@ -498,6 +498,32 @@ describe("reorderRootLayoutItemsPreservingSlotOrigins", () => {
     expect(out[0]!.grid!.colSpan).toBe(6);
   });
 
+  it("in sameSequence keeps previous col/row span when reordered item has no grid yet (stale dnd after tile save)", () => {
+    const prev: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "t-new",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "full",
+        grid: { col: 0, row: 0, colSpan: 2, rowSpan: 1 },
+      },
+    ];
+    const reo: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "t-new",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "full",
+      },
+    ];
+    const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, reo);
+    const g = (out[0] as { grid?: { colSpan: number; rowSpan: number } }).grid;
+    expect(g?.colSpan).toBe(2);
+    expect(g?.rowSpan).toBe(1);
+  });
+
   it("swaps the outer root slots of two complete groups", () => {
     const g1: DashboardGroup = {
       kind: "group",

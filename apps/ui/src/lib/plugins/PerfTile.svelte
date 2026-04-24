@@ -23,6 +23,7 @@
   const byAdapter = $derived(Boolean(opts?.network_by_adapter));
   const byVolume = $derived(Boolean(opts?.disk_by_volume));
   const percentOnly = $derived(opts?.display_style === "percent_only");
+  const gaugeGradientMode = $derived(opts?.gauge_gradient_mode ?? "smooth");
 
   onMount(() => {
     void gateway
@@ -125,19 +126,46 @@
 
 {#snippet oneGauge(s: SummarySlot)}
   {#if s.kind === "cpu-total"}
-    <SemicircleGauge label="CPU" percent={s.percent} mini miniFillCell={fillGauges} />
+    <SemicircleGauge label="CPU" percent={s.percent} mini miniFillCell={fillGauges} gradientMode={gaugeGradientMode} />
   {:else if s.kind === "core"}
-    <SemicircleGauge label="Core {s.i}" percent={s.percent} mini miniFillCell={fillGauges} />
+    <SemicircleGauge
+      label="Core {s.i}"
+      percent={s.percent}
+      mini
+      miniFillCell={fillGauges}
+      gradientMode={gaugeGradientMode}
+    />
   {:else if s.kind === "ram"}
-    <SemicircleGauge label="RAM" percent={s.percent} mini miniFillCell={fillGauges} sublabel={s.sublabel} />
+    <SemicircleGauge
+      label="RAM"
+      percent={s.percent}
+      mini
+      miniFillCell={fillGauges}
+      sublabel={s.sublabel}
+      gradientMode={gaugeGradientMode}
+    />
   {:else if s.kind === "net-adapter"}
-    <SemicircleGauge label={s.name} percent={s.percent} mini miniFillCell={fillGauges} sublabel={s.sublabel} />
+    <SemicircleGauge
+      label={s.name}
+      percent={s.percent}
+      mini
+      miniFillCell={fillGauges}
+      sublabel={s.sublabel}
+      gradientMode={gaugeGradientMode}
+    />
   {:else if s.kind === "net-one"}
-    <SemicircleGauge label="Network" percent={s.percent} mini miniFillCell={fillGauges} sublabel={s.sublabel} />
+    <SemicircleGauge
+      label="Network"
+      percent={s.percent}
+      mini
+      miniFillCell={fillGauges}
+      sublabel={s.sublabel}
+      gradientMode={gaugeGradientMode}
+    />
   {:else if s.kind === "disk-vol"}
-    <SemicircleGauge label={s.label} percent={s.percent} mini miniFillCell={fillGauges} />
+    <SemicircleGauge label={s.label} percent={s.percent} mini miniFillCell={fillGauges} gradientMode={gaugeGradientMode} />
   {:else}
-    <SemicircleGauge label="Disk" percent={s.percent} mini miniFillCell={fillGauges} />
+    <SemicircleGauge label="Disk" percent={s.percent} mini miniFillCell={fillGauges} gradientMode={gaugeGradientMode} />
   {/if}
 {/snippet}
 

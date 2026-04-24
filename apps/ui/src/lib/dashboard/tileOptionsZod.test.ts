@@ -26,6 +26,7 @@ describe("tileOptionsSchemaForPlugin", () => {
       network_by_adapter: false,
       disk_by_volume: true,
       display_style: "gauge" as const,
+      gauge_gradient_mode: "smooth" as const,
       perf_max_cols: 6,
     };
     for (const id of ["perf.cpu", "perf.summary", "perf.disk"] as const) {
