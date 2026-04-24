@@ -1,4 +1,4 @@
-/** Column model for `TablePluginShell.svelte` (UI_ENGINE_PLAN P5.5). */
+/** Column model for `TablePluginShell.svelte` (`docs/planning/UI_ENGINE_PLAN.md` P5.5). */
 export type TableShellColumn = {
   header: string;
   accessor: (row: unknown) => string;

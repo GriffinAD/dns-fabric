@@ -36,7 +36,6 @@ export default defineConfig({
       include: ["src/lib/**/*.ts"],
       exclude: [
         "src/lib/**/types.ts",
-        "src/lib/**/rowPanelLayout.ts",
         "src/lib/appDashboardShell.ts",
         "src/lib/components/tablePluginShell.ts",
       ],

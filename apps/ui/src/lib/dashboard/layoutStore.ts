@@ -35,7 +35,7 @@ export type LayoutStore = ReturnType<typeof createLayoutStore>;
 
 /**
  * Dashboard layout state, local persistence, and debounced server sync (400 ms).
- * See UI_ENGINE_SPEC §3.2 and UI_ENGINE_PLAN Phase 3.
+ * See `docs/planning/UI_ENGINE_SPEC.md` §3.2 and `docs/planning/UI_ENGINE_PLAN.md` Phase 3.
  */
 export function createLayoutStore(options: CreateLayoutStoreOptions) {
   const gateway = options.gateway;

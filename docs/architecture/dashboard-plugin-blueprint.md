@@ -6,7 +6,7 @@ owner: GriffinAD
 peer_reviewer: GriffinAD
 status: Accepted
 last_review: 2026-04-21
-adrs: [ADR-0016, ADR-0017, ADR-0045, ADR-0046, ADR-0047]
+adrs: [ADR-0016, ADR-0017, ADR-0045, ADR-0046, ADR-0047, ADR-0048, ADR-0049]
 invariants: []
 ---
 
@@ -234,12 +234,60 @@ Implementation scope and trade-offs for v1 are recorded in
 
 ### Implementation snapshot (shell)
 
-- Dashboard route in `apps/ui` implements palette + drop targets + nested host
-  drops; plugin palette reacts after `refreshAll` (Svelte 5 `$:` list).
-- Playwright e2e: `apps/ui/tests/dashboard-drag-drop.spec.ts` (stubbed
-  `GET /api/v1/plugins` with `ui_dashboard`).
-- Icon semantic ids: `specs/contracts/registry.json` + `KfIcon` (ADR-0016).
-- Self-hosted Latin fonts + preload: `apps/ui/src/main.ts` (ADR-0017).
+Authoritative code paths (operator UI, Svelte 5):
+
+- **Kernel / data:** `apps/ui/src/lib/dataGateway.ts` (Zod on HTTP + SSE per
+  OpenAPI-derived schemas).
+- **Layout state:** `apps/ui/src/lib/dashboard/layoutStore.ts` (debounced
+  `putDashboardLayout`, flush on edit exit); persistence helpers in
+  `layoutStorage.ts` / `layoutTree.ts` (v1→v2 `rowPanel` migration:
+  `migrateV1ToV2`).
+- **Plugin resolution:** `apps/ui/src/lib/plugins/registry.ts`
+  (`ManifestRegistry`, `resolvePluginTileMount`) — [ADR-0048](../adr/ADR-0048-operator-dashboard-plugin-registry.md).
+- **Host + fault isolation:** `DashboardHost.svelte`, `PluginTileMount.svelte`,
+  `TileErrorBoundary.svelte`, `TileFallback.svelte`, `TileHostControl.svelte` —
+  [ADR-0049](../adr/ADR-0049-operator-dashboard-fault-isolation-host-controls-v1.md).
+- **Event fan-out:** `apps/ui/src/lib/dashboard/eventBus.ts`
+  (`createFabricEventBus`, `FABRIC_EVENT_BUS` context).
+- **E2E:** `apps/ui/tests/e2e/*.e2e.ts` (dashboard, plugin isolation, render parity).
+- **Icons / fonts:** `specs/contracts/registry.json` + `KfIcon` (ADR-0016);
+  self-hosted fonts in `apps/ui/src/main.ts` (ADR-0017).
+
+Sequencing / engine design notes (non-normative): [UI_ENGINE_PLAN.md](../planning/UI_ENGINE_PLAN.md).
+
+### Plugin contract (runtime, informative)
+
+The wire shape for manifests is `UiDashboardManifest` + `PluginEntry` in
+[`specs/api/openapi.yaml`](../../specs/api/openapi.yaml). The TypeScript runtime
+shape below mirrors [`UI_ENGINE_SPEC.md`](../planning/UI_ENGINE_SPEC.md) §5.1 and
+documents what plugin components should expect from the host (today some fields
+are still being threaded through; this is the target surface).
+
+```ts
+type DashboardTileProps = {
+  tile: DashboardTile;
+  manifest: UiDashboardManifest;
+  gateway: DataGateway;
+  bus: FabricEventBus;
+  hostContext: {
+    inGroup: boolean;
+    containerColumns: number;
+    editing: boolean;
+    openSettings?: () => void;
+  };
+  hint: (h: GridHint) => void;
+};
+
+type PluginSettingsProps = {
+  tile: DashboardTile;
+  bindOptions: Writable<TileOptions>;
+};
+```
+
+Rules from the same spec section: plugins must not import `LayoutStore` or
+`DashboardHost`; they read `tile.displayMode` / `tile.hostControl` and honour
+manifest `supports_compact` / `allowed_host_controls` so the settings overlay can
+hide irrelevant toggles.
 
 ## Twelve-column grid placement (Phase C)
 
@@ -266,7 +314,11 @@ Operators can change **display mode**, **host control** (from the plugin manifes
   `../adr/ADR-0017-ui-fonts-self-hosted.md`,
   `../adr/ADR-0045-operational-readiness-v1-definition.md`,
   `../adr/ADR-0046-operator-ui-flowbite-tailwind.md`,
-  `../adr/ADR-0047-operator-ui-charts-flowbite-plugin.md`
+  `../adr/ADR-0047-operator-ui-charts-flowbite-plugin.md`,
+  `../adr/ADR-0048-operator-dashboard-plugin-registry.md`,
+  `../adr/ADR-0049-operator-dashboard-fault-isolation-host-controls-v1.md`
+- Planning (non-normative): `../planning/UI_ENGINE_REVIEW.md`,
+  `../planning/UI_ENGINE_SPEC.md`, `../planning/UI_ENGINE_PLAN.md`
 
 ## Change Log
 
@@ -278,3 +330,4 @@ Operators can change **display mode**, **host control** (from the plugin manifes
 | 2026-04-22 | Accepted | GriffinAD | Phase C grid + edit-mode semantics: span-only editor grid, packing rules, debounced layout PUT. |
 | 2026-04-22 | Accepted | GriffinAD | Cross-ref ADR-0047 (charts: Flowbite Svelte plugin + bespoke SVG). |
 | 2026-04-23 | Accepted | GriffinAD | Working UI engine docs at repo root: `UI_ENGINE_REVIEW.md`, `UI_ENGINE_SPEC.md`, `UI_ENGINE_PLAN.md` (implementation plan; promote into this doc when execution completes). |
+| 2026-04-23 | Accepted | GriffinAD | Phase 8 closure: implementation snapshot refreshed (registry, layout store, event bus, ADR-0048/0049); runtime plugin contract §; `specs/contracts/ui_dashboard_plugin.py` aligned with OpenAPI; planning docs moved under `docs/planning/` with banners. |

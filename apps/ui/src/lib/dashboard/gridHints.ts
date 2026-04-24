@@ -10,7 +10,7 @@ export type ApplyLayoutStructureFn = (
 
 /**
  * Applies perf-tile grid span hints from gauge layout. RAM uses “only expand” via
- * `perfGridHintOnlyExpandColSpan` (see `builtinMeta.ts`). TODO(P2): move policy to registry `gridPolicy`.
+ * `perfGridHintOnlyExpandColSpan` (see `builtinMeta.ts`). Future: optional `gridPolicy` on registry entries.
  */
 export function handlePerfTileGridHint(
   items: DashboardLayoutV2["items"],

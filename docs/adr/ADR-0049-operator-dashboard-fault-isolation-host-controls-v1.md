@@ -83,7 +83,7 @@ Chosen option: **2**, because it matches the blueprint, uses Svelte 5 `<svelte:b
 ## Links
 
 - Related ADRs: ADR-0046 (Flowbite shell), ADR-0047 (charts/plugins).
-- Related docs: [dashboard-plugin-blueprint.md](../architecture/dashboard-plugin-blueprint.md), [UI_ENGINE_SPEC.md](../../UI_ENGINE_SPEC.md).
+- Related docs: [dashboard-plugin-blueprint.md](../architecture/dashboard-plugin-blueprint.md), [UI_ENGINE_SPEC.md](../planning/UI_ENGINE_SPEC.md).
 - Implementation: `apps/ui/src/lib/dashboard/TileErrorBoundary.svelte`, `TileFallback.svelte`, `TileHostControl.svelte`, `hosts/SinglePanelHost.svelte`.
 
 ## Change Log

@@ -1,5 +1,5 @@
 <script lang="ts">
-  /** Monospace metric lines for `display_style: "percent_only"` tiles (UI_ENGINE_PLAN P5.6). */
+  /** Monospace metric lines for `display_style: "percent_only"` tiles (`docs/planning/UI_ENGINE_PLAN.md` P5.6). */
   let {
     lines,
     class: className = "space-y-0.5 font-mono text-xs text-gray-800 dark:text-gray-200",

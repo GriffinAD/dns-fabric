@@ -12,7 +12,7 @@ export type OverlaySettingsBinding = {
   setGroup: (g: DashboardGroup | null) => void;
 };
 
-/** Layout store + overlay actions for `App.svelte` (UI_ENGINE_PLAN P6). */
+/** Layout store + overlay actions for `App.svelte` (`docs/planning/UI_ENGINE_PLAN.md` P6). */
 export function createAppDashboardShell(gateway: DataGateway, settings: OverlaySettingsBinding) {
   const ls = createLayoutStore({ gateway });
   const overlay = createOverlayActions({

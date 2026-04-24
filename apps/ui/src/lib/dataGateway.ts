@@ -29,7 +29,7 @@ import type { DashboardLayout } from "./dashboard/types";
 
 export type GatewayErrorCode = "http_error" | "parse_failed";
 
-/** Typed failure from `DataGateway` (HTTP or response shape). See UI_ENGINE_PLAN P3.4. */
+/** Typed failure from `DataGateway` (HTTP or response shape). See `docs/planning/UI_ENGINE_PLAN.md` P3.4. */
 export class GatewayError extends Error {
   readonly code: GatewayErrorCode;
   readonly path: string;

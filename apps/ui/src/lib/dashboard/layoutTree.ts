@@ -41,7 +41,7 @@ function compareRootItemsByPosition(a: RootLayoutItem, b: RootLayoutItem): numbe
 
 /**
  * v1 `rowPanel` → one `group` per distinct id, with child grids translated into the
- * group’s local coordinate system.
+ * group’s local coordinate system. (Obsolete v1-only read-path helpers were removed in P8.1.)
  */
 export function migrateV1ToV2(tiles: DashboardTile[]): RootLayoutItem[] {
   const byPanel = new Map<string, DashboardTile[]>();

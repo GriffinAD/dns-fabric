@@ -3,7 +3,7 @@ import { readonly, writable, type Readable } from "svelte/store";
 import type { FabricEvent } from "../api/types";
 import { DataGateway } from "../dataGateway";
 
-/** Svelte context key for the fabric SSE fan-out bus (UI_ENGINE_PLAN P5). */
+/** Svelte context key for the fabric SSE fan-out bus (`docs/planning/UI_ENGINE_PLAN.md` P5). */
 export const FABRIC_EVENT_BUS = Symbol("FABRIC_EVENT_BUS");
 
 export type FabricConnectionState = "idle" | "connecting" | "open" | "error";

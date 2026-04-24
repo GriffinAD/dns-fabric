@@ -1,3 +1,5 @@
+> **Planning artifact — not Accepted architecture.** Normative dashboard contracts live in [`dashboard-plugin-blueprint.md`](../architecture/dashboard-plugin-blueprint.md).
+
 # UI Engine Review — `phase-d` branch
 
 Date: 2026-04-23
@@ -7,10 +9,9 @@ picture is in [`UI_ENGINE_SPEC.md`](UI_ENGINE_SPEC.md) and the action list is in
 [`UI_ENGINE_PLAN.md`](UI_ENGINE_PLAN.md).
 
 This is a working document, not an Accepted Tier A/B/C architecture doc. It
-deliberately lives at the repo root so it is easy to find and does not have to
-clear the doc gates. If we want to promote any of it into `docs/architecture/`
-(e.g. as updates to `dashboard-plugin-blueprint.md`) we'll do that through the
-normal ADR/doc workflow.
+lives under `docs/planning/` so it is clearly separate from Accepted tier
+material. Promotion into `docs/architecture/` happens through the normal
+ADR / doc workflow.
 
 ---
 
@@ -66,15 +67,13 @@ Concretely, today the engine is the union of:
   `{#if draft.pluginId === "perf.*"}` branches** for perf options.
 - `apps/ui/src/lib/dashboard/GroupSettingsOverlay.svelte` — ~220 lines, focused.
 - `apps/ui/src/lib/dashboard/{TileEditChrome,GroupReadNoWrap,DashboardControls}.svelte`,
-  `dashboardSettings.ts`, `rowPanelLayout.ts`, `gaugeGridLayout.ts`,
-  `defaultLayout.ts`.
+  `dashboardSettings.ts`, `gaugeGridLayout.ts`, `defaultLayout.ts`.
 - `apps/ui/src/lib/plugins/*.svelte` — one Svelte component per pluginId.
 - `apps/ui/src/lib/components/SemicircleGauge.svelte` + `gaugeMath.ts` +
   `gaugeThresholds.ts` — shared primitive, today only used by perf tiles.
 - `apps/ui/src/lib/theme/{themeStorage.ts,ThemeControls.svelte}`.
 - `apps/ui/src/lib/api/{types.ts,openapiZod.ts}` + `dataGateway.ts`.
-- `apps/ui/src/mock/{fixtures.ts,handleMockApi.ts,routes.ts}` +
-  `vite-plugin-mock-api.ts`.
+- `apps/ui/src/mock/{fixtures.ts,handleMockApi.ts}` + `vite-plugin-mock-api.ts`.
 - `specs/dashboard/layout.schema.json` — JSON Schema (the real contract) and
   `specs/contracts/ui_dashboard_plugin.py` — Python `Protocol` **stub** with
   only `plugin_id`.
@@ -240,7 +239,7 @@ Vitest lives in:
 
 - `lib/api/openapiZod.test.ts`
 - `lib/components/{gaugeMath,gaugeThresholds}.test.ts`
-- `lib/dashboard/{gridPlacement,layoutStorage,layoutTree,dashboardSettings,gaugeGridLayout,layout,rowPanelLayout}.test.ts`
+- `lib/dashboard/{gridPlacement,layoutStorage,layoutTree,dashboardSettings,gaugeGridLayout,layout}.test.ts`
 - `lib/{dataGateway,mockRoutes,uiVersion}.test.ts`
 - `lib/theme/themeStorage.test.ts`
 
@@ -257,10 +256,8 @@ Gaps:
 
 ### 3.12 Deprecated / dead-ish files still around
 
-- `apps/ui/src/mock/routes.ts` — deprecated re-export of `baseFixtures`.
-- `rowPanelLayout.ts` — supports the v1 `rowPanel` migration path which is only
-  reached from `migrateV1ToV2`. Fine to keep in one migration helper; shouldn't
-  be a separate "panel" concept alongside groups.
+- **Update (Phase 8):** `mock/routes.ts` and `rowPanelLayout.ts` are removed;
+  v1 `rowPanel` grouping lives only in `migrateV1ToV2` (`layoutTree.ts`).
 
 ---
 

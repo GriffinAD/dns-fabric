@@ -2,7 +2,7 @@
   import Card from "flowbite-svelte/Card.svelte";
   import type { Snippet } from "svelte";
 
-  /** Card chrome + title + loading/error for gauge-class tiles (UI_ENGINE_PLAN P5.4). */
+  /** Card chrome + title + loading/error for gauge-class tiles (`docs/planning/UI_ENGINE_PLAN.md` P5.4). */
   let {
     title,
     err,

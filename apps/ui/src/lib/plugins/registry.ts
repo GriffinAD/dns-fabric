@@ -14,7 +14,7 @@ import PerfTile from "./PerfTile.svelte";
 import RamTile from "./RamTile.svelte";
 
 /**
- * Runtime plugin registration (built-ins). See UI_ENGINE_SPEC §3.4 — full type will grow
+ * Runtime plugin registration (built-ins). See `docs/planning/UI_ENGINE_SPEC.md` §3.4 — full type will grow
  * (optionsSchema, settings fragment, gridPolicy hooks) in later Phase 2 items.
  */
 export type PluginRegistration = {

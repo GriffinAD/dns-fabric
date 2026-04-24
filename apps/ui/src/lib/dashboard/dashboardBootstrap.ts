@@ -15,7 +15,7 @@ export type DashboardDataBootstrapHandlers = {
 };
 
 /**
- * Plugins list, default dashboard layout GET, and fabric SSE via `bus` (UI_ENGINE_PLAN P5).
+ * Plugins list, default dashboard layout GET, and fabric SSE via `bus` (`docs/planning/UI_ENGINE_PLAN.md` P5).
  * Hash routing and theme listeners stay in App.svelte.
  */
 export function mountDashboardGatewaySideEffects(

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
-  /** Pass-through host for `hostControl: "single-panel"` (UI_ENGINE_SPEC §4.3). */
+  /** Pass-through host for `hostControl: "single-panel"` (`docs/planning/UI_ENGINE_SPEC.md` §4.3). */
   let { children }: { children: Snippet } = $props();
 </script>
 

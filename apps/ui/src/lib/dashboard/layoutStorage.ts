@@ -41,7 +41,7 @@ export function clearStoredDashboardLayoutAndUnlock(): void {
   }
 }
 
-/** When set, stored JSON is newer than this app supports (see UI_ENGINE_PLAN P3.7). */
+/** When set, stored JSON is newer than this app supports (see `docs/planning/UI_ENGINE_PLAN.md` P3.7). */
 export function layoutJsonUnsupportedVersionMessage(value: unknown): string | null {
   if (!value || typeof value !== "object") return null;
   const v = value as Record<string, unknown>;

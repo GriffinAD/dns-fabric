@@ -45,7 +45,7 @@
           data-testid="admin-gauge-primitive-demo"
         >
           <p class="text-center text-xs text-gray-500 dark:text-gray-400">
-            SemicircleGauge primitive (health-weighted demo, UI_ENGINE_PLAN P5)
+            SemicircleGauge primitive (health-weighted demo, `docs/planning/UI_ENGINE_PLAN.md` P5)
           </p>
           <SemicircleGauge
             label="Sample load"

@@ -1,7 +1,7 @@
 import type { DashboardTile } from "../dashboard/types";
 
 /**
- * Perf tiles in compact mode use percent-only display for a smaller footprint (UI_ENGINE_PLAN P4.5).
+ * Perf tiles in compact mode use percent-only display for a smaller footprint (`docs/planning/UI_ENGINE_PLAN.md` P4.5).
  * Multi-series tiles (`network_by_adapter`, `disk_by_volume`) keep `display_style` so gauges (or
  * future list breakdown) are not collapsed to a single summary line.
  */

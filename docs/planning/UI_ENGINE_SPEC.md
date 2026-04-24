@@ -1,3 +1,5 @@
+> **Planning artifact — not Accepted architecture.** Normative dashboard contracts live in [`dashboard-plugin-blueprint.md`](../architecture/dashboard-plugin-blueprint.md).
+
 # UI Engine Spec — Kea Fabric Operator Shell
 
 Date: 2026-04-23
@@ -447,8 +449,8 @@ as the canonical contract. Runtime types mirror it exactly.
 - `initialDashboardLayout()` stays as a factory, but the **legacy-strip logic
   for `perf.summary`** (today hard-coded in `layoutStorage.ts`) moves into a
   named migration step keyed by payload version, documented and tested once.
-- `rowPanelLayout.ts` stays as a **migration helper**, not as a parallel
-  panel concept.
+- v1 `rowPanel` grouping is implemented only in `migrateV1ToV2` (`layoutTree.ts`);
+  obsolete read-path helpers were removed in Phase 8.
 
 ---
 

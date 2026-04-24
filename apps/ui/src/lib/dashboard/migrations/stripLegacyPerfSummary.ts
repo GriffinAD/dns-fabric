@@ -1,7 +1,7 @@
 import { ensureLayoutV2 } from "../layoutTree";
 import type { DashboardGroup, DashboardLayout, DashboardLayoutV2, RootLayoutItem, RootTileItem } from "../types";
 
-/** Legacy dashboard tiles removed on load (see UI_ENGINE_PLAN P3.6). */
+/** Legacy dashboard tiles removed on load (see `docs/planning/UI_ENGINE_PLAN.md` P3.6). */
 export const LEGACY_PERF_SUMMARY_PLUGIN_IDS = new Set(["perf.summary"]);
 
 /**

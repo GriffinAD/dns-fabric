@@ -3,7 +3,7 @@
 ## Purpose
 This document defines mandatory implementation actions required to realise the UI engine architecture.
 
-Focus: gaps not covered in UI_ENGINE_* docs.
+Focus: gaps not covered in `docs/planning/UI_ENGINE_*.md`.
 
 ---
 

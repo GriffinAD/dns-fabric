@@ -1,3 +1,5 @@
+> **Planning artifact — not Accepted architecture.** Normative dashboard contracts live in [`dashboard-plugin-blueprint.md`](../architecture/dashboard-plugin-blueprint.md).
+
 # UI Engine Improvement Plan
 
 Date: 2026-04-23
@@ -59,7 +61,9 @@ and per-plugin settings fragments).
 | **P5** | **Done** | `createFabricEventBus` + `FABRIC_EVENT_BUS` context; perf tiles subscribe to `fabric.perf.updated`; `MetricList`, `GaugeTileLayout`, `TablePluginShell`; DHCP pools/reservations on table shell; `builtinMeta` grid helpers; `check:ui-plugin-dashboard-imports`; blueprint + `events.md` + `docs/operator/gauge-primitive.md`. **Stretch:** `DhcpClientsTile` on `TablePluginShell`; surface `connectionState` in UI. |
 | **P6** | **Done** | `ShellHeader.svelte` (branding, cache badge, `ThemeControls` with `showAccent` when home+editor, dashboard toolbar, admin nav); `DashboardPage.svelte` (persist banners, `DashboardHost`, tile/group overlays); `appDashboardShell.ts` + `appMount.ts` keep `App.svelte` ≤120 lines; `OverlayActions` type export. |
 | **P7** | **Done** | Vitest: `layoutStore` coalesce/debounce, `eventBus` reconnect/unsubscribe/selector, `registry` unregister + dynamic resolver teardown, `TileErrorBoundary` + `PluginTileMount`, `tileOptionsZod` + layout JSON. Vitest env: `resolve.conditions` includes `browser`; `src/vitest-setup.ts` polyfills `matchMedia` for Flowbite/Svelte motion. Playwright: `e2e.throwing` isolation + read/edit leaf order parity via `data-tile-id`. |
-| **P8** | Not started | As in Phase 8 section below. |
+| **P8** | **Done** | Retired dead `rowPanelLayout`; ADR-0048; blueprint snapshot + runtime plugin contract + Change Log; expanded `ui_dashboard_plugin.py`; planning docs under `docs/planning/`. |
+
+**Note:** Phases **P0–P1** and **P3–P8** match this table. **P2** remains **partial** relative to the aspirational “full registry” checklist in [Phase 2](#phase-2--plugin-host--plugin-registry-2–3-days) (e.g. `DataTableTile`, blocking `check:ui-plugin-guard`); that stretch work was intentionally out of scope for closing P8.
 
 ---
 
@@ -78,10 +82,8 @@ regress silently.
   state, failing with the current codebase is expected) that greps for plugin
   id literals outside `apps/ui/src/lib/plugins/`. The script exists but is
   not yet a blocker; we flip it to blocking at the end of Phase 2.
-- **P0.3** Add an `architecture/UI_ENGINE_REVIEW.md` / `…SPEC.md` /
-  `…PLAN.md` mention from `docs/architecture/dashboard-plugin-blueprint.md`
-  Change Log so reviewers know this body of work exists (no content move
-  yet).
+- **P0.3** Add a mention from `docs/architecture/dashboard-plugin-blueprint.md`
+  Change Log so reviewers know this body of work exists (see `docs/planning/UI_ENGINE_*.md`).
 
 **Done when:** baseline screenshots captured, guard script present (even if
 not enforcing yet), blueprint Change Log notes the working docs.
@@ -466,6 +468,8 @@ line target.
 - `dashboard-plugin-blueprint.md` Change Log updated.
 
 **Risk:** None for code; doc-gate rigor applies.
+
+**Landed:** P8.1 removed unused `rowPanelLayout` (v1 grouping is `migrateV1ToV2` only). P8.2 verified — `mock/routes.ts` absent. P8.3–P8.5 and P8.6 completed as documented in the blueprint / ADR-0048 / `specs/contracts/` Change Log notes.
 
 ---
 
