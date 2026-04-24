@@ -613,6 +613,7 @@
                 {#each packed as tile (tile.id)}
                   <div
                     class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col place-self-stretch"
+                    data-tile-id={tile.id}
                     data-in-row-panel={it.showBorder !== false ? "true" : undefined}
                     style={tile.grid
                       ? groupGridAreaStyle(tile.grid, Gr)
@@ -653,6 +654,7 @@
         {:else}
           <div
             class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col place-self-stretch"
+            data-tile-id={it.id}
             style={it.grid ? gridAreaStyle(it.grid) : gridColumnSpanStyle(it)}
           >
             <TileEditChrome

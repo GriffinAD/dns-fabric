@@ -54,6 +54,11 @@ export class ManifestRegistry {
     this.ids.add(_r.id);
   }
 
+  /** Remove a runtime-registered id (dynamic / E2E teardown). Built-ins are ignored if missing. */
+  unregister(id: string): void {
+    this.ids.delete(id);
+  }
+
   get(id: string): PluginRegistration | undefined {
     return this.ids.has(id) ? { id } : undefined;
   }
@@ -163,9 +168,25 @@ const TILE_RESOLVERS: Record<string, (ctx: TileHostContext) => ResolvedPluginMou
   "perf.disk": perfDisk,
 };
 
+/** E2E / dev-only mounts (see `VITE_E2E_THROWING` in `main.ts`). */
+const dynamicResolvers: Record<string, (ctx: TileHostContext) => ResolvedPluginMount> = {};
+
+/** Register a resolver at runtime (Playwright throwing-plugin spec). Returns teardown. */
+export function registerDynamicPluginResolver(
+  id: string,
+  resolver: (ctx: TileHostContext) => ResolvedPluginMount,
+): () => void {
+  dynamicResolvers[id] = resolver;
+  manifestRegistry.register({ id });
+  return () => {
+    delete dynamicResolvers[id];
+    manifestRegistry.unregister(id);
+  };
+}
+
 /** Resolve built-in tile component + props for `PluginTileMount.svelte`. */
 export function resolvePluginTileMount(ctx: TileHostContext): ResolvedPluginMount | null {
   const tile = applyPerfCompactAsPercentOnly(ctx.tile);
-  const fn = TILE_RESOLVERS[tile.pluginId];
+  const fn = TILE_RESOLVERS[tile.pluginId] ?? dynamicResolvers[tile.pluginId];
   return fn ? fn({ ...ctx, tile }) : null;
 }

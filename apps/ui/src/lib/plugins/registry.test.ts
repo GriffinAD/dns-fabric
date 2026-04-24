@@ -1,8 +1,10 @@
+import type { Component } from "svelte";
 import { describe, expect, it } from "vitest";
 
 import type { DashboardTile } from "../dashboard/types";
 import type { DataGateway } from "../dataGateway";
-import { manifestRegistry, resolvePluginTileMount } from "./registry";
+import DhcpPoolsTile from "./DhcpPoolsTile.svelte";
+import { manifestRegistry, registerDynamicPluginResolver, resolvePluginTileMount } from "./registry";
 
 const BUILTIN_TILE_IDS = [
   "dhcp.pools",
@@ -142,5 +144,27 @@ describe("resolvePluginTileMount", () => {
     expect(manifestRegistry.get(id)).toBeUndefined();
     manifestRegistry.register({ id });
     expect(manifestRegistry.get(id)).toEqual({ id });
+  });
+
+  it("ManifestRegistry.unregister removes a runtime id", () => {
+    const id = `custom.plugin.${Math.random().toString(36).slice(2, 10)}`;
+    manifestRegistry.register({ id });
+    manifestRegistry.unregister(id);
+    expect(manifestRegistry.get(id)).toBeUndefined();
+  });
+});
+
+describe("registerDynamicPluginResolver", () => {
+  it("resolves until teardown", () => {
+    const id = `dynamic.${Math.random().toString(36).slice(2, 10)}`;
+    const teardown = registerDynamicPluginResolver(id, (ctx) => ({
+      component: DhcpPoolsTile as Component<Record<string, unknown>>,
+      props: { gateway: ctx.gateway, tile: ctx.tile },
+    }));
+    const m = resolvePluginTileMount({ gateway, tile: tile(id), editLayout: false });
+    expect(m).not.toBeNull();
+    teardown();
+    expect(resolvePluginTileMount({ gateway, tile: tile(id), editLayout: false })).toBeNull();
+    expect(manifestRegistry.get(id)).toBeUndefined();
   });
 });

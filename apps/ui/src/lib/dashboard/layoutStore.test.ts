@@ -148,6 +148,31 @@ describe("createLayoutStore", () => {
     expect(put).toHaveBeenCalledTimes(1);
   });
 
+  it("coalesces rapid applyStructure calls into one PUT with the latest layout", async () => {
+    vi.useFakeTimers();
+    const gw = new DataGateway("");
+    const put = vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    const first = minimalLayout();
+    const second: DashboardLayoutV2 = {
+      version: 2,
+      items: [
+        {
+          kind: "tile",
+          id: "t-replaced",
+          pluginId: "dhcp.clients",
+          hostControl: "single-panel",
+          displayMode: "full",
+        },
+      ],
+    };
+    ls.applyStructure(first);
+    ls.applyStructure(second);
+    await vi.advanceTimersByTimeAsync(400);
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(get(ls.layout).items[0]).toMatchObject({ id: "t-replaced", pluginId: "dhcp.clients" });
+  });
+
   it("flush runs put immediately and cancels pending debounce", async () => {
     vi.useFakeTimers();
     const gw = new DataGateway("");

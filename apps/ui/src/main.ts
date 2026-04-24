@@ -45,6 +45,16 @@ function showBootFailure(e: unknown) {
 
 void (async () => {
   try {
+    if (import.meta.env.VITE_E2E_THROWING === "1") {
+      const [{ registerDynamicPluginResolver }, { default: E2EThrowingTile }] = await Promise.all([
+        import("./lib/plugins/registry"),
+        import("./lib/plugins/E2EThrowingTile.svelte"),
+      ]);
+      registerDynamicPluginResolver("e2e.throwing", () => ({
+        component: E2EThrowingTile,
+        props: {},
+      }));
+    }
     const [{ mount }, { default: App }] = await Promise.all([import("svelte"), import("./App.svelte")]);
     // `mount` appends to `target` and does not clear it — remove index.html "Loading…" first.
     target.replaceChildren();

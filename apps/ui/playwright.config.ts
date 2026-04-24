@@ -19,5 +19,9 @@ export default defineConfig({
     url: "http://127.0.0.1:5173/",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: {
+      ...process.env,
+      VITE_E2E_THROWING: "1",
+    },
   },
 });

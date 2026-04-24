@@ -58,7 +58,8 @@ and per-plugin settings fragments).
 | **P4** | **Done** | `TileErrorBoundary` + `TileFallback` around `PluginTileMount`; disabled / unknown / error / `host-control-not-implemented` paths; `SinglePanelHost` pass-through; other host controls show explicit fallback (ADR-0049). `applyPerfCompactAsPercentOnly` for `perf.*` compact; DHCP pools/reservations/discovery compact summaries; `TileGenericFields` hides single-option display/host controls. Blueprint cross-link + ADR-0049. |
 | **P5** | **Done** | `createFabricEventBus` + `FABRIC_EVENT_BUS` context; perf tiles subscribe to `fabric.perf.updated`; `MetricList`, `GaugeTileLayout`, `TablePluginShell`; DHCP pools/reservations on table shell; `builtinMeta` grid helpers; `check:ui-plugin-dashboard-imports`; blueprint + `events.md` + `docs/operator/gauge-primitive.md`. **Stretch:** `DhcpClientsTile` on `TablePluginShell`; surface `connectionState` in UI. |
 | **P6** | **Done** | `ShellHeader.svelte` (branding, cache badge, `ThemeControls` with `showAccent` when home+editor, dashboard toolbar, admin nav); `DashboardPage.svelte` (persist banners, `DashboardHost`, tile/group overlays); `appDashboardShell.ts` + `appMount.ts` keep `App.svelte` ≤120 lines; `OverlayActions` type export. |
-| **P7–P8** | Not started | As in sections below. |
+| **P7** | **Done** | Vitest: `layoutStore` coalesce/debounce, `eventBus` reconnect/unsubscribe/selector, `registry` unregister + dynamic resolver teardown, `TileErrorBoundary` + `PluginTileMount`, `tileOptionsZod` + layout JSON. Vitest env: `resolve.conditions` includes `browser`; `src/vitest-setup.ts` polyfills `matchMedia` for Flowbite/Svelte motion. Playwright: `e2e.throwing` isolation + read/edit leaf order parity via `data-tile-id`. |
+| **P8** | Not started | As in Phase 8 section below. |
 
 ---
 
@@ -425,6 +426,8 @@ line target.
   engine surface per `docs/architecture/testing.md`).
 
 **Risk:** Near zero; tests only.
+
+**Landed:** P7.1–P7.4 and P7.6–P7.7 as implemented in-repo; P7.5 consolidated in `tileOptionsZod.test.ts` (built-in ids + layout integration) rather than one file per plugin folder.
 
 ---
 

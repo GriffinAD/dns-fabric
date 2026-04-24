@@ -84,10 +84,38 @@ export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
   ],
 };
 
+/** Same grid as `E2E_EDITOR_12COL_LAYOUT` plus a tile that throws when `VITE_E2E_THROWING=1` (plugin isolation e2e). */
+export const E2E_EDITOR_LAYOUT_WITH_THROWING: DashboardLayout = {
+  ...E2E_EDITOR_12COL_LAYOUT,
+  tiles: [
+    ...E2E_EDITOR_12COL_LAYOUT.tiles,
+    {
+      id: "tile-e2e-throw",
+      pluginId: "e2e.throwing",
+      hostControl: "single-panel",
+      displayMode: "full",
+      region: "primary-grid",
+      grid: { col: 0, row: 7, colSpan: 12, rowSpan: 1 },
+    },
+  ],
+};
+
 /** Call in `test.beforeEach` so `page.goto` runs after the script (deterministic layout, no dev localStorage). */
 export async function seedEditorLayoutInLocalStorageBeforeNavigation(page: Page): Promise<void> {
   const key = "kea-fabric-dashboard-layout";
   const value = JSON.stringify(E2E_EDITOR_12COL_LAYOUT);
+  await page.addInitScript(
+    (args: { key: string; value: string }) => {
+      localStorage.setItem(args.key, args.value);
+    },
+    { key, value },
+  );
+}
+
+/** Layout including `e2e.throwing` (requires `VITE_E2E_THROWING=1` dev server). */
+export async function seedThrowingPluginLayoutBeforeNavigation(page: Page): Promise<void> {
+  const key = "kea-fabric-dashboard-layout";
+  const value = JSON.stringify(E2E_EDITOR_LAYOUT_WITH_THROWING);
   await page.addInitScript(
     (args: { key: string; value: string }) => {
       localStorage.setItem(args.key, args.value);

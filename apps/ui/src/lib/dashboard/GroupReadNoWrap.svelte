@@ -60,6 +60,7 @@
         <div
           class="flex h-full min-h-0 max-w-none shrink-0 flex-col [min-width:2.5rem]"
           style:width={widthPx(tile)}
+          data-tile-id={tile.id}
           data-in-row-panel={showPanelChrome ? "true" : undefined}
         >
           <TileEditChrome

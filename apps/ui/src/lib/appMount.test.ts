@@ -2,23 +2,23 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { attachOperatorShellLifecycle } from "./appMount";
 import type { DashboardDataBootstrapHandlers } from "./dashboard/dashboardBootstrap";
-import { createFabricEventBus } from "./dashboard/eventBus";
+import { createFabricEventBus, type FabricEventBus } from "./dashboard/eventBus";
 import { createLayoutStore } from "./dashboard/layoutStore";
 import { DataGateway } from "./dataGateway";
 import * as themeStorage from "./theme/themeStorage";
 import type { DashboardLayoutV2 } from "./dashboard/types";
 
-const { mountSpy } = vi.hoisted(() => ({
-  mountSpy: vi.fn(() => vi.fn()),
+const { mountDashboardSideEffectsMock } = vi.hoisted(() => ({
+  mountDashboardSideEffectsMock: vi.fn(() => vi.fn()),
 }));
 
 vi.mock("./dashboard/dashboardBootstrap", () => ({
-  mountDashboardGatewaySideEffects: mountSpy,
+  mountDashboardGatewaySideEffects: mountDashboardSideEffectsMock,
 }));
 
 describe("attachOperatorShellLifecycle", () => {
   afterEach(() => {
-    mountSpy.mockReset();
+    mountDashboardSideEffectsMock.mockReset();
     vi.restoreAllMocks();
   });
 
@@ -48,13 +48,16 @@ describe("attachOperatorShellLifecycle", () => {
     const stopBootstrap = vi.fn();
 
     const minimalLayout: DashboardLayoutV2 = { version: 2, items: [] };
-    mountSpy.mockImplementation((_gw, _bus, handlers: DashboardDataBootstrapHandlers) => {
-      handlers.onPluginsLoaded([]);
-      handlers.onPluginListError("list-fail");
-      handlers.onServerLayoutApplied(minimalLayout);
-      handlers.onLayoutHydrationFromServerFailed?.();
-      return stopBootstrap;
-    });
+    mountDashboardSideEffectsMock.mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((_gw: DataGateway, _bus: FabricEventBus, handlers: DashboardDataBootstrapHandlers) => {
+        handlers.onPluginsLoaded([]);
+        handlers.onPluginListError("list-fail");
+        handlers.onServerLayoutApplied(minimalLayout);
+        handlers.onLayoutHydrationFromServerFailed?.();
+        return stopBootstrap;
+      }) as any,
+    );
 
     const loadSpy = vi.spyOn(themeStorage, "loadThemePreferences").mockReturnValue({
       version: 1,
@@ -71,7 +74,7 @@ describe("attachOperatorShellLifecycle", () => {
       setPlugins,
     });
 
-    expect(mountSpy).toHaveBeenCalledOnce();
+    expect(mountDashboardSideEffectsMock).toHaveBeenCalledOnce();
     expect(addSpy.mock.calls.some((c) => c[0] === "hashchange")).toBe(true);
     expect(addSpy.mock.calls.some((c) => c[0] === "beforeunload")).toBe(true);
 
