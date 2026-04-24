@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { get } from "svelte/store";
   import { onMount } from "svelte";
   import Button from "flowbite-svelte/Button.svelte";
   import ArrowLeft from "lucide-svelte/icons/arrow-left";
@@ -11,57 +12,32 @@
   import { DataGateway } from "./lib/dataGateway";
   import DashboardHost from "./lib/dashboard/DashboardHost.svelte";
   import { mountDashboardGatewaySideEffects } from "./lib/dashboard/dashboardBootstrap";
-  import { handlePerfTileGridHint } from "./lib/dashboard/gridHints";
+  import { handlePerfTileGridHint as applyPerfTileGridHint } from "./lib/dashboard/gridHints";
   import { groupOuterColSpan } from "./lib/dashboard/gridPlacement";
-  import {
-    initialDashboardLayout,
-    parseDashboardLayout,
-    saveDashboardLayout,
-  } from "./lib/dashboard/layoutStorage";
-  import { normalizeLayoutStrict } from "./lib/dashboard/layoutNormalize";
-  import { findTileInLayout, PARENT_ID_DASHBOARD } from "./lib/dashboard/layoutTree";
+  import { createLayoutStore } from "./lib/dashboard/layoutStore";
   import { createOverlayActions } from "./lib/dashboard/overlayActions";
   import GroupSettingsOverlay from "./lib/dashboard/GroupSettingsOverlay.svelte";
   import TileSettingsOverlay from "./lib/dashboard/TileSettingsOverlay.svelte";
-  import type { DashboardGroup, DashboardLayout, DashboardLayoutV2, DashboardTile, RootLayoutItem } from "./lib/dashboard/types";
-  import { isLayoutV2 } from "./lib/dashboard/types";
+  import type { DashboardGroup, DashboardTile } from "./lib/dashboard/types";
+  import { findTileInLayout, PARENT_ID_DASHBOARD } from "./lib/dashboard/layoutTree";
   import { UI_VERSION } from "./lib/uiVersion";
   import DashboardControls from "./lib/dashboard/DashboardControls.svelte";
   import ThemeControls from "./lib/theme/ThemeControls.svelte";
   import { loadThemePreferences, resyncDocumentThemeFromStorage } from "./lib/theme/themeStorage";
 
   let plugins = $state<PluginEntry[]>([]);
-  let layout = $state<DashboardLayoutV2>(initialDashboardLayout());
-  let editorOpen = $state(false);
-  let loadError = $state<string | null>(null);
-  let liveCpuPercent = $state<number | null>(null);
-  let route = $state<"home" | "admin">("home");
   let settingsTile = $state<DashboardTile | null>(null);
   let settingsGroup = $state<DashboardGroup | null>(null);
+  let liveCpuPercent = $state<number | null>(null);
+  let route = $state<"home" | "admin">("home");
 
   const gateway = new DataGateway();
-
-  function applyLayoutStructure(
-    next: DashboardLayout,
-    opts?: { preserveRootPlacementIfComplete?: boolean; editModeOverride?: boolean },
-  ) {
-    try {
-      const editMode = opts?.editModeOverride !== undefined ? opts.editModeOverride : editorOpen;
-      const normalized = normalizeLayoutStrict(next, editMode, {
-        preserveRootPlacementIfComplete: opts?.preserveRootPlacementIfComplete,
-      });
-      loadError = null;
-      layout = normalized;
-      saveDashboardLayout(normalized);
-      void gateway.putDashboardLayout("default", normalized).catch(() => {});
-    } catch (e: unknown) {
-      loadError = e instanceof Error ? e.message : String(e);
-    }
-  }
+  const ls = createLayoutStore({ gateway });
+  const { layout, loadError, persistError, editorOpen, layoutSource } = ls;
 
   const overlay = createOverlayActions({
-    getLayout: () => layout,
-    getEditorOpen: () => editorOpen,
+    getLayout: () => get(layout),
+    getEditorOpen: () => get(editorOpen),
     getSettingsTile: () => settingsTile,
     getSettingsGroup: () => settingsGroup,
     setSettingsTile: (t) => {
@@ -70,11 +46,40 @@
     setSettingsGroup: (g) => {
       settingsGroup = g;
     },
-    applyLayoutStructure,
+    applyLayoutStructure: ls.applyStructure,
   });
 
-  function syncRouteFromHash() {
-    route = window.location.hash === "#/admin" ? "admin" : "home";
+  const settingsParentId = $derived.by(() => {
+    if (!settingsTile) return PARENT_ID_DASHBOARD;
+    const f = findTileInLayout($layout.items, settingsTile.id);
+    return f?.inGroup ? f.inGroup.id : PARENT_ID_DASHBOARD;
+  });
+
+  const settingsTileContainerG = $derived.by(() => {
+    if (!settingsTile) return null;
+    const f = findTileInLayout($layout.items, settingsTile.id);
+    return f?.inGroup != null ? groupOuterColSpan(f.inGroup) : null;
+  });
+
+  const parentOptions = $derived([
+    { value: PARENT_ID_DASHBOARD, label: "Dashboard (root)" },
+    ...$layout.items
+      .filter((it): it is DashboardGroup => it.kind === "group")
+      .map((g) => ({ value: g.id, label: `Container: ${g.id}` })),
+  ]);
+
+  const tileSettingsContainerMeta = $derived(
+    $layout.items
+      .filter((it): it is DashboardGroup => it.kind === "group")
+      .map((g) => ({ id: g.id, innerWrap: g.innerWrap === true })),
+  );
+
+  async function syncRouteFromHash() {
+    const next = window.location.hash === "#/admin" ? "admin" : "home";
+    if (route === "home" && next === "admin") {
+      await ls.flush();
+    }
+    route = next;
   }
 
   function goHome() {
@@ -82,45 +87,32 @@
     route = "home";
   }
 
-  function goAdmin() {
-    selectDashboardView();
+  async function goAdmin() {
+    await selectDashboardView();
     window.location.hash = "#/admin";
     route = "admin";
   }
 
-  const settingsParentId = $derived.by(() => {
-    if (!settingsTile) return PARENT_ID_DASHBOARD;
-    const f = findTileInLayout(layout.items, settingsTile.id);
-    return f?.inGroup ? f.inGroup.id : PARENT_ID_DASHBOARD;
-  });
-
-  const settingsTileContainerG = $derived.by(() => {
-    if (!settingsTile) return null;
-    const f = findTileInLayout(layout.items, settingsTile.id);
-    return f?.inGroup != null ? groupOuterColSpan(f.inGroup) : null;
-  });
-
-  const parentOptions = $derived([
-    { value: PARENT_ID_DASHBOARD, label: "Dashboard (root)" },
-    ...layout.items
-      .filter((it): it is DashboardGroup => it.kind === "group")
-      .map((g) => ({ value: g.id, label: `Container: ${g.id}` })),
-  ]);
-
-  const tileSettingsContainerMeta = $derived(
-    layout.items
-      .filter((it): it is DashboardGroup => it.kind === "group")
-      .map((g) => ({ id: g.id, innerWrap: g.innerWrap === true })),
-  );
-
-  function selectDashboardView() {
+  async function selectDashboardView() {
     overlay.selectDashboardView();
-    editorOpen = false;
+    await ls.closeEditorAndFlush();
+  }
+
+  function onPerfTileGridHint(tileId: string, hint: { colSpan: number; rowSpan: number }) {
+    applyPerfTileGridHint(get(layout).items, tileId, hint, ls.applyStructure);
   }
 
   onMount(() => {
-    syncRouteFromHash();
-    window.addEventListener("hashchange", syncRouteFromHash);
+    void syncRouteFromHash();
+    const onHashChange = () => {
+      void syncRouteFromHash();
+    };
+    window.addEventListener("hashchange", onHashChange);
+
+    const onBeforeUnload = () => {
+      void ls.flush();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
 
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onColorScheme = () => {
@@ -135,10 +127,13 @@
         plugins = items;
       },
       onPluginListError: (message) => {
-        loadError = message;
+        ls.loadError.set(message);
       },
       onServerLayoutApplied: (nextLayout) => {
-        layout = nextLayout;
+        ls.acceptServerLayout(nextLayout);
+      },
+      onLayoutHydrationFromServerFailed: () => {
+        ls.markLayoutHydratedFromCacheOnly();
       },
       onLiveCpuPercent: (v) => {
         liveCpuPercent = v;
@@ -146,67 +141,12 @@
     });
 
     return () => {
-      window.removeEventListener("hashchange", syncRouteFromHash);
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("beforeunload", onBeforeUnload);
       mq.removeEventListener("change", onColorScheme);
       stopData();
     };
   });
-
-  function addTile(pluginId: string) {
-    const n = layout.items.length;
-    const id = `tile-${n + 1}-${Date.now()}`;
-    const next: RootLayoutItem = {
-      kind: "tile",
-      id,
-      pluginId,
-      hostControl: "single-panel",
-      displayMode: "full",
-    };
-    applyLayoutStructure({ version: 2, items: [...layout.items, next] });
-  }
-
-  function addGroup() {
-    const n = layout.items.length;
-    const id = `group-${n + 1}-${Date.now()}`;
-    const next: DashboardGroup = { kind: "group", id, showBorder: true, children: [] };
-    applyLayoutStructure({ version: 2, items: [...layout.items, next] });
-  }
-
-  function addTileToGroup(groupId: string, pluginId: string) {
-    const tId = `tile-in-${groupId}-${Date.now()}`;
-    const newTile: DashboardTile = {
-      id: tId,
-      pluginId,
-      hostControl: "single-panel",
-      displayMode: "full",
-    };
-    const items = layout.items.map((it) => {
-      if (it.kind === "group" && it.id === groupId) {
-        return { ...it, children: [...it.children, newTile] } satisfies DashboardGroup;
-      }
-      return it;
-    });
-    applyLayoutStructure({ version: 2, items });
-  }
-
-  async function resetLayoutToBaseline() {
-    loadError = null;
-    try {
-      const raw = await gateway.resetDashboardLayout("default");
-      const parsed = parseDashboardLayout(raw);
-      if (!parsed) {
-        loadError = "Reset returned an invalid layout.";
-        return;
-      }
-      applyLayoutStructure(parsed);
-    } catch (e: unknown) {
-      loadError = e instanceof Error ? e.message : String(e);
-    }
-  }
-
-  function onPerfTileGridHint(tileId: string, hint: { colSpan: number; rowSpan: number }) {
-    handlePerfTileGridHint(layout.items, tileId, hint, applyLayoutStructure);
-  }
 </script>
 
 <main class="min-h-screen bg-gray-50 p-8 dark:bg-gray-900">
@@ -220,25 +160,33 @@
         <p class="text-gray-600 dark:text-gray-400">
           Operator shell ({UI_VERSION}). Flowbite Svelte v2 + mocked <code class="font-mono text-sm">/api/v1</code>.
         </p>
+        {#if $layoutSource === "cache"}
+          <p
+            class="mt-1 text-xs font-medium text-amber-700 dark:text-amber-400"
+            data-testid="layout-source-cache-badge"
+          >
+            Layout loaded from cache (server layout unavailable).
+          </p>
+        {/if}
       </div>
       <div
         class="flex w-full min-w-0 flex-col items-stretch gap-3 sm:max-w-none sm:flex-1 sm:items-end"
         data-testid="app-header-actions"
       >
         <div class="flex w-full flex-wrap items-end justify-end gap-3">
-          <ThemeControls showAccent={route === "home" && editorOpen} />
-          {#if route === "home" && editorOpen}
+          <ThemeControls showAccent={route === "home" && $editorOpen} />
+          {#if route === "home" && $editorOpen}
             <DashboardControls />
           {/if}
           {#if route === "home"}
             <div role="toolbar" aria-label="Dashboard mode" class="flex flex-wrap items-center gap-1">
-              {#if editorOpen}
+              {#if $editorOpen}
                 <Button
                   type="button"
                   color="alternative"
                   class="!p-2"
                   aria-label="Return to dashboard"
-                  onclick={selectDashboardView}
+                  onclick={() => void selectDashboardView()}
                 >
                   <ArrowLeft class="h-5 w-5" aria-hidden="true" />
                 </Button>
@@ -247,7 +195,7 @@
                   color="danger"
                   class="outline shrink-0"
                   aria-label="Reset dashboard layout to saved baseline"
-                  onclick={resetLayoutToBaseline}
+                  onclick={() => void ls.resetToBaseline()}
                 >
                   Reset
                 </Button>
@@ -257,7 +205,7 @@
                   color="alternative"
                   class="!p-2"
                   aria-label="Edit layout"
-                  onclick={() => (editorOpen = true)}
+                  onclick={() => ls.openEditor()}
                 >
                   <Pencil class="h-5 w-5" aria-hidden="true" />
                 </Button>
@@ -274,8 +222,8 @@
               <House class="h-4 w-4" aria-hidden="true" />
               Dashboard
             </Button>
-          {:else if !editorOpen}
-            <Button type="button" class="inline-flex shrink-0 items-center gap-2" onclick={goAdmin}>
+          {:else if !$editorOpen}
+            <Button type="button" class="inline-flex shrink-0 items-center gap-2" onclick={() => void goAdmin()}>
               <Settings class="h-4 w-4" aria-hidden="true" />
               Admin
             </Button>
@@ -287,19 +235,24 @@
     {#if route === "admin"}
       <AdminPage {gateway} />
     {:else}
-      {#if loadError}
-        <p class="text-red-600 dark:text-red-400" role="alert">{loadError}</p>
+      {#if $loadError}
+        <p class="text-red-600 dark:text-red-400" role="alert">{$loadError}</p>
       {:else}
+        {#if $persistError}
+          <p class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200" role="status">
+            Could not save layout to the server: {$persistError}
+          </p>
+        {/if}
         <DashboardHost
-          {layout}
+          layout={$layout}
           {gateway}
           {liveCpuPercent}
           {plugins}
-          editLayout={editorOpen}
-          onAddTile={addTile}
-          onAddGroup={addGroup}
-          onAddTileToGroup={addTileToGroup}
-          onLayoutStructureChange={applyLayoutStructure}
+          editLayout={$editorOpen}
+          onAddTile={ls.addRootTile}
+          onAddGroup={ls.addGroup}
+          onAddTileToGroup={ls.addTileToGroup}
+          onLayoutStructureChange={ls.applyStructure}
           onEditTile={overlay.openTileSettings}
           onEditGroup={overlay.openGroupSettings}
           onDeleteRootItem={overlay.deleteRootLayoutItem}

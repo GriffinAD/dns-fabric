@@ -105,6 +105,25 @@ describe("mountDashboardGatewaySideEffects", () => {
     stop();
   });
 
+  it("invokes onLayoutHydrationFromServerFailed when GET layout rejects", async () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "listPlugins").mockResolvedValue({ items: [] });
+    vi.spyOn(gw, "getDashboardLayout").mockRejectedValue(new Error("offline"));
+    vi.spyOn(gw, "subscribeFabricEvents").mockReturnValue(() => {});
+    let failed = false;
+    const stop = mountDashboardGatewaySideEffects(gw, {
+      onPluginsLoaded: () => {},
+      onPluginListError: () => {},
+      onServerLayoutApplied: () => {},
+      onLayoutHydrationFromServerFailed: () => {
+        failed = true;
+      },
+      onLiveCpuPercent: () => {},
+    });
+    await vi.waitUntil(() => failed);
+    stop();
+  });
+
   it("ignores unparseable dashboard layout from server", async () => {
     const gw = new DataGateway("");
     vi.spyOn(gw, "listPlugins").mockResolvedValue({ items: [] });

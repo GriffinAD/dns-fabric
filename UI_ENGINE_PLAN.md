@@ -54,7 +54,8 @@ and per-plugin settings fragments).
 | **P0** | Done | Plugin guard script, baseline dir / blueprint changelog per prior work. |
 | **P1** | Done | `gridHints`, `dashboardBootstrap`, `overlayActions`, TileSettings split, `stripWidth`, mock routes test. **Line-count caps** for `App.svelte` / `DashboardHost.svelte` / overlay may still be open — treat as stretch. |
 | **P2** | **Partial** | **Landed:** `builtinMeta.ts` (default col spans + RAM grid-hint rule, no Svelte imports), `registry.ts` with `ManifestRegistry`, `resolvePluginTileMount`, `PluginTileMount.svelte`, `DashboardHost` delegates tile body to mount (no `if/else` on plugin id there), `tileColSpan` / `handlePerfTileGridHint` use `builtinMeta`. Vitest: `builtinMeta.test.ts`, `registry.test.ts`. **Not done:** per-folder plugin indexes, `DataTableTile` merge, Zod + `TileFallback` in mount, `gridPolicy` on registry (still `builtinMeta` + TODO), `PerfOptionsForm` as registration fragment, **blocking** `check:ui-plugin-guard`. |
-| **P3–P8** | Not started | As in sections below. |
+| **P3** | **Partial** | **Landed:** `layoutStore.ts` (`createLayoutStore`: writable layout/editor/source/errors, debounced `putDashboardLayout` 400ms, `flush` / `closeEditorAndFlush`, `persistError` vs `loadError`, `acceptServerLayout`, `markLayoutHydratedFromCacheOnly`, add-tile/group helpers, `resetToBaseline`). Bootstrap calls `onLayoutHydrationFromServerFailed` when GET layout fails. `App.svelte` wires store, cache badge, persist banner, `beforeunload` + flush when navigating home→admin. Vitest: `layoutStore.test.ts`, bootstrap hydration-failure test. **Not done:** Zod on gateway (P3.4), `layoutStorage` Zod (P3.5), migrations (P3.6–3.7), full spec API (`hintGrid`, `moveTile`, …), Flowbite toast, App line budget ≤130. |
+| **P4–P8** | Not started | As in sections below. |
 
 ---
 

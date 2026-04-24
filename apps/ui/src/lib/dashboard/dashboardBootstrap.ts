@@ -9,6 +9,8 @@ export type DashboardDataBootstrapHandlers = {
   onPluginsLoaded: (items: PluginEntry[]) => void;
   onPluginListError: (message: string) => void;
   onServerLayoutApplied: (layout: DashboardLayoutV2) => void;
+  /** GET layout failed or was skipped — UI should treat current layout as cache-only. */
+  onLayoutHydrationFromServerFailed?: () => void;
   onLiveCpuPercent: (value: number | null) => void;
 };
 
@@ -41,7 +43,8 @@ export function mountDashboardGatewaySideEffects(
       saveDashboardLayout(withGrid);
     })
     .catch(() => {
-      /* In-memory mock 404, or no API: keep initialDashboardLayout() from localStorage. */
+      /* In-memory mock 404, or no API: keep initial layout from localStorage. */
+      handlers.onLayoutHydrationFromServerFailed?.();
     });
 
   const unsub = gateway.subscribeFabricEvents(

@@ -1,0 +1,223 @@
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { get } from "svelte/store";
+
+import { DataGateway } from "../dataGateway";
+import * as layoutNormalize from "./layoutNormalize";
+import { createLayoutStore } from "./layoutStore";
+import type { DashboardLayoutV2 } from "./types";
+
+function minimalLayout(): DashboardLayoutV2 {
+  return {
+    version: 2,
+    items: [
+      {
+        kind: "tile",
+        id: "t1",
+        pluginId: "dhcp.pools",
+        hostControl: "single-panel",
+        displayMode: "full",
+      },
+    ],
+  };
+}
+
+function stubLocalStorage() {
+  const mem: Record<string, string> = {};
+  vi.stubGlobal(
+    "localStorage",
+    {
+      getItem: (k: string) => (k in mem ? mem[k]! : null),
+      setItem: (k: string, v: string) => {
+        mem[k] = v;
+      },
+      removeItem: (k: string) => {
+        delete mem[k];
+      },
+      clear: () => {
+        for (const k of Object.keys(mem)) delete mem[k];
+      },
+      key: (i: number) => Object.keys(mem)[i] ?? null,
+      get length() {
+        return Object.keys(mem).length;
+      },
+    } as Storage,
+  );
+}
+
+describe("createLayoutStore", () => {
+  beforeEach(() => {
+    stubLocalStorage();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("acceptServerLayout sets layoutSource server and clears loadError", () => {
+    const gw = new DataGateway("");
+    const ls = createLayoutStore({ gateway: gw });
+    ls.loadError.set("x");
+    const next = minimalLayout();
+    ls.acceptServerLayout(next);
+    expect(get(ls.layout)).toEqual(next);
+    expect(get(ls.layoutSource)).toBe("server");
+    expect(get(ls.loadError)).toBeNull();
+  });
+
+  it("markLayoutHydratedFromCacheOnly sets cache", () => {
+    const gw = new DataGateway("");
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout(minimalLayout());
+    ls.markLayoutHydratedFromCacheOnly();
+    expect(get(ls.layoutSource)).toBe("cache");
+  });
+
+  it("debounces putDashboardLayout by 400ms", async () => {
+    vi.useFakeTimers();
+    const gw = new DataGateway("");
+    const put = vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.applyStructure(minimalLayout());
+    expect(put).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(399);
+    expect(put).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(put).toHaveBeenCalledTimes(1);
+  });
+
+  it("flush runs put immediately and cancels pending debounce", async () => {
+    vi.useFakeTimers();
+    const gw = new DataGateway("");
+    const put = vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.applyStructure(minimalLayout());
+    await ls.flush();
+    expect(put).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(put).toHaveBeenCalledTimes(1);
+  });
+
+  it("persistError is set when PUT fails and cleared on success", async () => {
+    vi.useFakeTimers();
+    const gw = new DataGateway("");
+    const put = vi.spyOn(gw, "putDashboardLayout").mockRejectedValueOnce(new Error("nope"));
+    const ls = createLayoutStore({ gateway: gw });
+    ls.applyStructure(minimalLayout());
+    await vi.advanceTimersByTimeAsync(400);
+    expect(get(ls.persistError)).toBe("nope");
+    put.mockResolvedValueOnce(undefined);
+    await ls.flush();
+    expect(get(ls.persistError)).toBeNull();
+  });
+
+  it("closeEditorAndFlush sets editorOpen false and persists", async () => {
+    vi.useFakeTimers();
+    const gw = new DataGateway("");
+    const put = vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.openEditor();
+    expect(get(ls.editorOpen)).toBe(true);
+    ls.applyStructure(minimalLayout());
+    await ls.closeEditorAndFlush();
+    expect(get(ls.editorOpen)).toBe(false);
+    expect(put).toHaveBeenCalled();
+  });
+
+  it("addRootTile appends a tile", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout({ version: 2, items: [] });
+    ls.addRootTile("perf.cpu");
+    expect(get(ls.layout).items.length).toBe(1);
+    expect(get(ls.layout).items[0]).toMatchObject({ kind: "tile", pluginId: "perf.cpu" });
+  });
+
+  it("addGroup appends a group", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout({ version: 2, items: [] });
+    ls.addGroup();
+    expect(get(ls.layout).items.length).toBe(1);
+    expect(get(ls.layout).items[0]).toMatchObject({ kind: "group", children: [] });
+  });
+
+  it("addTileToGroup adds child to matching group", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout({
+      version: 2,
+      items: [{ kind: "group", id: "g1", showBorder: true, children: [] }],
+    });
+    ls.addTileToGroup("g1", "dhcp.clients");
+    const g = get(ls.layout).items[0];
+    expect(g?.kind).toBe("group");
+    if (g?.kind === "group") {
+      expect(g.children.length).toBe(1);
+      expect(g.children[0]?.pluginId).toBe("dhcp.clients");
+    }
+  });
+
+  it("applyStructure records loadError when normalize throws", () => {
+    const gw = new DataGateway("");
+    const ls = createLayoutStore({ gateway: gw });
+    const spy = vi.spyOn(layoutNormalize, "normalizeLayoutStrict").mockImplementation(() => {
+      throw new Error("norm");
+    });
+    ls.applyStructure(minimalLayout());
+    expect(get(ls.loadError)).toBe("norm");
+    spy.mockRestore();
+  });
+
+  it("applyStructure uses editModeOverride when provided", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    const spy = vi.spyOn(layoutNormalize, "normalizeLayoutStrict");
+    ls.openEditor();
+    ls.applyStructure(minimalLayout(), { editModeOverride: false });
+    expect(spy).toHaveBeenCalledWith(expect.anything(), false, expect.anything());
+    spy.mockRestore();
+  });
+
+  it("persistError uses String when PUT rejects non-Error", async () => {
+    vi.useFakeTimers();
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockRejectedValueOnce("plain");
+    const ls = createLayoutStore({ gateway: gw });
+    ls.applyStructure(minimalLayout());
+    await vi.advanceTimersByTimeAsync(400);
+    expect(get(ls.persistError)).toBe("plain");
+  });
+
+  it("resetToBaseline applies parsed layout from server", async () => {
+    const gw = new DataGateway("");
+    const next = minimalLayout();
+    vi.spyOn(gw, "resetDashboardLayout").mockResolvedValue(next);
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    await ls.resetToBaseline();
+    const L = get(ls.layout);
+    expect(L.items[0]?.id).toBe("t1");
+    expect(L.items[0]).toMatchObject({ pluginId: "dhcp.pools", kind: "tile" });
+    expect(L.items[0] && "grid" in L.items[0] && L.items[0].grid).toBeDefined();
+  });
+
+  it("resetToBaseline sets loadError when response is unparseable", async () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "resetDashboardLayout").mockResolvedValue({ version: 2, items: "bad" } as never);
+    const ls = createLayoutStore({ gateway: gw });
+    await ls.resetToBaseline();
+    expect(get(ls.loadError)).toBe("Reset returned an invalid layout.");
+  });
+
+  it("resetToBaseline sets loadError when reset throws", async () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "resetDashboardLayout").mockRejectedValue(new Error("reset failed"));
+    const ls = createLayoutStore({ gateway: gw });
+    await ls.resetToBaseline();
+    expect(get(ls.loadError)).toBe("reset failed");
+  });
+});
