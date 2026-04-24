@@ -277,6 +277,7 @@
   <PluginTileMount
     {gateway}
     {tile}
+    {plugins}
     {liveCpuPercent}
     {editLayout}
     {onEditTile}

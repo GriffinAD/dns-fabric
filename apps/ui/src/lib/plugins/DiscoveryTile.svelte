@@ -17,8 +17,11 @@
 
   let scanState = $state<string>("—");
   let lastUpdate = $state<string>("—");
+  let recordCount = $state<number | null>(null);
   let busy = $state(false);
   let err = $state<string | null>(null);
+
+  const isCompact = $derived(_tile.displayMode === "compact");
 
   function formatScanTimestamp(iso: string): string {
     if (!iso || iso === "—") return iso;
@@ -42,6 +45,18 @@
       const scan = await gateway.getDiscoveryScan();
       scanState = scan.state;
       lastUpdate = scan.updated_at;
+      let count: number | null = null;
+      if (_tile.displayMode === "compact") {
+        count = scan.record_count ?? null;
+        if (count == null) {
+          try {
+            count = (await gateway.listDiscoveryRecords()).items.length;
+          } catch {
+            count = null;
+          }
+        }
+      }
+      recordCount = count;
     } catch (e: unknown) {
       err = e instanceof Error ? e.message : String(e);
     }
@@ -74,37 +89,69 @@
 >
   {#snippet children()}
     <div class="flex flex-col" data-testid="discovery-toolbar">
-      <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-        Last update: {formatScanTimestamp(lastUpdate)}
-      </p>
-      <div class="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-          aria-label={scanState === "paused" ? "Resume scan" : "Pause scan"}
-          data-testid="discovery-pause"
-          disabled={busy}
-          onclick={() => void togglePause()}
-        >
-          {#if scanState === "paused"}
-            <Play class="h-5 w-5" aria-hidden="true" />
-          {:else}
-            <Pause class="h-5 w-5" aria-hidden="true" />
+      {#if isCompact}
+        <div class="flex flex-wrap items-center gap-2 py-1">
+          <button
+            type="button"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            aria-label={scanState === "paused" ? "Resume scan" : "Pause scan"}
+            data-testid="discovery-pause"
+            disabled={busy}
+            onclick={() => void togglePause()}
+          >
+            {#if scanState === "paused"}
+              <Play class="h-4 w-4" aria-hidden="true" />
+            {:else}
+              <Pause class="h-4 w-4" aria-hidden="true" />
+            {/if}
+          </button>
+          <p class="text-xs text-gray-700 dark:text-gray-200" data-testid="discovery-compact-summary">
+            {#if recordCount != null}
+              <span class="font-medium">{recordCount}</span>
+              {recordCount === 1 ? " record" : " records"}
+              <span class="text-gray-500 dark:text-gray-400"> · </span>
+            {/if}
+            {statusLabel}
+          </p>
+          {#if onOpenSettings}
+            <Button class="ml-auto" color="alternative" size="xs" onclick={() => onOpenSettings()}>
+              <Settings class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            </Button>
           {/if}
-        </button>
-        <span
-          class="rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
-          role="status"
-        >
-          {statusLabel}
-        </span>
-        {#if onOpenSettings}
-          <Button class="ml-auto" color="alternative" size="sm" onclick={() => onOpenSettings()}>
-            <Settings class="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
-            Settings
-          </Button>
-        {/if}
-      </div>
+        </div>
+      {:else}
+        <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+          Last update: {formatScanTimestamp(lastUpdate)}
+        </p>
+        <div class="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            aria-label={scanState === "paused" ? "Resume scan" : "Pause scan"}
+            data-testid="discovery-pause"
+            disabled={busy}
+            onclick={() => void togglePause()}
+          >
+            {#if scanState === "paused"}
+              <Play class="h-5 w-5" aria-hidden="true" />
+            {:else}
+              <Pause class="h-5 w-5" aria-hidden="true" />
+            {/if}
+          </button>
+          <span
+            class="rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+            role="status"
+          >
+            {statusLabel}
+          </span>
+          {#if onOpenSettings}
+            <Button class="ml-auto" color="alternative" size="sm" onclick={() => onOpenSettings()}>
+              <Settings class="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
+              Settings
+            </Button>
+          {/if}
+        </div>
+      {/if}
       {#if err}
         <p class="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">{err}</p>
       {/if}

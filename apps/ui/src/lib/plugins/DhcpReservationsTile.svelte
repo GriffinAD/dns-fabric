@@ -18,6 +18,8 @@
   let items = $state<DhcpReservation[]>([]);
   let err = $state<string | null>(null);
 
+  const isCompact = $derived(tile.displayMode === "compact");
+
   onMount(() => {
     void gateway
       .listDhcpReservations()
@@ -41,6 +43,15 @@
         <p class="text-sm text-red-600 dark:text-red-400" role="alert">{err}</p>
       {:else if items.length === 0}
         <p class="text-sm text-gray-500 dark:text-gray-400">No reservations.</p>
+      {:else if isCompact}
+        {@const r0 = items[0]}
+        <p class="text-sm text-gray-700 dark:text-gray-200" data-testid="dhcp-reservations-compact">
+          <span class="font-medium">{items.length}</span>
+          {items.length === 1 ? " reservation" : " reservations"}
+          {#if r0}
+            <span class="font-mono text-gray-500 dark:text-gray-400"> · {r0.reserved_address}</span>
+          {/if}
+        </p>
       {:else}
         <Table hoverable={true}>
           <TableHead>

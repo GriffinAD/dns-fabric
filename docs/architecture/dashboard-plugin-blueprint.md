@@ -187,6 +187,10 @@ low in v1. Future locking/merge models remain open.
 
 ## Fault isolation and fallback behavior
 
+Implementation scope and trade-offs for v1 are recorded in
+[ADR-0049](../adr/ADR-0049-operator-dashboard-fault-isolation-host-controls-v1.md)
+(`TileErrorBoundary`, `TileFallback`, `single-panel` vs placeholder host controls).
+
 - A failing plugin must not crash host rendering.
 - Missing/disabled plugins render a placeholder tile with:
   - plugin identifier

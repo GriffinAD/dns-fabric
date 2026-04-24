@@ -2,6 +2,7 @@ import type { Component } from "svelte";
 
 import type { DataGateway } from "../dataGateway";
 import type { DashboardTile } from "../dashboard/types";
+import { applyPerfCompactAsPercentOnly } from "./tileDisplay";
 import CpuTile from "./CpuTile.svelte";
 import DhcpClientsTile from "./DhcpClientsTile.svelte";
 import DhcpPoolsTile from "./DhcpPoolsTile.svelte";
@@ -166,6 +167,7 @@ const TILE_RESOLVERS: Record<string, (ctx: TileHostContext) => ResolvedPluginMou
 
 /** Resolve built-in tile component + props for `PluginTileMount.svelte`. */
 export function resolvePluginTileMount(ctx: TileHostContext): ResolvedPluginMount | null {
-  const fn = TILE_RESOLVERS[ctx.tile.pluginId];
-  return fn ? fn(ctx) : null;
+  const tile = applyPerfCompactAsPercentOnly(ctx.tile);
+  const fn = TILE_RESOLVERS[tile.pluginId];
+  return fn ? fn({ ...ctx, tile }) : null;
 }
