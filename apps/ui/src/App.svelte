@@ -15,6 +15,7 @@
   import { handlePerfTileGridHint as applyPerfTileGridHint } from "./lib/dashboard/gridHints";
   import { groupOuterColSpan } from "./lib/dashboard/gridPlacement";
   import { createLayoutStore } from "./lib/dashboard/layoutStore";
+  import { clearStoredDashboardLayoutAndUnlock } from "./lib/dashboard/layoutStorage";
   import { createOverlayActions } from "./lib/dashboard/overlayActions";
   import GroupSettingsOverlay from "./lib/dashboard/GroupSettingsOverlay.svelte";
   import TileSettingsOverlay from "./lib/dashboard/TileSettingsOverlay.svelte";
@@ -33,7 +34,15 @@
 
   const gateway = new DataGateway();
   const ls = createLayoutStore({ gateway });
-  const { layout, loadError, persistError, editorOpen, layoutSource } = ls;
+  const {
+    layout,
+    loadError,
+    persistError,
+    editorOpen,
+    layoutSource,
+    localPersistBlocked,
+    localPersistBlockedReason,
+  } = ls;
 
   const overlay = createOverlayActions({
     getLayout: () => get(layout),
@@ -238,6 +247,30 @@
       {#if $loadError}
         <p class="text-red-600 dark:text-red-400" role="alert">{$loadError}</p>
       {:else}
+        {#if $localPersistBlocked && $localPersistBlockedReason}
+          <div
+            class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
+            role="alert"
+            data-testid="layout-local-persist-blocked"
+          >
+            <p class="font-medium">Incompatible stored layout</p>
+            <p class="mt-1">{$localPersistBlockedReason}</p>
+            <p class="mt-1 text-xs opacity-90">
+              Local layout cache is read-only until you clear it or replace it from the server (e.g. Reset).
+            </p>
+            <Button
+              type="button"
+              color="alternative"
+              class="mt-2"
+              onclick={() => {
+                clearStoredDashboardLayoutAndUnlock();
+                window.location.reload();
+              }}
+            >
+              Clear stored layout and reload
+            </Button>
+          </div>
+        {/if}
         {#if $persistError}
           <p class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200" role="status">
             Could not save layout to the server: {$persistError}

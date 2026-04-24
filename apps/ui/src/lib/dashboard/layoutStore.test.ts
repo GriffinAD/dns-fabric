@@ -64,6 +64,69 @@ describe("createLayoutStore", () => {
     expect(get(ls.loadError)).toBeNull();
   });
 
+  it("acceptServerLayout clears local persist gate after incompatible stored version", () => {
+    const mem: Record<string, string> = {
+      "kea-fabric-dashboard-layout": JSON.stringify({ version: 9, items: [] }),
+    };
+    vi.stubGlobal(
+      "localStorage",
+      {
+        getItem: (k: string) => (k in mem ? mem[k]! : null),
+        setItem: (k: string, v: string) => {
+          mem[k] = v;
+        },
+        removeItem: (k: string) => {
+          delete mem[k];
+        },
+        clear: () => {
+          for (const k of Object.keys(mem)) delete mem[k];
+        },
+        key: (i: number) => Object.keys(mem)[i] ?? null,
+        get length() {
+          return Object.keys(mem).length;
+        },
+      } as Storage,
+    );
+    const gw = new DataGateway("");
+    const ls = createLayoutStore({ gateway: gw });
+    expect(get(ls.localPersistBlocked)).toBe(true);
+    ls.acceptServerLayout(minimalLayout());
+    expect(get(ls.localPersistBlocked)).toBe(false);
+    expect(get(ls.localPersistBlockedReason)).toBeNull();
+  });
+
+  it("resetToBaseline clears local persist gate when server returns a valid layout", async () => {
+    const mem: Record<string, string> = {
+      "kea-fabric-dashboard-layout": JSON.stringify({ version: 9, items: [] }),
+    };
+    vi.stubGlobal(
+      "localStorage",
+      {
+        getItem: (k: string) => (k in mem ? mem[k]! : null),
+        setItem: (k: string, v: string) => {
+          mem[k] = v;
+        },
+        removeItem: (k: string) => {
+          delete mem[k];
+        },
+        clear: () => {
+          for (const k of Object.keys(mem)) delete mem[k];
+        },
+        key: (i: number) => Object.keys(mem)[i] ?? null,
+        get length() {
+          return Object.keys(mem).length;
+        },
+      } as Storage,
+    );
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "resetDashboardLayout").mockResolvedValue(minimalLayout());
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    expect(get(ls.localPersistBlocked)).toBe(true);
+    await ls.resetToBaseline();
+    expect(get(ls.localPersistBlocked)).toBe(false);
+  });
+
   it("markLayoutHydratedFromCacheOnly sets cache", () => {
     const gw = new DataGateway("");
     const ls = createLayoutStore({ gateway: gw });

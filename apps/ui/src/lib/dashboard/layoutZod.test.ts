@@ -42,4 +42,38 @@ describe("parseDashboardLayoutZod", () => {
       }),
     ).toBeNull();
   });
+
+  it("rejects non-perf tile options that are not an empty object", () => {
+    expect(
+      parseDashboardLayoutZod({
+        version: 2,
+        items: [
+          {
+            kind: "tile",
+            id: "a",
+            pluginId: "dhcp.pools",
+            hostControl: "single-panel",
+            displayMode: "full",
+            options: { cpu_total: true },
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("accepts perf tile with perf options", () => {
+    const parsed = parseDashboardLayoutZod({
+      version: 2,
+      items: [
+        {
+          id: "a",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          options: { cpu_total: true, display_style: "gauge" },
+        },
+      ],
+    });
+    expect(parsed?.version).toBe(2);
+  });
 });

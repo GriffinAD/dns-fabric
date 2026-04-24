@@ -5,6 +5,7 @@
 import { z } from "zod";
 
 import { isCompleteGridPlacement, isCompleteGroupChildGrid } from "./gridPlacement";
+import { tileOptionsSchemaForPlugin } from "./tileOptionsZod";
 import type {
   DashboardGroup,
   DashboardLayout,
@@ -26,15 +27,18 @@ export const dashboardGridPlacementSchema = z
   })
   .strict();
 
-const tileOptionsSchema = z
-  .object({
-    cpu_total: z.boolean().optional(),
-    network_by_adapter: z.boolean().optional(),
-    disk_by_volume: z.boolean().optional(),
-    display_style: z.enum(["gauge", "percent_only"]).optional(),
-    perf_max_cols: z.number().int().min(1).max(12).optional(),
-  })
-  .strict();
+function refineTileOptions(val: { pluginId: string; options?: unknown }, ctx: z.RefinementCtx) {
+  if (val.options === undefined) return;
+  const schema = tileOptionsSchemaForPlugin(val.pluginId);
+  const r = schema.safeParse(val.options);
+  if (r.success) return;
+  for (const issue of r.error.issues) {
+    ctx.addIssue({
+      ...issue,
+      path: ["options", ...issue.path],
+    });
+  }
+}
 
 const dashboardTileJsonSchema = z
   .object({
@@ -46,9 +50,10 @@ const dashboardTileJsonSchema = z
     rowPanel: z.string().min(1).max(64).optional(),
     kind: z.literal("tile").optional(),
     grid: dashboardGridPlacementSchema.nullish(),
-    options: tileOptionsSchema.optional(),
+    options: z.unknown().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine(refineTileOptions);
 
 const rootTileJsonSchema = dashboardTileJsonSchema.superRefine((t, ctx) => {
   if (t.grid != null && !isCompleteGridPlacement(t.grid)) {

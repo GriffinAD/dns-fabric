@@ -7,6 +7,40 @@ import type { DashboardLayout, DashboardLayoutV2, DashboardTile, RootTileItem } 
 
 const STORAGE_KEY = "kea-fabric-dashboard-layout";
 
+let layoutLocalPersistBlocked = false;
+let layoutLocalPersistBlockedReason: string | null = null;
+
+function resetLayoutLocalPersistGate(): void {
+  layoutLocalPersistBlocked = false;
+  layoutLocalPersistBlockedReason = null;
+}
+
+/** True after `loadDashboardLayout` / `initialDashboardLayout` sees layout JSON with version &gt; 2. */
+export function isLayoutLocalPersistBlocked(): boolean {
+  return layoutLocalPersistBlocked;
+}
+
+export function getLayoutLocalPersistBlockedReason(): string | null {
+  return layoutLocalPersistBlockedReason;
+}
+
+/** Clear gate after trusted server layout, baseline reset, or explicit storage clear. */
+export function clearLayoutLocalPersistGate(): void {
+  resetLayoutLocalPersistGate();
+}
+
+/** Remove stored layout and allow local saves again (e.g. user acknowledges incompatible client). */
+export function clearStoredDashboardLayoutAndUnlock(): void {
+  resetLayoutLocalPersistGate();
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 /** When set, stored JSON is newer than this app supports (see UI_ENGINE_PLAN P3.7). */
 export function layoutJsonUnsupportedVersionMessage(value: unknown): string | null {
   if (!value || typeof value !== "object") return null;
@@ -28,13 +62,16 @@ export function parseDashboardLayout(value: unknown): DashboardLayout | null {
 
 export function loadDashboardLayout(): DashboardLayout | null {
   if (typeof localStorage === "undefined") return null;
+  resetLayoutLocalPersistGate();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
     const unsup = layoutJsonUnsupportedVersionMessage(parsed);
     if (unsup != null) {
-      console.warn(`[layoutStorage] ${unsup} — ignoring stored layout.`);
+      layoutLocalPersistBlocked = true;
+      layoutLocalPersistBlockedReason = unsup;
+      console.warn(`[layoutStorage] ${unsup} — ignoring stored layout; local layout cache writes disabled until resolved.`);
       return null;
     }
     return parseDashboardLayout(parsed);
@@ -45,6 +82,12 @@ export function loadDashboardLayout(): DashboardLayout | null {
 
 export function saveDashboardLayout(layout: DashboardLayout): void {
   if (typeof localStorage === "undefined") return;
+  if (layoutLocalPersistBlocked) {
+    console.warn(
+      `[layoutStorage] skipped local save (layout cache locked: ${layoutLocalPersistBlockedReason ?? "unknown"})`,
+    );
+    return;
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
 }
 
@@ -103,6 +146,7 @@ export function initialDashboardLayout(): DashboardLayoutV2 {
     return layoutWithGrid(next);
   } catch (e) {
     console.error("Failed to apply saved dashboard layout; resetting to default.", e);
+    resetLayoutLocalPersistGate();
     try {
       if (typeof localStorage !== "undefined") {
         localStorage.removeItem(STORAGE_KEY);

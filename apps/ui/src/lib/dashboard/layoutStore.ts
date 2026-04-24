@@ -3,7 +3,10 @@ import { get, writable } from "svelte/store";
 import { DataGateway } from "../dataGateway";
 import { normalizeLayoutStrict } from "./layoutNormalize";
 import {
+  clearLayoutLocalPersistGate,
   initialDashboardLayout,
+  isLayoutLocalPersistBlocked,
+  getLayoutLocalPersistBlockedReason,
   parseDashboardLayout,
   saveDashboardLayout,
 } from "./layoutStorage";
@@ -43,8 +46,17 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
   const loadError = writable<string | null>(null);
   /** Last dashboard layout PUT failure; dashboard may still be usable from cache. */
   const persistError = writable<string | null>(null);
+  /** localStorage layout writes disabled (e.g. stored layout version newer than this client). */
+  const localPersistBlocked = writable(isLayoutLocalPersistBlocked());
+  const localPersistBlockedReason = writable(getLayoutLocalPersistBlockedReason());
   const editorOpen = writable(false);
   const layoutSource = writable<LayoutSource>("cache");
+
+  function releaseLocalPersistGate() {
+    clearLayoutLocalPersistGate();
+    localPersistBlocked.set(false);
+    localPersistBlockedReason.set(null);
+  }
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -93,10 +105,13 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
     layout,
     loadError,
     persistError,
+    localPersistBlocked,
+    localPersistBlockedReason,
     editorOpen,
     layoutSource,
 
     acceptServerLayout(next: DashboardLayoutV2) {
+      releaseLocalPersistGate();
       layout.set(next);
       saveDashboardLayout(next);
       layoutSource.set("server");
@@ -173,6 +188,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
           loadError.set("Reset returned an invalid layout.");
           return;
         }
+        releaseLocalPersistGate();
         applyStructure(parsed);
       } catch (e: unknown) {
         loadError.set(e instanceof Error ? e.message : String(e));

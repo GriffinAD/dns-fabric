@@ -4,7 +4,9 @@ import { DEFAULT_DASHBOARD_LAYOUT } from "./defaultLayout";
 import * as gridPlacement from "./gridPlacement";
 import { iterateTilesInLayout } from "./layoutTree";
 import {
+  clearStoredDashboardLayoutAndUnlock,
   initialDashboardLayout,
+  isLayoutLocalPersistBlocked,
   layoutJsonUnsupportedVersionMessage,
   loadDashboardLayout,
   mergeMissingDefaultPlugins,
@@ -237,27 +239,36 @@ describe("parseDashboardLayout", () => {
   });
 
   it("rejects bad option field types", () => {
-    const base = {
+    const perf = {
       id: "a",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel" as const,
+      displayMode: "full" as const,
+    };
+    expect(parseDashboardLayout({ version: 1, tiles: [{ ...perf, options: { network_by_adapter: 1 } }] })).toBeNull();
+    expect(parseDashboardLayout({ version: 1, tiles: [{ ...perf, options: { disk_by_volume: 1 } }] })).toBeNull();
+    expect(
+      parseDashboardLayout({ version: 1, tiles: [{ ...perf, options: { display_style: "big" } }] }),
+    ).toBeNull();
+    expect(
+      parseDashboardLayout({ version: 1, tiles: [{ ...perf, options: { perf_max_cols: 0 } }] }),
+    ).toBeNull();
+    expect(
+      parseDashboardLayout({ version: 1, tiles: [{ ...perf, options: { perf_max_cols: 4 } }] }),
+    ).not.toBeNull();
+    expect(
+      parseDashboardLayout({ version: 1, tiles: [{ ...perf, options: { perf_max_cols: 2.5 } }] }),
+    ).toBeNull();
+    const nonPerf = {
+      id: "b",
       pluginId: "p",
       hostControl: "single-panel" as const,
       displayMode: "full" as const,
     };
-    expect(parseDashboardLayout({ version: 1, tiles: [{ ...base, options: { network_by_adapter: 1 } }] })).toBeNull();
-    expect(parseDashboardLayout({ version: 1, tiles: [{ ...base, options: { disk_by_volume: 1 } }] })).toBeNull();
+    expect(parseDashboardLayout({ version: 1, tiles: [{ ...nonPerf, options: {} }] })).not.toBeNull();
     expect(
-      parseDashboardLayout({ version: 1, tiles: [{ ...base, options: { display_style: "big" } }] }),
+      parseDashboardLayout({ version: 1, tiles: [{ ...nonPerf, options: { perf_max_cols: 4 } }] }),
     ).toBeNull();
-    expect(
-      parseDashboardLayout({ version: 1, tiles: [{ ...base, options: { perf_max_cols: 0 } }] }),
-    ).toBeNull();
-    expect(
-      parseDashboardLayout({ version: 1, tiles: [{ ...base, options: { perf_max_cols: 4 } }] }),
-    ).not.toBeNull();
-    expect(
-      parseDashboardLayout({ version: 1, tiles: [{ ...base, options: { perf_max_cols: 2.5 } }] }),
-    ).toBeNull();
-    expect(parseDashboardLayout({ version: 1, tiles: [{ ...base, options: {} }] })).not.toBeNull();
   });
 
   it("rejects invalid root and tile shape", () => {
@@ -357,7 +368,29 @@ describe("localStorage persistence", () => {
     store["kea-fabric-dashboard-layout"] = JSON.stringify({ version: 5, items: [] });
     expect(loadDashboardLayout()).toBeNull();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("version 5"));
+    expect(isLayoutLocalPersistBlocked()).toBe(true);
     warn.mockRestore();
+  });
+
+  it("saveDashboardLayout no-ops while persist is blocked after unsupported version", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    store["kea-fabric-dashboard-layout"] = JSON.stringify({ version: 5, items: [] });
+    loadDashboardLayout();
+    saveDashboardLayout(DEFAULT_DASHBOARD_LAYOUT);
+    expect(store["kea-fabric-dashboard-layout"]).toContain('"version":5');
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("clearStoredDashboardLayoutAndUnlock removes storage and clears persist gate", () => {
+    store["kea-fabric-dashboard-layout"] = JSON.stringify({ version: 5, items: [] });
+    loadDashboardLayout();
+    expect(isLayoutLocalPersistBlocked()).toBe(true);
+    clearStoredDashboardLayoutAndUnlock();
+    expect(store["kea-fabric-dashboard-layout"]).toBeUndefined();
+    expect(isLayoutLocalPersistBlocked()).toBe(false);
+    saveDashboardLayout(DEFAULT_DASHBOARD_LAYOUT);
+    expect(loadDashboardLayout()).not.toBeNull();
   });
 
   it("initialDashboardLayout clears storage and re-applies default when layoutWithGrid throws", () => {
