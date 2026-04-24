@@ -20,6 +20,15 @@ function detNoise(tick: number, salt: number): number {
   return (x % 1000) / 1000 - 0.5;
 }
 
+/** Two “busy” cores for mock realism: stay in 70–100% with slow drift + small noise. */
+function hotCorePercent(tick: number, phase: number, noiseSalt: number): number {
+  return clamp(
+    82 + 15 * Math.sin(tick * 0.13 + phase) + 2.5 * detNoise(tick, noiseSalt),
+    70,
+    100,
+  );
+}
+
 /**
  * Synthetic perf snapshot for simulate mode (tick 0 before first SSE, then 1, 2, …).
  * Python `perf_summary_for_tick` should match numerically for parity.
@@ -28,8 +37,8 @@ export function perfSummaryForTick(tick: number): PerfSummaryResponse {
   const cpu = clamp(28 + 18 * Math.sin(tick * 0.12) + 4 * detNoise(tick, 1), 2, 98);
   const cores = [
     clamp(cpu + 5 * Math.sin(tick * 0.09), 0, 100),
-    clamp(cpu + 5 * Math.sin(tick * 0.09 + 0.9), 0, 100),
-    clamp(cpu + 5 * Math.sin(tick * 0.09 + 1.8), 0, 100),
+    hotCorePercent(tick, 0.3, 41),
+    hotCorePercent(tick, 1.15, 43),
     clamp(cpu + 5 * Math.sin(tick * 0.09 + 2.7), 0, 100),
   ];
   const memPct = clamp(52 + 20 * Math.sin(tick * 0.035) + 3 * detNoise(tick, 2), 35, 88);

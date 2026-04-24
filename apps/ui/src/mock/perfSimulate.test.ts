@@ -22,6 +22,16 @@ describe("perfSummaryForTick", () => {
     expect(a.cpu_core_percent?.length).toBe(4);
   });
 
+  it("keeps mock hot cores 1 and 2 between 70 and 100%", () => {
+    for (let t = 0; t < 80; t++) {
+      const c = perfSummaryForTick(t).cpu_core_percent!;
+      expect(c[1]!, `core1 tick ${t}`).toBeGreaterThanOrEqual(70);
+      expect(c[1]!).toBeLessThanOrEqual(100);
+      expect(c[2]!, `core2 tick ${t}`).toBeGreaterThanOrEqual(70);
+      expect(c[2]!).toBeLessThanOrEqual(100);
+    }
+  });
+
   it("advances collected_at with tick", () => {
     const t0 = perfSummaryForTick(0).collected_at;
     const t1 = perfSummaryForTick(1).collected_at;

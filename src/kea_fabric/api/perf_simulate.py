@@ -25,12 +25,20 @@ def _det_noise(tick: int, salt: int) -> float:
     return (x % 1000) / 1000.0 - 0.5
 
 
+def _hot_core_percent(tick: int, phase: float, noise_salt: int) -> float:
+    return _clamp(
+        82 + 15 * math.sin(tick * 0.13 + phase) + 2.5 * _det_noise(tick, noise_salt),
+        70,
+        100,
+    )
+
+
 def perf_summary_for_tick(tick: int) -> dict[str, Any]:
     cpu = _clamp(28 + 18 * math.sin(tick * 0.12) + 4 * _det_noise(tick, 1), 2, 98)
     cores = [
         _clamp(cpu + 5 * math.sin(tick * 0.09), 0, 100),
-        _clamp(cpu + 5 * math.sin(tick * 0.09 + 0.9), 0, 100),
-        _clamp(cpu + 5 * math.sin(tick * 0.09 + 1.8), 0, 100),
+        _hot_core_percent(tick, 0.3, 41),
+        _hot_core_percent(tick, 1.15, 43),
         _clamp(cpu + 5 * math.sin(tick * 0.09 + 2.7), 0, 100),
     ]
     mem_pct = _clamp(52 + 20 * math.sin(tick * 0.035) + 3 * _det_noise(tick, 2), 35, 88)
