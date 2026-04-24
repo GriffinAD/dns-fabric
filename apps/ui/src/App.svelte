@@ -1,6 +1,6 @@
 <script lang="ts">
   import { get } from "svelte/store";
-  import { onMount } from "svelte";
+  import { onMount, setContext } from "svelte";
   import Button from "flowbite-svelte/Button.svelte";
   import ArrowLeft from "lucide-svelte/icons/arrow-left";
   import House from "lucide-svelte/icons/house";
@@ -12,6 +12,7 @@
   import { DataGateway } from "./lib/dataGateway";
   import DashboardHost from "./lib/dashboard/DashboardHost.svelte";
   import { mountDashboardGatewaySideEffects } from "./lib/dashboard/dashboardBootstrap";
+  import { createFabricEventBus, FABRIC_EVENT_BUS } from "./lib/dashboard/eventBus";
   import { handlePerfTileGridHint as applyPerfTileGridHint } from "./lib/dashboard/gridHints";
   import { groupOuterColSpan } from "./lib/dashboard/gridPlacement";
   import { createLayoutStore } from "./lib/dashboard/layoutStore";
@@ -29,10 +30,11 @@
   let plugins = $state<PluginEntry[]>([]);
   let settingsTile = $state<DashboardTile | null>(null);
   let settingsGroup = $state<DashboardGroup | null>(null);
-  let liveCpuPercent = $state<number | null>(null);
   let route = $state<"home" | "admin">("home");
 
   const gateway = new DataGateway();
+  const fabricEventBus = createFabricEventBus(gateway);
+  setContext(FABRIC_EVENT_BUS, fabricEventBus);
   const ls = createLayoutStore({ gateway });
   const {
     layout,
@@ -131,7 +133,7 @@
     };
     mq.addEventListener("change", onColorScheme);
 
-    const stopData = mountDashboardGatewaySideEffects(gateway, {
+    const stopData = mountDashboardGatewaySideEffects(gateway, fabricEventBus, {
       onPluginsLoaded: (items) => {
         plugins = items;
       },
@@ -143,9 +145,6 @@
       },
       onLayoutHydrationFromServerFailed: () => {
         ls.markLayoutHydratedFromCacheOnly();
-      },
-      onLiveCpuPercent: (v) => {
-        liveCpuPercent = v;
       },
     });
 
@@ -279,7 +278,6 @@
         <DashboardHost
           layout={$layout}
           {gateway}
-          {liveCpuPercent}
           {plugins}
           editLayout={$editorOpen}
           onAddTile={ls.addRootTile}

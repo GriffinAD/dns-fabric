@@ -1,25 +1,22 @@
 <script lang="ts">
   import Card from "flowbite-svelte/Card.svelte";
-  import { onMount } from "svelte";
+  import { getContext, onMount } from "svelte";
 
   import type { PerfSummaryResponse } from "../api/types";
+  import MetricList from "../components/MetricList.svelte";
   import SemicircleGauge from "../components/SemicircleGauge.svelte";
-  import { clampGridColSpan, tileColSpan } from "../dashboard/gridPlacement";
+  import { clampGridColSpan, tileColSpanForPlugin } from "./builtinMeta";
+  import { FABRIC_EVENT_BUS, perfUpdatedCpuPercent, type FabricEventBus } from "../dashboard/eventBus";
   import { DataGateway } from "../dataGateway";
   import type { DashboardTile } from "../dashboard/types";
 
-  let {
-    gateway,
-    tile,
-    liveCpuPercent,
-  }: {
-    gateway: DataGateway;
-    tile: DashboardTile;
-    liveCpuPercent?: number | null;
-  } = $props();
+  let { gateway, tile }: { gateway: DataGateway; tile: DashboardTile } = $props();
+
+  const fabricBus = getContext<FabricEventBus | undefined>(FABRIC_EVENT_BUS);
 
   let summary = $state<PerfSummaryResponse | null>(null);
   let err = $state<string | null>(null);
+  let liveCpuPercent = $state<number | null>(null);
 
   const opts = $derived(tile.options);
   const cpuTotal = $derived(opts?.cpu_total === true);
@@ -36,11 +33,29 @@
       .catch((e: unknown) => {
         err = e instanceof Error ? e.message : String(e);
       });
+
+    if (!fabricBus) return;
+    return fabricBus.subscribe("fabric.perf.updated", perfUpdatedCpuPercent, (v) => {
+      liveCpuPercent = v;
+    });
   });
 
   const cpuDisplay = $derived(
     liveCpuPercent != null && Number.isFinite(liveCpuPercent) ? liveCpuPercent : (summary?.cpu_percent_total ?? 0),
   );
+
+  const percentLines = $derived.by((): string[] => {
+    if (!summary) return [];
+    const cores = (summary.cpu_core_percent ?? []).map((p) => p.toFixed(0) + "%").join(", ");
+    const cpuLine = cpuTotal
+      ? `CPU (total): ${cpuDisplay.toFixed(1)}%`
+      : `CPU (per-core): ${cores || cpuDisplay.toFixed(1) + "%"}`;
+    return [
+      cpuLine,
+      `RAM: ${summary.memory_used_percent.toFixed(1)}%`,
+      `Disk: ${(summary.disk_used_percent ?? 0).toFixed(1)}%`,
+    ];
+  });
 
   type SummarySlot =
     | { key: string; kind: "cpu-total"; percent: number }
@@ -97,7 +112,7 @@
   });
 
   const tileColSpanEff = $derived(
-    Math.max(1, tile.grid?.colSpan != null ? clampGridColSpan(tile.grid.colSpan) : tileColSpan(tile)),
+    Math.max(1, tile.grid?.colSpan != null ? clampGridColSpan(tile.grid.colSpan) : tileColSpanForPlugin(tile)),
   );
   const tileRowSpan = $derived(Math.max(1, tile.grid?.rowSpan ?? 1));
   const fillGauges = $derived(
@@ -138,15 +153,9 @@
       {:else if !summary}
         <p class="px-4 text-sm text-gray-500 dark:text-gray-400">Loading…</p>
       {:else if percentOnly}
-        <ul class="space-y-1 px-4 font-mono text-sm text-gray-800 dark:text-gray-200">
-          <li>
-            CPU ({cpuTotal ? "total" : "per-core"}): {cpuTotal
-              ? `${cpuDisplay.toFixed(1)}%`
-              : (summary.cpu_core_percent ?? []).map((p) => `${p.toFixed(0)}%`).join(", ") || `${cpuDisplay.toFixed(1)}%`}
-          </li>
-          <li>RAM: {summary.memory_used_percent.toFixed(1)}%</li>
-          <li>Disk: {(summary.disk_used_percent ?? 0).toFixed(1)}%</li>
-        </ul>
+        <div class="px-4">
+          <MetricList lines={percentLines} class="space-y-1 font-mono text-sm text-gray-800 dark:text-gray-200" />
+        </div>
       {:else if summarySlots.length}
         <div class="grid w-full min-w-0 [row-gap:0.25rem]" style={summaryGridStyle} data-testid="perf-gauges">
           {#each summarySlots as s (s.key)}

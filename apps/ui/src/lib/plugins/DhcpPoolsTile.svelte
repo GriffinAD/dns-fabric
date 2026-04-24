@@ -1,14 +1,9 @@
 <script lang="ts">
-  import Card from "flowbite-svelte/Card.svelte";
-  import Table from "flowbite-svelte/Table.svelte";
-  import TableBody from "flowbite-svelte/TableBody.svelte";
-  import TableBodyCell from "flowbite-svelte/TableBodyCell.svelte";
-  import TableBodyRow from "flowbite-svelte/TableBodyRow.svelte";
-  import TableHead from "flowbite-svelte/TableHead.svelte";
-  import TableHeadCell from "flowbite-svelte/TableHeadCell.svelte";
   import { onMount } from "svelte";
 
   import type { DhcpPool } from "../api/types";
+  import TablePluginShell from "../components/TablePluginShell.svelte";
+  import type { TableShellColumn } from "../components/tablePluginShell";
   import { DataGateway } from "../dataGateway";
   import type { DashboardTile } from "../dashboard/types";
 
@@ -17,7 +12,13 @@
   let items = $state<DhcpPool[]>([]);
   let err = $state<string | null>(null);
 
-  const isCompact = $derived(tile.displayMode === "compact");
+  const compact = $derived(tile.displayMode === "compact");
+
+  const columns: TableShellColumn[] = [
+    { header: "Subnet", accessor: (p) => (p as DhcpPool).subnet_cidr },
+    { header: "Range", accessor: (p) => `${(p as DhcpPool).range_start} – ${(p as DhcpPool).range_end}` },
+    { header: "Domain", accessor: (p) => (p as DhcpPool).dns_domain ?? "—", hideWhenCompact: true },
+  ];
 
   onMount(() => {
     void gateway
@@ -29,58 +30,38 @@
         err = e instanceof Error ? e.message : String(e);
       });
   });
-
-  const singleCard = $derived(items.length === 1);
 </script>
 
-<Card
-  size="xl"
-  class="box-border !max-w-full w-full min-w-0 max-h-[480px] flex-1 min-h-0 flex-col overflow-auto"
+<TablePluginShell
+  title="DHCP pools"
+  {items}
+  {err}
+  emptyText="No pools."
+  {compact}
+  {columns}
+  rowKey={(p) => (p as DhcpPool).id}
 >
-  {#snippet children()}
-    <div class="p-4">
-      <h3 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">DHCP pools</h3>
-      {#if err}
-        <p class="text-sm text-red-600 dark:text-red-400" role="alert">{err}</p>
-      {:else if items.length === 0}
-        <p class="text-sm text-gray-500 dark:text-gray-400">No pools.</p>
-      {:else if isCompact}
-        {@const first = items[0]}
-        <p class="text-sm text-gray-700 dark:text-gray-200" data-testid="dhcp-pools-compact">
-          <span class="font-medium">{items.length}</span>
-          {items.length === 1 ? " pool" : " pools"}
-          {#if first}
-            <span class="text-gray-500 dark:text-gray-400">
-              · {first.subnet_cidr} ({first.range_start} – {first.range_end})</span>
-          {/if}
-        </p>
-      {:else if singleCard}
-        {@const p = items[0]}
-        <div class="space-y-2 text-sm text-gray-700 dark:text-gray-200">
-          <p><span class="font-medium">Range:</span> {p.range_start} – {p.range_end}</p>
-          <p><span class="font-medium">Subnet:</span> {p.subnet_cidr}</p>
-          {#if p.dns_domain}
-            <p><span class="font-medium">Domain:</span> {p.dns_domain}</p>
-          {/if}
-        </div>
-      {:else}
-        <Table hoverable={true}>
-          <TableHead>
-            <TableHeadCell>Subnet</TableHeadCell>
-            <TableHeadCell>Range</TableHeadCell>
-            <TableHeadCell>Domain</TableHeadCell>
-          </TableHead>
-          <TableBody>
-            {#each items as p (p.id)}
-              <TableBodyRow>
-                <TableBodyCell>{p.subnet_cidr}</TableBodyCell>
-                <TableBodyCell>{p.range_start} – {p.range_end}</TableBodyCell>
-                <TableBodyCell>{p.dns_domain ?? "—"}</TableBodyCell>
-              </TableBodyRow>
-            {/each}
-          </TableBody>
-        </Table>
+  {#snippet compactSummary()}
+    {#if items.length > 0}
+      {@const first = items[0]}
+      <p class="text-sm text-gray-700 dark:text-gray-200" data-testid="dhcp-pools-compact">
+        <span class="font-medium">{items.length}</span>
+        {items.length === 1 ? " pool" : " pools"}
+        {#if first}
+          <span class="text-gray-500 dark:text-gray-400">
+            · {first.subnet_cidr} ({first.range_start} – {first.range_end})</span>
+        {/if}
+      </p>
+    {/if}
+  {/snippet}
+  {#snippet fullSingle()}
+    {@const p = items[0]!}
+    <div class="space-y-2 text-sm text-gray-700 dark:text-gray-200">
+      <p><span class="font-medium">Range:</span> {p.range_start} – {p.range_end}</p>
+      <p><span class="font-medium">Subnet:</span> {p.subnet_cidr}</p>
+      {#if p.dns_domain}
+        <p><span class="font-medium">Domain:</span> {p.dns_domain}</p>
       {/if}
     </div>
   {/snippet}
-</Card>
+</TablePluginShell>

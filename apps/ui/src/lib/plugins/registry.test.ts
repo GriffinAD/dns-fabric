@@ -61,16 +61,14 @@ describe("resolvePluginTileMount", () => {
     ).toBeNull();
   });
 
-  it("passes liveCpuPercent for perf.summary", () => {
-    const t = tile("perf.summary");
+  it("resolves perf.summary without live SSE drill props (bus via context)", () => {
     const m = resolvePluginTileMount({
       gateway,
-      tile: t,
+      tile: tile("perf.summary"),
       editLayout: false,
-      liveCpuPercent: 42,
     });
     expect(m).not.toBeNull();
-    expect(m!.props.liveCpuPercent).toBe(42);
+    expect("liveCpuPercent" in m!.props).toBe(false);
   });
 
   it("wires onGridHint when onPerfTileGridHint is set", () => {

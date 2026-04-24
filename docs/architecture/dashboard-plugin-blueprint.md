@@ -185,6 +185,25 @@ The API serves it at `GET /api/v1/plugins/{plugin_id}/dashboard/embed` for same-
 Initial strategy is **last-write-wins** for save conflicts to keep complexity
 low in v1. Future locking/merge models remain open.
 
+## Plugin primitives (operator UI)
+
+Shared building blocks for `apps/ui` live under `lib/components/` and
+`lib/dashboard/eventBus.ts` (fabric SSE fan-out). Prefer these over
+copy-pasting Card + Table + gauge markup:
+
+- **`SemicircleGauge`** — arc gauge; see [Gauge primitive](../operator/gauge-primitive.md).
+- **`MetricList`** — monospace list lines for percent-only / summary modes.
+- **`GaugeTileLayout`** — Card chrome + title + loading/error for gauge-class tiles.
+- **`TablePluginShell`** — titled list tables with compact summary + full table paths.
+- **`createFabricEventBus`** — single `EventSource` subscription; plugins use
+  `getContext(FABRIC_EVENT_BUS)` and `subscribe(topic, selector, onValue)` (see
+  [events.md](events.md) §Operator UI).
+
+`lib/plugins/` must not import `lib/dashboard/*` except `types` and `eventBus`
+(enforced by `npm run check:ui-plugin-dashboard-imports`). Layout math shared
+with the host uses `lib/plugins/builtinMeta.ts` (`GRID_COLUMNS`, `clampGridColSpan`,
+`tileColSpanForPlugin`).
+
 ## Fault isolation and fallback behavior
 
 Implementation scope and trade-offs for v1 are recorded in

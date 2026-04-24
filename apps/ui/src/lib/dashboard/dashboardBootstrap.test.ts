@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { DataGateway } from "../dataGateway";
+import { createFabricEventBus, perfUpdatedCpuPercent } from "./eventBus";
 import { mountDashboardGatewaySideEffects } from "./dashboardBootstrap";
 import type { DashboardLayoutV2 } from "./types";
 
 describe("mountDashboardGatewaySideEffects", () => {
-  it("invokes handlers for plugins, layout, and SSE cpu metric", async () => {
+  it("invokes handlers for plugins, layout, and SSE via event bus", async () => {
     const gw = new DataGateway("");
+    const bus = createFabricEventBus(gw);
     vi.spyOn(gw, "listPlugins").mockResolvedValue({
       items: [{ id: "a", name: "A", enabled: true }],
     });
@@ -38,11 +40,12 @@ describe("mountDashboardGatewaySideEffects", () => {
     const plugins: unknown[] = [];
     const layouts: unknown[] = [];
     const cpus: unknown[] = [];
-    const stop = mountDashboardGatewaySideEffects(gw, {
+    bus.subscribe("fabric.perf.updated", perfUpdatedCpuPercent, (v) => cpus.push(v));
+
+    const stop = mountDashboardGatewaySideEffects(gw, bus, {
       onPluginsLoaded: (items) => plugins.push(items),
       onPluginListError: () => {},
       onServerLayoutApplied: (l) => layouts.push(l),
-      onLiveCpuPercent: (v) => cpus.push(v),
     });
 
     await vi.waitUntil(() => cpus.length > 0);
@@ -55,15 +58,15 @@ describe("mountDashboardGatewaySideEffects", () => {
 
   it("surfaces plugin list errors", async () => {
     const gw = new DataGateway("");
+    const bus = createFabricEventBus(gw);
     vi.spyOn(gw, "listPlugins").mockRejectedValue(new Error("network"));
     vi.spyOn(gw, "getDashboardLayout").mockResolvedValue({ version: 2, items: [] });
     vi.spyOn(gw, "subscribeFabricEvents").mockReturnValue(() => {});
     const errors: string[] = [];
-    const stop = mountDashboardGatewaySideEffects(gw, {
+    const stop = mountDashboardGatewaySideEffects(gw, bus, {
       onPluginsLoaded: () => {},
       onPluginListError: (m) => errors.push(m),
       onServerLayoutApplied: () => {},
-      onLiveCpuPercent: () => {},
     });
     await vi.waitUntil(() => errors.some((e) => e.includes("network")));
     stop();
@@ -71,15 +74,15 @@ describe("mountDashboardGatewaySideEffects", () => {
 
   it("onPluginListError receives non-Error rejection", async () => {
     const gw = new DataGateway("");
+    const bus = createFabricEventBus(gw);
     vi.spyOn(gw, "listPlugins").mockRejectedValue("plain");
     vi.spyOn(gw, "getDashboardLayout").mockResolvedValue({ version: 2, items: [] });
     vi.spyOn(gw, "subscribeFabricEvents").mockReturnValue(() => {});
     const errors: string[] = [];
-    const stop = mountDashboardGatewaySideEffects(gw, {
+    const stop = mountDashboardGatewaySideEffects(gw, bus, {
       onPluginsLoaded: () => {},
       onPluginListError: (m) => errors.push(m),
       onServerLayoutApplied: () => {},
-      onLiveCpuPercent: () => {},
     });
     await vi.waitUntil(() => errors.length > 0);
     expect(errors[0]).toBe("plain");
@@ -88,17 +91,17 @@ describe("mountDashboardGatewaySideEffects", () => {
 
   it("onPluginListError uses String(Error) when Error message is empty", async () => {
     const gw = new DataGateway("");
+    const bus = createFabricEventBus(gw);
     const err = new Error();
     err.message = "";
     vi.spyOn(gw, "listPlugins").mockRejectedValue(err);
     vi.spyOn(gw, "getDashboardLayout").mockResolvedValue({ version: 2, items: [] });
     vi.spyOn(gw, "subscribeFabricEvents").mockReturnValue(() => {});
     const errors: string[] = [];
-    const stop = mountDashboardGatewaySideEffects(gw, {
+    const stop = mountDashboardGatewaySideEffects(gw, bus, {
       onPluginsLoaded: () => {},
       onPluginListError: (m) => errors.push(m),
       onServerLayoutApplied: () => {},
-      onLiveCpuPercent: () => {},
     });
     await vi.waitUntil(() => errors.length > 0);
     expect(errors[0]).toBe("Error");
@@ -107,18 +110,18 @@ describe("mountDashboardGatewaySideEffects", () => {
 
   it("invokes onLayoutHydrationFromServerFailed when GET layout rejects", async () => {
     const gw = new DataGateway("");
+    const bus = createFabricEventBus(gw);
     vi.spyOn(gw, "listPlugins").mockResolvedValue({ items: [] });
     vi.spyOn(gw, "getDashboardLayout").mockRejectedValue(new Error("offline"));
     vi.spyOn(gw, "subscribeFabricEvents").mockReturnValue(() => {});
     let failed = false;
-    const stop = mountDashboardGatewaySideEffects(gw, {
+    const stop = mountDashboardGatewaySideEffects(gw, bus, {
       onPluginsLoaded: () => {},
       onPluginListError: () => {},
       onServerLayoutApplied: () => {},
       onLayoutHydrationFromServerFailed: () => {
         failed = true;
       },
-      onLiveCpuPercent: () => {},
     });
     await vi.waitUntil(() => failed);
     stop();
@@ -126,15 +129,15 @@ describe("mountDashboardGatewaySideEffects", () => {
 
   it("ignores unparseable dashboard layout from server", async () => {
     const gw = new DataGateway("");
+    const bus = createFabricEventBus(gw);
     vi.spyOn(gw, "listPlugins").mockResolvedValue({ items: [] });
     vi.spyOn(gw, "getDashboardLayout").mockResolvedValue({ version: 2, items: "bad" } as never);
     vi.spyOn(gw, "subscribeFabricEvents").mockReturnValue(() => {});
     const layouts: unknown[] = [];
-    const stop = mountDashboardGatewaySideEffects(gw, {
+    const stop = mountDashboardGatewaySideEffects(gw, bus, {
       onPluginsLoaded: () => {},
       onPluginListError: () => {},
       onServerLayoutApplied: (l) => layouts.push(l),
-      onLiveCpuPercent: () => {},
     });
     await new Promise((r) => setTimeout(r, 30));
     expect(layouts.length).toBe(0);

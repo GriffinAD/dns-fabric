@@ -1,4 +1,4 @@
-import { builtinDefaultColSpan } from "../plugins/builtinMeta";
+import { clampGridColSpan, GRID_COLUMNS, tileColSpanForPlugin } from "../plugins/builtinMeta";
 import { ensureLayoutV2 } from "./layoutTree";
 import type {
   DashboardGroup,
@@ -18,8 +18,7 @@ export function cloneLayoutJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-/** Visible dashboard uses 12 columns; must match API / layout.schema.json. */
-export const GRID_COLUMNS = 12;
+export { clampGridColSpan, GRID_COLUMNS } from "../plugins/builtinMeta";
 
 /** Max vertical span of a single tile (dashboard rows are unbounded). */
 export const GRID_ROW_SPAN_MAX = 12;
@@ -33,13 +32,7 @@ export const GROUP_CHILD_INNER_STRIP_MAX_EXTENT = 10_000;
 
 /** Default width in columns when the tile has no custom `grid.colSpan`. */
 export function tileColSpan(tile: DashboardTile): number {
-  return builtinDefaultColSpan(tile.pluginId) ?? 6;
-}
-
-export function clampGridColSpan(n: number): number {
-  const v = Math.floor(Number(n));
-  if (!Number.isFinite(v)) return 1;
-  return Math.min(GRID_COLUMNS, Math.max(1, v));
+  return tileColSpanForPlugin(tile);
 }
 
 export function clampGridRowSpan(n: number): number {

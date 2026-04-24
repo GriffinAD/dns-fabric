@@ -11,7 +11,6 @@
     gateway,
     tile,
     plugins = [] as PluginEntry[],
-    liveCpuPercent,
     editLayout = false,
     onEditTile,
     onPerfTileGridHint,
@@ -19,7 +18,6 @@
     gateway: DataGateway;
     tile: DashboardTile;
     plugins?: PluginEntry[];
-    liveCpuPercent?: number | null;
     editLayout?: boolean;
     onEditTile?: (t: DashboardTile) => void;
     onPerfTileGridHint?: (tileId: string, hint: { colSpan: number; rowSpan: number }) => void;
@@ -31,7 +29,6 @@
     resolvePluginTileMount({
       gateway,
       tile,
-      liveCpuPercent,
       editLayout,
       onEditTile,
       onPerfTileGridHint,

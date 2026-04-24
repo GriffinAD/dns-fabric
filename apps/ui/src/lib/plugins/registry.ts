@@ -24,7 +24,6 @@ export type PluginRegistration = {
 export type TileHostContext = {
   gateway: DataGateway;
   tile: DashboardTile;
-  liveCpuPercent?: number | null;
   editLayout: boolean;
   onEditTile?: (t: DashboardTile) => void;
   onPerfTileGridHint?: (tileId: string, hint: { colSpan: number; rowSpan: number }) => void;
@@ -96,7 +95,7 @@ function discovery(ctx: TileHostContext): ResolvedPluginMount {
 function perfSummary(ctx: TileHostContext): ResolvedPluginMount {
   return {
     component: PerfTile as Component<Record<string, unknown>>,
-    props: { gateway: ctx.gateway, tile: ctx.tile, liveCpuPercent: ctx.liveCpuPercent },
+    props: { gateway: ctx.gateway, tile: ctx.tile },
   };
 }
 
@@ -106,7 +105,6 @@ function perfCpu(ctx: TileHostContext): ResolvedPluginMount {
     props: {
       gateway: ctx.gateway,
       tile: ctx.tile,
-      liveCpuPercent: ctx.liveCpuPercent,
       onGridHint: ctx.onPerfTileGridHint
         ? (hint: { colSpan: number; rowSpan: number }) => ctx.onPerfTileGridHint!(ctx.tile.id, hint)
         : undefined,

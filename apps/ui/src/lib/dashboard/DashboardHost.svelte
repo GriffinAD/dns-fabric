@@ -74,7 +74,6 @@
   let {
     layout,
     gateway,
-    liveCpuPercent,
     onEditTile,
     onEditGroup,
     editLayout = false,
@@ -89,7 +88,6 @@
   }: {
     layout: DashboardLayoutV2;
     gateway: DataGateway;
-    liveCpuPercent?: number | null;
     onEditTile?: (tile: DashboardTile) => void;
     onEditGroup?: (g: DashboardGroup) => void;
     editLayout?: boolean;
@@ -278,7 +276,6 @@
     {gateway}
     {tile}
     {plugins}
-    {liveCpuPercent}
     {editLayout}
     {onEditTile}
     {onPerfTileGridHint}

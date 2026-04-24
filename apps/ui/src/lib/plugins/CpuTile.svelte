@@ -6,14 +6,12 @@
   let {
     gateway,
     tile,
-    liveCpuPercent,
     onGridHint,
   }: {
     gateway: DataGateway;
     tile: DashboardTile;
-    liveCpuPercent?: number | null;
     onGridHint?: (hint: { colSpan: number; rowSpan: number }) => void;
   } = $props();
 </script>
 
-<PerfMetricTile {gateway} {tile} metric="cpu" {liveCpuPercent} {onGridHint} />
+<PerfMetricTile {gateway} {tile} metric="cpu" {onGridHint} />

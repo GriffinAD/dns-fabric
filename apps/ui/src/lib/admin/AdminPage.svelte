@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
 
   import type { HealthResponse } from "../api/types";
+  import SemicircleGauge from "../components/SemicircleGauge.svelte";
   import { DataGateway } from "../dataGateway";
 
   let { gateway }: { gateway: DataGateway } = $props();
@@ -39,6 +40,18 @@
       {:else}
         <p class="mt-2 text-sm text-gray-700 dark:text-gray-200">Status: <span class="font-mono">{health.status}</span></p>
         <p class="text-xs text-gray-500 dark:text-gray-400">Checked {health.checked_at}</p>
+        <div
+          class="mt-4 flex max-w-xs flex-col items-center gap-2 rounded-lg border border-dashed border-gray-200 p-3 dark:border-gray-600"
+          data-testid="admin-gauge-primitive-demo"
+        >
+          <p class="text-center text-xs text-gray-500 dark:text-gray-400">
+            SemicircleGauge primitive (health-weighted demo, UI_ENGINE_PLAN P5)
+          </p>
+          <SemicircleGauge
+            label="Sample load"
+            percent={health.status === "ok" ? 18 : health.status === "degraded" ? 52 : 78}
+          />
+        </div>
       {/if}
     {/snippet}
   </Card>

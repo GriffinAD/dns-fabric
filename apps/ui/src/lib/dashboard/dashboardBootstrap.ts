@@ -1,6 +1,7 @@
 import type { PluginEntry } from "../api/types";
 import { DataGateway } from "../dataGateway";
 import { layoutWithGrid } from "./gridPlacement";
+import type { FabricEventBus } from "./eventBus";
 import { parseDashboardLayout, saveDashboardLayout } from "./layoutStorage";
 import type { DashboardLayoutV2 } from "./types";
 import { isLayoutV2 } from "./types";
@@ -11,15 +12,15 @@ export type DashboardDataBootstrapHandlers = {
   onServerLayoutApplied: (layout: DashboardLayoutV2) => void;
   /** GET layout failed or was skipped — UI should treat current layout as cache-only. */
   onLayoutHydrationFromServerFailed?: () => void;
-  onLiveCpuPercent: (value: number | null) => void;
 };
 
 /**
- * Plugins list, default dashboard layout GET, and fabric SSE (CPU live metric).
+ * Plugins list, default dashboard layout GET, and fabric SSE via `bus` (UI_ENGINE_PLAN P5).
  * Hash routing and theme listeners stay in App.svelte.
  */
 export function mountDashboardGatewaySideEffects(
   gateway: DataGateway,
+  bus: FabricEventBus,
   handlers: DashboardDataBootstrapHandlers,
 ): () => void {
   void gateway
@@ -47,19 +48,9 @@ export function mountDashboardGatewaySideEffects(
       handlers.onLayoutHydrationFromServerFailed?.();
     });
 
-  const unsub = gateway.subscribeFabricEvents(
-    (ev) => {
-      if (ev.topic === "fabric.perf.updated") {
-        const v = ev.payload.cpu_percent_total;
-        if (typeof v === "number" && Number.isFinite(v)) {
-          handlers.onLiveCpuPercent(v);
-        }
-      }
-    },
-    () => {},
-  );
+  const stopBus = bus.connect();
 
   return () => {
-    unsub();
+    stopBus();
   };
 }

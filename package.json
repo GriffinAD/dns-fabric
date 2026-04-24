@@ -8,6 +8,7 @@
     "check:ui-unit": "npm --prefix apps/ui run check:ui-unit",
     "check:ui-e2e": "npm --prefix apps/ui run check:ui-e2e",
     "check:ui-plugin-guard": "bash scripts/check_ui_plugin_guard.sh",
+    "check:ui-plugin-dashboard-imports": "bash scripts/check_ui_plugin_dashboard_imports.sh",
     "ci:docs-local": "bash scripts/check_markdownlint.sh && bash scripts/check_cspell.sh"
   },
   "devDependencies": {

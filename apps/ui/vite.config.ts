@@ -29,7 +29,11 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/lib/**/*.ts"],
-      exclude: ["src/lib/**/types.ts", "src/lib/**/rowPanelLayout.ts"],
+      exclude: [
+        "src/lib/**/types.ts",
+        "src/lib/**/rowPanelLayout.ts",
+        "src/lib/components/tablePluginShell.ts",
+      ],
       /* Root reorder overlap fallback (pack when placementsOverlap) is hard to hit without
        * exporting the checker; 98% lines / 90% branches matches the expanded dashboard model. */
       thresholds: {

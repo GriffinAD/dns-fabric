@@ -65,6 +65,17 @@ flowchart LR
     F --> S
 ```
 
+## Operator UI (fabric SSE)
+
+The Vite operator shell (`apps/ui`) opens **one** browser `EventSource` on
+`/api/v1/events/stream` via `DataGateway.subscribeFabricEvents`. The
+**`createFabricEventBus`** helper (`apps/ui/src/lib/dashboard/eventBus.ts`)
+subscribes once and demultiplexes by `topic` so tiles can call
+`bus.subscribe("fabric.perf.updated", selector, onValue)` without each owning
+the stream. Connection state is exposed as a readonly Svelte store
+(`connectionState`). Invalid payloads are logged and skipped at the gateway
+(Zod); subscribers only see typed values their selector returns.
+
 ## Cross-refs
 
 - `principles.md`
@@ -78,6 +89,7 @@ flowchart LR
 
 | Date | Status | Reviewer | Notes |
 | --- | --- | --- | --- |
+| 2026-04-23 | Accepted | GriffinAD | Document operator UI fabric event bus (`eventBus.ts`). |
 | 2026-04-19 | Proposed | GriffinAD | Initial event architecture draft with durability model. |
 | 2026-04-19 | Accepted | GriffinAD | Self-review; Gate 1 Tier B (core) acceptance. |
 | 2026-04-20 | Accepted | GriffinAD | Phase 5 update: durable event JSONL journal and API diagnostics endpoint documented. |

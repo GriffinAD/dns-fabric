@@ -1,10 +1,12 @@
 <script lang="ts">
-  import Card from "flowbite-svelte/Card.svelte";
-  import { onMount } from "svelte";
+  import { getContext, onMount } from "svelte";
 
   import type { PerfSummaryResponse } from "../api/types";
+  import GaugeTileLayout from "../components/GaugeTileLayout.svelte";
+  import MetricList from "../components/MetricList.svelte";
   import SemicircleGauge from "../components/SemicircleGauge.svelte";
-  import { clampGridColSpan, GRID_COLUMNS, tileColSpan } from "../dashboard/gridPlacement";
+  import { clampGridColSpan, GRID_COLUMNS, tileColSpanForPlugin } from "./builtinMeta";
+  import { FABRIC_EVENT_BUS, perfUpdatedCpuPercent, type FabricEventBus } from "../dashboard/eventBus";
   import { DataGateway } from "../dataGateway";
   import type { DashboardTile } from "../dashboard/types";
 
@@ -12,26 +14,25 @@
     gateway,
     tile,
     metric,
-    liveCpuPercent,
     onGridHint,
   }: {
     gateway: DataGateway;
     tile: DashboardTile;
     metric: "cpu" | "ram" | "network" | "disk";
-    liveCpuPercent?: number | null;
-    /** Dashboard grid: colSpan matches intratile gauge column count (capped; single-gauge = 1×1). */
     onGridHint?: (hint: { colSpan: number; rowSpan: number }) => void;
   } = $props();
 
+  const fabricBus = getContext<FabricEventBus | undefined>(FABRIC_EVENT_BUS);
+
   let summary = $state<PerfSummaryResponse | null>(null);
   let err = $state<string | null>(null);
+  let liveCpuPercent = $state<number | null>(null);
 
   const title = $derived(
     metric === "cpu" ? "CPU" : metric === "ram" ? "RAM" : metric === "network" ? "Network" : "Disk",
   );
 
   const opts = $derived(tile.options);
-  /** `cpu_total === true` = single combined gauge (Show as total); omitted/false = per-core (default). */
   const cpuTotal = $derived(opts?.cpu_total === true);
   const byAdapter = $derived(Boolean(opts?.network_by_adapter));
   const byVolume = $derived(Boolean(opts?.disk_by_volume));
@@ -41,7 +42,6 @@
     opts?.perf_max_cols !== undefined ? clampGridColSpan(opts.perf_max_cols) : GRID_COLUMNS,
   );
 
-  /** Intratile grid columns; dashboard colSpan matches (no extra width for a lone gauge). */
   const layoutMeta = $derived.by(() => {
     if (!summary) return { gaugeCols: 1, dashboardCols: 1, effectKey: null as string | null };
     if (percentOnly) return { gaugeCols: 1, dashboardCols: 1, effectKey: "pct" as const };
@@ -60,13 +60,11 @@
     return { gaugeCols, dashboardCols, effectKey: `i${gaugeCols}-d${dashboardCols}` as const };
   });
 
-  /** Effective dashboard column span (saved grid wins over plugin default). */
   const tileColSpanEff = $derived(
-    Math.max(1, tile.grid?.colSpan != null ? clampGridColSpan(tile.grid.colSpan) : tileColSpan(tile)),
+    Math.max(1, tile.grid?.colSpan != null ? clampGridColSpan(tile.grid.colSpan) : tileColSpanForPlugin(tile)),
   );
   const tileRowSpan = $derived(Math.max(1, tile.grid?.rowSpan ?? 1));
 
-  /** Actual number of semicircles shown (can exceed `layoutMeta.gaugeCols` when many CPU cores; dashboard hint is capped at 12). */
   const nGaugeCells = $derived.by(() => {
     if (!summary || percentOnly) return 0;
     if (metric === "cpu") {
@@ -79,7 +77,6 @@
     return byVolume && summary.disk_volumes?.length ? summary.disk_volumes.length : 1;
   });
 
-  /** Expand mini gauges to fill the tile when multiple semicircles, extra row span, or a wide single-gauge tile. */
   const stretchGaugesToCells = $derived.by(() => {
     if (percentOnly) return false;
     if (layoutMeta.gaugeCols > 1) return true;
@@ -88,7 +85,6 @@
     return false;
   });
 
-  /** Equal-width columns per visible gauge (avoid remainder skew from root-column alignment). */
   const alignGridStyle = $derived.by(() => {
     const n = Math.max(1, nGaugeCells);
     if (n === 1) {
@@ -106,11 +102,34 @@
       .catch((e: unknown) => {
         err = e instanceof Error ? e.message : String(e);
       });
+
+    if (!fabricBus) return;
+    return fabricBus.subscribe("fabric.perf.updated", perfUpdatedCpuPercent, (v) => {
+      liveCpuPercent = v;
+    });
   });
 
   const cpuDisplay = $derived(
     liveCpuPercent != null && Number.isFinite(liveCpuPercent) ? liveCpuPercent : (summary?.cpu_percent_total ?? 0),
   );
+
+  const percentLines = $derived.by((): string[] => {
+    if (!summary) return [];
+    if (metric === "cpu") {
+      const cores = (summary.cpu_core_percent ?? []).map((p) => p.toFixed(0) + "%").join(", ");
+      const line = cpuTotal
+        ? `CPU (total): ${cpuDisplay.toFixed(1)}%`
+        : `CPU (per-core): ${cores || cpuDisplay.toFixed(1) + "%"}`;
+      return [line];
+    }
+    if (metric === "ram") return [`RAM: ${summary.memory_used_percent.toFixed(1)}%`];
+    if (metric === "network") {
+      return [
+        `Network: ${((summary.network_in_mbps ?? 0) + (summary.network_out_mbps ?? 0)).toFixed(1)} Mb/s (Σ)`,
+      ];
+    }
+    return [`Disk: ${(summary.disk_used_percent ?? 0).toFixed(1)}%`];
+  });
 
   let lastGridKey = $state<string | null>(null);
 
@@ -124,51 +143,12 @@
   });
 </script>
 
-<Card
-  size="xl"
-  class="box-border h-full !max-w-full w-full min-w-0 flex-1 min-h-0 flex-col overflow-x-hidden overflow-y-auto"
->
+<GaugeTileLayout {title} {err} loading={!summary} bodyClass="flex min-h-0 w-full min-w-0 flex-1 flex-col items-stretch justify-center">
   {#snippet children()}
-    <div class="flex h-full min-h-0 w-full min-w-0 flex-col px-1.5 py-1 sm:px-2 sm:py-1.5">
-      <h3 class="mb-0.5 shrink-0 text-center text-xs font-semibold leading-tight text-gray-900 dark:text-white">
-        {title}
-      </h3>
-      {#if err}
-        <p
-          class="flex flex-1 items-center justify-center text-center text-xs text-red-600 dark:text-red-400"
-          role="alert"
-        >
-          {err}
-        </p>
-      {:else if !summary}
-        <p class="flex flex-1 items-center justify-center text-center text-xs text-gray-500 dark:text-gray-400">
-          Loading…
-        </p>
-      {:else if percentOnly}
-        <div
-          class="flex min-h-0 flex-1 flex-col items-stretch justify-center sm:items-center"
-        >
-          {#if metric === "cpu"}
-            <ul class="space-y-0.5 font-mono text-xs text-gray-800 dark:text-gray-200">
-              <li>
-                CPU ({cpuTotal ? "total" : "per-core"}): {cpuTotal
-                  ? `${cpuDisplay.toFixed(1)}%`
-                  : (summary.cpu_core_percent ?? []).map((p) => `${p.toFixed(0)}%`).join(", ") || `${cpuDisplay.toFixed(1)}%`}
-              </li>
-            </ul>
-          {:else if metric === "ram"}
-            <ul class="space-y-0.5 font-mono text-xs text-gray-800 dark:text-gray-200">
-              <li>RAM: {summary.memory_used_percent.toFixed(1)}%</li>
-            </ul>
-          {:else if metric === "network"}
-            <ul class="space-y-0.5 font-mono text-xs text-gray-800 dark:text-gray-200">
-              <li>Network: {((summary.network_in_mbps ?? 0) + (summary.network_out_mbps ?? 0)).toFixed(1)} Mb/s (Σ)</li>
-            </ul>
-          {:else}
-            <ul class="space-y-0.5 font-mono text-xs text-gray-800 dark:text-gray-200">
-              <li>Disk: {(summary.disk_used_percent ?? 0).toFixed(1)}%</li>
-            </ul>
-          {/if}
+    {#if summary}
+      {#if percentOnly}
+        <div class="flex min-h-0 flex-1 flex-col items-stretch justify-center sm:items-center">
+          <MetricList lines={percentLines} />
         </div>
       {:else}
         <div
@@ -282,6 +262,6 @@
           {/if}
         </div>
       {/if}
-    </div>
+    {/if}
   {/snippet}
-</Card>
+</GaugeTileLayout>
