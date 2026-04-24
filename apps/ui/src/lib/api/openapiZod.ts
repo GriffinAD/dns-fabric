@@ -151,7 +151,7 @@ const diskVolumeSample = z
 
 export const discoveryScanResponseSchema = z
   .object({
-    state: z.enum(["idle", "running", "paused"]),
+    state: z.enum(["idle", "running", "paused", "failed"]),
     updated_at: z.string(),
     record_count: z.number().nullable().optional(),
   })

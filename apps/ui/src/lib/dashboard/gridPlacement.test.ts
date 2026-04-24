@@ -5,6 +5,7 @@ import {
   clampGridColSpan,
   clampGridRowSpan,
   clampGroupChildGridPlacement,
+  clampGroupChildStripOriginCol,
   clampTileGridPlacement,
   gridAreaStyle,
   gridColumnSpanStyle,
@@ -320,6 +321,15 @@ const wrapTile = (
 });
 
 describe("packGroupChildrenRowWrapInOrder", () => {
+  it("returns an empty child list unchanged", () => {
+    expect(packGroupChildrenRowWrapInOrder([], 6)).toEqual([]);
+  });
+
+  it("treats innerColumns 0 as 1 when computing G", () => {
+    const out = packGroupChildrenRowWrapInOrder([wrapTile("a", 1)], 0);
+    expect(out[0]!.grid).toMatchObject({ col: 0, row: 0, colSpan: 1, rowSpan: 1 });
+  });
+
   it("wraps the next tile to a new row at col 0 when the row is full (G=4, widths 3+3)", () => {
     const out = packGroupChildrenRowWrapInOrder([wrapTile("a", 3), wrapTile("b", 3)], 4);
     expect(out[0]!.grid).toMatchObject({ col: 0, row: 0, colSpan: 3, rowSpan: 1 });
@@ -509,6 +519,26 @@ describe("reorderRootLayoutItemsPreservingSlotOrigins", () => {
     expect(out[0]!.grid?.row).toBe(0);
     expect(out[1]!.id).toBe("g1");
     expect(out[1]!.grid?.row).toBe(1);
+  });
+
+  it("reorderRootLayoutItemsPreservingSlotOrigins handles groups whose children have no grid yet", () => {
+    const gPrev: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      children: [
+        {
+          id: "c",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+        },
+      ],
+    };
+    const gReo = structuredClone(gPrev) as DashboardGroup;
+    const out = reorderRootLayoutItemsPreservingSlotOrigins([gPrev], [gReo]);
+    expect(out[0]?.kind).toBe("group");
   });
 
   it("updates two groups in sameSequence without permuting children", () => {
@@ -826,6 +856,20 @@ describe("grid placement edge cases", () => {
     expect(out.find((t) => t.id === "d")?.grid?.col).toBe(6);
   });
 
+  it("normalizeDashboardTiles defrag skips rows with a single span-1 tile", () => {
+    const a = tile("a", { col: 0, row: 0, colSpan: 6, rowSpan: 1 });
+    const b = tile("b", { col: 0, row: 1, colSpan: 6, rowSpan: 1 });
+    const out = normalizeDashboardTiles([a, b]);
+    expect(out).toHaveLength(2);
+  });
+
+  it("normalizeDashboardTiles defrag ignores tiles with rowSpan greater than 1 when scanning gaps", () => {
+    const a = tile("a", { col: 0, row: 0, colSpan: 6, rowSpan: 2 });
+    const b = tile("b", { col: 0, row: 2, colSpan: 6, rowSpan: 1 });
+    const out = normalizeDashboardTiles([a, b]);
+    expect(out.every((t) => t.grid != null)).toBe(true);
+  });
+
   it("normalizeDashboardTiles leaves abutting same-row rowSpan-1 tiles unchanged (no internal hole)", () => {
     const a = tile("a", { col: 0, row: 0, colSpan: 1, rowSpan: 1 });
     const b = tile("b", { col: 1, row: 0, colSpan: 1, rowSpan: 1 });
@@ -970,6 +1014,65 @@ describe("grid placement edge cases", () => {
     expect(out[1]!.grid!.col).toBe(12);
   });
 
+  it("clampGroupChildGridPlacement (wrap) delegates to clampTileGridPlacement", () => {
+    const t: DashboardTile = {
+      id: "x",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 3, row: 1, colSpan: 2, rowSpan: 1 },
+    };
+    expect(clampGroupChildGridPlacement(t, true)).toEqual(clampTileGridPlacement(t));
+  });
+
+  it("reorderTilesPreservingSlotOrigins (no wrap) handles previous tile without grid in same sequence", () => {
+    const prev: DashboardTile = {
+      id: "a",
+      pluginId: "dhcp.pools",
+      hostControl: "single-panel",
+      displayMode: "full",
+    };
+    const reo: DashboardTile = { ...prev };
+    const out = reorderTilesPreservingSlotOrigins([prev], [reo], false);
+    expect(out[0]?.grid).toBeDefined();
+  });
+
+  it("packTilesWithFixedAndFloating wraps when the running column would exceed 12", () => {
+    const w8: DashboardTile = {
+      id: "w8",
+      pluginId: "perf.summary",
+      hostControl: "single-panel",
+      displayMode: "full",
+      grid: { col: -1, row: 0, colSpan: 8, rowSpan: 1 },
+    };
+    const dhcp: DashboardTile = {
+      id: "d",
+      pluginId: "dhcp.pools",
+      hostControl: "single-panel",
+      displayMode: "full",
+    };
+    const out = packTilesWithFixedAndFloating([w8, dhcp]);
+    expect(out).toHaveLength(2);
+    expect(out[0]!.grid!.col).toBe(0);
+    expect(out[1]!.grid!.col).toBe(0);
+    expect(out[1]!.grid!.row).toBeGreaterThanOrEqual(out[0]!.grid!.row);
+  });
+
+  it("groupInnerWidthInPhysicalTracks treats non-finite inner columns as 1", () => {
+    expect(groupInnerWidthInPhysicalTracks(6, Number.NaN)).toBe(1);
+  });
+
+  it("groupGridColumnSpanStyle falls back when inner column count is non-finite", () => {
+    const t: DashboardTile = {
+      id: "x",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+    };
+    const s = groupGridColumnSpanStyle(t, Number.NaN);
+    expect(s).toMatch(/grid-column: span \d+/);
+  });
+
   it("clampGroupChildGridPlacement (no wrap) constrains to strip", () => {
     const t: DashboardTile = {
       id: "x",
@@ -980,5 +1083,332 @@ describe("grid placement edge cases", () => {
     };
     const c = clampGroupChildGridPlacement(t, false);
     expect(c.col + c.colSpan).toBeLessThanOrEqual(10000);
+  });
+
+  it("isCompleteGroupChildGrid (no wrap) rejects non-numeric geometry fields", () => {
+    expect(
+      isCompleteGroupChildGrid({ col: "0" as unknown as number, row: 0, colSpan: 1, rowSpan: 1 }, false),
+    ).toBe(false);
+  });
+
+  it("isCompleteGroupChildGrid (no wrap) rejects non-integer geometry", () => {
+    expect(isCompleteGroupChildGrid({ col: 0, row: 0, colSpan: 1.5, rowSpan: 1 }, false)).toBe(false);
+  });
+
+  it("isCompleteGroupChildGrid rejects a missing placement object", () => {
+    expect(isCompleteGroupChildGrid(null, false)).toBe(false);
+    expect(isCompleteGroupChildGrid(undefined, true)).toBe(false);
+  });
+
+  it("isCompleteGroupChildGrid (wrap) delegates to root grid completeness rules", () => {
+    expect(isCompleteGroupChildGrid({ col: 0, row: 0, colSpan: 1, rowSpan: 1 }, true)).toBe(true);
+    expect(isCompleteGroupChildGrid({ col: 0, row: 0, colSpan: 13, rowSpan: 1 }, true)).toBe(false);
+  });
+
+  it("isCompleteGroupChildGrid (no wrap) rejects rowSpan above max", () => {
+    expect(
+      isCompleteGroupChildGrid({ col: 0, row: 0, colSpan: 1, rowSpan: 999 }, false),
+    ).toBe(false);
+  });
+
+  it("clampGroupChildStripOriginCol treats non-finite column as 0", () => {
+    expect(clampGroupChildStripOriginCol(Number.NaN, 4)).toBe(0);
+  });
+
+  it("groupEditInnerColumnCount returns outer span when innerWrap is true", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g",
+      showBorder: true,
+      innerWrap: true,
+      grid: { col: 0, row: 0, colSpan: 7, rowSpan: 1 },
+      children: [],
+    };
+    expect(groupEditInnerColumnCount(g)).toBe(7);
+  });
+
+  it("groupEditInnerColumnCount skips children with no grid when computing strip extent", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+      children: [
+        {
+          id: "nogrid",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+        },
+      ],
+    };
+    expect(groupEditInnerColumnCount(g)).toBe(8);
+  });
+
+  it("groupEditInnerColumnCount skips invalid child grids when computing strip extent", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+      children: [
+        {
+          id: "bad",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 0, row: 0, colSpan: 0, rowSpan: 1 },
+        },
+        {
+          id: "ok",
+          pluginId: "perf.ram",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 0, row: 0, colSpan: 2, rowSpan: 1 },
+        },
+      ],
+    };
+    expect(groupEditInnerColumnCount(g)).toBe(6);
+  });
+
+  it("groupGridAreaStyle uses full gridAreaStyle when inner track count is 12", () => {
+    const g: GridPlacement = { col: 3, row: 1, colSpan: 4, rowSpan: 2 };
+    expect(groupGridAreaStyle(g, 12)).toBe(gridAreaStyle(g));
+  });
+
+  it("groupGridAreaStyle coerces non-finite inner column counts to 1 before computing m", () => {
+    const g: GridPlacement = { col: 0, row: 0, colSpan: 2, rowSpan: 1 };
+    const s = groupGridAreaStyle(g, Number.POSITIVE_INFINITY);
+    expect(s).toContain("grid-column:");
+    expect(s).toContain("grid-row:");
+  });
+
+  it("groupGridAreaStyle treats innerColumns 0 like 1 for track count", () => {
+    const g: GridPlacement = { col: 0, row: 0, colSpan: 1, rowSpan: 1 };
+    expect(groupGridAreaStyle(g, 0)).toContain("grid-column:");
+  });
+
+  it("groupGridAreaStyle clamps col when col is past inner track count", () => {
+    const g: GridPlacement = { col: 10, row: 0, colSpan: 4, rowSpan: 1 };
+    const s = groupGridAreaStyle(g, 8);
+    expect(s).toContain("grid-column: 8 / span 1");
+  });
+
+  it("packTilesWithFixedAndFloating wraps floating row and resets col after filling the row", () => {
+    const a = tile("a", undefined);
+    const b = tile("b", undefined);
+    const c = tile("c", undefined);
+    const out = packTilesWithFixedAndFloating([a, b, c]);
+    expect(out.every((t) => t.grid != null)).toBe(true);
+    expect(out[0]!.grid!.row).toBe(out[1]!.grid!.row);
+    expect(out[2]!.grid!.row).toBeGreaterThanOrEqual(out[1]!.grid!.row);
+  });
+
+  it("reorderRootLayoutItemsPreservingSlotOrigins repacks when permuted slots would overlap", () => {
+    const rt = (
+      id: string,
+      c: number,
+      r: number,
+      cs: number,
+      rs: number,
+    ): RootLayoutItem => ({
+      kind: "tile" as const,
+      id,
+      pluginId: "dhcp.pools",
+      hostControl: "single-panel" as const,
+      displayMode: "full" as const,
+      grid: { col: c, row: r, colSpan: cs, rowSpan: rs },
+    });
+    const A = rt("a", 0, 0, 6, 1);
+    const B = rt("b", 6, 0, 6, 1);
+    const C = rt("c", 0, 1, 12, 1);
+    const prev: RootLayoutItem[] = [A, B, C];
+    const reordered: RootLayoutItem[] = [C, A, B];
+    const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, reordered);
+    expect(placementsOverlap(out.map((it) => (it.kind === "tile" ? it.grid! : it.grid!)))).toBe(false);
+  });
+
+  it("reorderRootLayoutItemsPreservingSlotOrigins uses previous group grid when reordered outer grid is incomplete", () => {
+    const gPrev: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+      children: [],
+    };
+    const gReo: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      grid: { col: Number.NaN, row: 0, colSpan: 6, rowSpan: 1 },
+      children: [],
+    };
+    const out = reorderRootLayoutItemsPreservingSlotOrigins([gPrev], [gReo]);
+    expect(out[0]?.kind).toBe("group");
+    if (out[0]?.kind === "group") {
+      expect(out[0].grid?.col).toBe(0);
+    }
+  });
+
+  it("layoutWithGrid preserveRoot leaves an empty nowrap group with no children", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "empty",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      children: [],
+    };
+    const next = layoutWithGrid({ version: 2, items: [g] }, { preserveRootPlacementIfComplete: true });
+    expect(next.items[0]?.kind).toBe("group");
+    if (next.items[0]?.kind === "group") {
+      expect(next.items[0].children).toEqual([]);
+    }
+  });
+
+  it("layoutWithGrid preserveRoot repacks nowrap children when clamped strip placements overlap", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g-overlap",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      children: [
+        {
+          id: "p1",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 0, row: 0, colSpan: 10, rowSpan: 1 },
+        },
+        {
+          id: "p2",
+          pluginId: "perf.ram",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 5, row: 0, colSpan: 10, rowSpan: 1 },
+        },
+      ],
+    };
+    const next = layoutWithGrid({ version: 2, items: [g] }, { preserveRootPlacementIfComplete: true });
+    expect(next.items[0]?.kind).toBe("group");
+    if (next.items[0]?.kind === "group") {
+      expect(placementsOverlap(next.items[0].children.map((c) => c.grid!))).toBe(false);
+    }
+  });
+
+  it("layoutWithGrid preserveRoot falls back when packed root geoms overlap", () => {
+    const t: RootLayoutItem = {
+      kind: "tile",
+      id: "t1",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+    };
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g1",
+      showBorder: true,
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      children: [
+        {
+          id: "c1",
+          pluginId: "perf.ram",
+          hostControl: "single-panel",
+          displayMode: "compact",
+        },
+      ],
+    };
+    const next = layoutWithGrid({ version: 2, items: [t, g] }, { preserveRootPlacementIfComplete: true });
+    expect(placementsOverlap(next.items.map((it) => (it.kind === "tile" ? it.grid! : it.grid!)))).toBe(
+      false,
+    );
+  });
+
+  it("packRootLayoutItems uses rowSpan 1 when nowrap group children lack grids", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      children: [
+        {
+          id: "a",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+        },
+      ],
+    };
+    const out = packRootLayoutItems([g]);
+    expect(out[0]?.kind).toBe("group");
+    if (out[0]?.kind === "group") {
+      expect(out[0].grid?.rowSpan).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("packRootLayoutItems runs row-wrap for innerWrap groups", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g",
+      showBorder: true,
+      innerWrap: true,
+      grid: { col: 0, row: 0, colSpan: 6, rowSpan: 2 },
+      children: [
+        {
+          id: "a",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+        },
+        {
+          id: "b",
+          pluginId: "perf.ram",
+          hostControl: "single-panel",
+          displayMode: "compact",
+        },
+      ],
+    };
+    const out = packRootLayoutItems([g]);
+    expect(out[0]?.kind).toBe("group");
+    if (out[0]?.kind === "group") {
+      expect(out[0].children[0]?.grid?.row).toBeDefined();
+      expect(out[0].children[1]?.grid?.row).toBeDefined();
+    }
+  });
+
+  it("packRootLayoutItems normalizes nowrap group children that overlap after clamp", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      children: [
+        {
+          id: "x",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+        },
+        {
+          id: "y",
+          pluginId: "perf.ram",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+        },
+      ],
+    };
+    const out = packRootLayoutItems([g]);
+    expect(out[0]?.kind).toBe("group");
+    if (out[0]?.kind === "group") {
+      expect(placementsOverlap(out[0].children.map((c) => c.grid!))).toBe(false);
+    }
   });
 });

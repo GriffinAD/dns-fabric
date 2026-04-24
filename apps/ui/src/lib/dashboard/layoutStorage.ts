@@ -10,6 +10,15 @@ const STORAGE_KEY = "kea-fabric-dashboard-layout";
 let layoutLocalPersistBlocked = false;
 let layoutLocalPersistBlockedReason: string | null = null;
 
+/**
+ * Test helper only — do not call from the shipped UI. Sets the same module-level flags as an
+ * unsupported stored layout version, so `saveDashboardLayout` warning branches can be asserted.
+ */
+export function setLocalPersistBlockedStateForTest(blocked: boolean, reason: string | null): void {
+  layoutLocalPersistBlocked = blocked;
+  layoutLocalPersistBlockedReason = reason;
+}
+
 function resetLayoutLocalPersistGate(): void {
   layoutLocalPersistBlocked = false;
   layoutLocalPersistBlockedReason = null;

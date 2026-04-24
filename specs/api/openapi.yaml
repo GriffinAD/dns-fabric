@@ -518,7 +518,7 @@ components:
       properties:
         state:
           type: string
-          enum: [idle, running, paused]
+          enum: [idle, running, paused, failed]
         updated_at:
           type: string
           format: date-time

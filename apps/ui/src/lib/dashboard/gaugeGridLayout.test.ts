@@ -14,6 +14,11 @@ describe("columnSpansOn", () => {
     expect(columnSpansOn(8, 9)).toBe(null);
   });
 
+  it("returns empty array when n <= 0", () => {
+    expect(columnSpansOn(12, 0)).toEqual([]);
+    expect(columnSpansOn(12, -3)).toEqual([]);
+  });
+
   it("clamps a large trackCount to 12", () => {
     const s = columnSpansOn(99, 4)!;
     expect(s.reduce((a, b) => a + b, 0)).toBe(12);

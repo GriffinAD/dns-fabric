@@ -231,6 +231,20 @@ describe("createLayoutStore", () => {
     expect(get(ls.layout).items[0]).toMatchObject({ kind: "group", children: [] });
   });
 
+  it("addTileToGroup does not add children when group id is missing", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout({
+      version: 2,
+      items: [{ kind: "group", id: "g1", showBorder: true, children: [] }],
+    });
+    ls.addTileToGroup("missing", "dhcp.clients");
+    const g = get(ls.layout).items[0];
+    expect(g?.kind).toBe("group");
+    if (g?.kind === "group") expect(g.children.length).toBe(0);
+  });
+
   it("addTileToGroup adds child to matching group", () => {
     const gw = new DataGateway("");
     vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
@@ -256,6 +270,17 @@ describe("createLayoutStore", () => {
     });
     ls.applyStructure(minimalLayout());
     expect(get(ls.loadError)).toBe("norm");
+    spy.mockRestore();
+  });
+
+  it("applyStructure stringifies non-Error normalize failures", () => {
+    const gw = new DataGateway("");
+    const ls = createLayoutStore({ gateway: gw });
+    const spy = vi.spyOn(layoutNormalize, "normalizeLayoutStrict").mockImplementation(() => {
+      throw "not an error";
+    });
+    ls.applyStructure(minimalLayout());
+    expect(get(ls.loadError)).toBe("not an error");
     spy.mockRestore();
   });
 
@@ -307,5 +332,13 @@ describe("createLayoutStore", () => {
     const ls = createLayoutStore({ gateway: gw });
     await ls.resetToBaseline();
     expect(get(ls.loadError)).toBe("reset failed");
+  });
+
+  it("resetToBaseline stringifies non-Error rejections", async () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "resetDashboardLayout").mockRejectedValue("offline");
+    const ls = createLayoutStore({ gateway: gw });
+    await ls.resetToBaseline();
+    expect(get(ls.loadError)).toBe("offline");
   });
 });

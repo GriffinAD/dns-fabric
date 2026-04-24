@@ -42,6 +42,16 @@ describe("dashboardSettings", () => {
       applyDocumentDashboardSettings({ version: 1, gapPx: 0 });
       expect(document.documentElement.style.getPropertyValue("--dashboard-gap")).toBe("0px");
     });
+
+    it("no-ops when document is undefined (SSR)", () => {
+      const prev = globalThis.document;
+      Object.defineProperty(globalThis, "document", { value: undefined, configurable: true });
+      try {
+        expect(() => applyDocumentDashboardSettings({ version: 1, gapPx: 4 })).not.toThrow();
+      } finally {
+        Object.defineProperty(globalThis, "document", { value: prev, configurable: true });
+      }
+    });
   });
 });
 

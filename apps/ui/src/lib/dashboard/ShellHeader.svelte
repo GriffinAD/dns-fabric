@@ -1,5 +1,6 @@
 <script lang="ts">
   import Button from "flowbite-svelte/Button.svelte";
+  import Modal from "flowbite-svelte/Modal.svelte";
   import ArrowLeft from "lucide-svelte/icons/arrow-left";
   import House from "lucide-svelte/icons/house";
   import Pencil from "lucide-svelte/icons/pencil";
@@ -29,6 +30,17 @@
     onGoHome: () => void;
     onGoAdmin: () => void;
   } = $props();
+
+  let resetConfirmOpen = $state(false);
+
+  function confirmResetBaseline() {
+    onResetBaseline();
+    resetConfirmOpen = false;
+  }
+
+  $effect(() => {
+    if (!editorOpen) resetConfirmOpen = false;
+  });
 </script>
 
 <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -58,34 +70,6 @@
       {#if route === "home" && editorOpen}
         <DashboardControls />
       {/if}
-      {#if route === "home"}
-        <div role="toolbar" aria-label="Dashboard mode" class="flex flex-wrap items-center gap-1">
-          {#if editorOpen}
-            <Button
-              type="button"
-              color="alternative"
-              class="!p-2"
-              aria-label="Return to dashboard"
-              onclick={() => onSelectDashboardView()}
-            >
-              <ArrowLeft class="h-5 w-5" aria-hidden="true" />
-            </Button>
-            <Button
-              type="button"
-              color="danger"
-              class="outline shrink-0"
-              aria-label="Reset dashboard layout to saved baseline"
-              onclick={() => onResetBaseline()}
-            >
-              Reset
-            </Button>
-          {:else}
-            <Button type="button" color="alternative" class="!p-2" aria-label="Edit layout" onclick={() => onOpenEditor()}>
-              <Pencil class="h-5 w-5" aria-hidden="true" />
-            </Button>
-          {/if}
-        </div>
-      {/if}
       {#if route === "admin"}
         <Button type="button" color="alternative" class="inline-flex shrink-0 items-center gap-2" onclick={onGoHome}>
           <House class="h-4 w-4" aria-hidden="true" />
@@ -97,6 +81,55 @@
           Admin
         </Button>
       {/if}
+      {#if route === "home"}
+        <div
+          role="toolbar"
+          aria-label="Dashboard mode"
+          class="flex flex-wrap items-center {editorOpen ? 'gap-3' : 'gap-1'}"
+        >
+          {#if editorOpen}
+            <Button
+              type="button"
+              color="danger"
+              class="outline shrink-0"
+              aria-label="Reset dashboard layout to saved baseline"
+              aria-haspopup="dialog"
+              onclick={() => (resetConfirmOpen = true)}
+            >
+              Reset
+            </Button>
+            <Button
+              type="button"
+              color="alternative"
+              class="!p-2"
+              aria-label="Return to dashboard"
+              onclick={() => onSelectDashboardView()}
+            >
+              <ArrowLeft class="h-5 w-5" aria-hidden="true" />
+            </Button>
+          {:else}
+            <Button type="button" color="alternative" class="!p-2" aria-label="Edit layout" onclick={() => onOpenEditor()}>
+              <Pencil class="h-5 w-5" aria-hidden="true" />
+            </Button>
+          {/if}
+        </div>
+      {/if}
     </div>
   </div>
 </header>
+
+{#if route === "home"}
+  <Modal bind:open={resetConfirmOpen} title="Reset dashboard layout?" size="md" class="z-[100]">
+    {#snippet children()}
+      <p class="text-base leading-relaxed text-gray-600 dark:text-gray-400">
+        Restore the dashboard to the saved baseline? Unsaved changes in the layout editor will be lost.
+      </p>
+    {/snippet}
+    {#snippet footer()}
+      <div class="flex w-full flex-wrap justify-end gap-2">
+        <Button type="button" color="alternative" onclick={() => (resetConfirmOpen = false)}>Cancel</Button>
+        <Button type="button" color="danger" onclick={confirmResetBaseline}>Yes</Button>
+      </div>
+    {/snippet}
+  </Modal>
+{/if}

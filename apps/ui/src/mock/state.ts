@@ -1,7 +1,7 @@
 import type { DashboardLayout } from "../lib/dashboard/types";
 
 export interface DiscoveryScanState {
-  state: "idle" | "running" | "paused";
+  state: "idle" | "running" | "paused" | "failed";
   updated_at: string;
   record_count: number | null;
 }

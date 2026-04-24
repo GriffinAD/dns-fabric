@@ -39,13 +39,11 @@ export default defineConfig({
         "src/lib/appDashboardShell.ts",
         "src/lib/components/tablePluginShell.ts",
       ],
-      /* Root reorder overlap fallback (pack when placementsOverlap) is hard to hit without
-       * exporting the checker; 98% lines / 90% branches matches the expanded dashboard model. */
       thresholds: {
-        lines: 98,
-        functions: 99,
-        branches: 90,
-        statements: 98,
+        lines: 100,
+        functions: 100,
+        branches: 100,
+        statements: 100,
       },
     },
   },

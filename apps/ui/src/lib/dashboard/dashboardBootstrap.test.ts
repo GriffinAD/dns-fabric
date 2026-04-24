@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { DataGateway } from "../dataGateway";
 import { createFabricEventBus, perfUpdatedCpuPercent } from "./eventBus";
+import * as gridPlacement from "./gridPlacement";
 import { mountDashboardGatewaySideEffects } from "./dashboardBootstrap";
 import type { DashboardLayoutV2 } from "./types";
 
@@ -124,6 +125,28 @@ describe("mountDashboardGatewaySideEffects", () => {
       },
     });
     await vi.waitUntil(() => failed);
+    stop();
+  });
+
+  it("ignores server layout when layoutWithGrid yields non-v2 (defensive)", async () => {
+    const gw = new DataGateway("");
+    const bus = createFabricEventBus(gw);
+    vi.spyOn(gw, "listPlugins").mockResolvedValue({ items: [] });
+    vi.spyOn(gw, "getDashboardLayout").mockResolvedValue({ version: 2, items: [] });
+    vi.spyOn(gw, "subscribeFabricEvents").mockReturnValue(() => {});
+    const spy = vi.spyOn(gridPlacement, "layoutWithGrid").mockReturnValue({
+      version: 1,
+      tiles: [],
+    } as unknown as DashboardLayoutV2);
+    const layouts: unknown[] = [];
+    const stop = mountDashboardGatewaySideEffects(gw, bus, {
+      onPluginsLoaded: () => {},
+      onPluginListError: () => {},
+      onServerLayoutApplied: (l) => layouts.push(l),
+    });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(layouts.length).toBe(0);
+    spy.mockRestore();
     stop();
   });
 

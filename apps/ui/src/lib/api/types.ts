@@ -109,7 +109,7 @@ export interface DiscoveryRecordListResponse {
 }
 
 export interface DiscoveryScanResponse {
-  state: "idle" | "running" | "paused";
+  state: "idle" | "running" | "paused" | "failed";
   updated_at: string;
   record_count?: number | null;
 }

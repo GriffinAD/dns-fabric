@@ -26,7 +26,8 @@ export function dedupeById<T extends { id: string }>(items: T[]): T[] {
   return out;
 }
 
-function compareRootItemsByPosition(a: RootLayoutItem, b: RootLayoutItem): number {
+/** Exported for tests and any future explicit sort of root `items`. */
+export function compareRootItemsByPosition(a: RootLayoutItem, b: RootLayoutItem): number {
   const g = (it: RootLayoutItem) => {
     if (it.kind === "group") {
       const o = it.grid;
@@ -85,10 +86,10 @@ export function migrateV1ToV2(tiles: DashboardTile[]): RootLayoutItem[] {
         },
       };
     });
-    const safe = pid.replace(/[^a-z0-9-]+/gi, "-").slice(0, 32) || "panel";
+    const idSlug = pid.replace(/[^a-z0-9-]+/gi, "-").slice(0, 32);
     const g: DashboardGroup = {
       kind: "group",
-      id: `group-${safe}`,
+      id: `group-${idSlug}`,
       showBorder: true,
       grid: { col: minC, row: minR, colSpan: maxCEnd - minC, rowSpan: maxREnd - minR },
       children,

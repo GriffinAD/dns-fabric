@@ -5,6 +5,7 @@ import * as gridPlacement from "./gridPlacement";
 import { iterateTilesInLayout } from "./layoutTree";
 import {
   clearStoredDashboardLayoutAndUnlock,
+  setLocalPersistBlockedStateForTest,
   initialDashboardLayout,
   isLayoutLocalPersistBlocked,
   layoutJsonUnsupportedVersionMessage,
@@ -372,6 +373,17 @@ describe("localStorage persistence", () => {
     warn.mockRestore();
   });
 
+  it("saveDashboardLayout logs unknown when blocked with null reason", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    setLocalPersistBlockedStateForTest(true, null);
+    saveDashboardLayout(DEFAULT_DASHBOARD_LAYOUT);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("layout cache locked: unknown"),
+    );
+    setLocalPersistBlockedStateForTest(false, null);
+    warn.mockRestore();
+  });
+
   it("saveDashboardLayout no-ops while persist is blocked after unsupported version", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     store["kea-fabric-dashboard-layout"] = JSON.stringify({ version: 5, items: [] });
@@ -391,6 +403,19 @@ describe("localStorage persistence", () => {
     expect(isLayoutLocalPersistBlocked()).toBe(false);
     saveDashboardLayout(DEFAULT_DASHBOARD_LAYOUT);
     expect(loadDashboardLayout()).not.toBeNull();
+  });
+
+  it("clearStoredDashboardLayoutAndUnlock ignores localStorage.removeItem failures", () => {
+    vi.stubGlobal(
+      "localStorage",
+      {
+        removeItem: () => {
+          throw new Error("quota");
+        },
+      } as unknown as Storage,
+    );
+    expect(() => clearStoredDashboardLayoutAndUnlock()).not.toThrow();
+    vi.unstubAllGlobals();
   });
 
   it("initialDashboardLayout clears storage and re-applies default when layoutWithGrid throws", () => {

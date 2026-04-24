@@ -11,6 +11,7 @@ import {
   moveTileToParent,
   removeTileFromAnywhere,
   dedupeById,
+  compareRootItemsByPosition,
 } from "./layoutTree";
 import type { DashboardGroup, DashboardLayoutV1, DashboardLayoutV2, DashboardTile, RootLayoutItem } from "./types";
 import { isLayoutV2 } from "./types";
@@ -97,6 +98,26 @@ describe("layoutTree", () => {
     expect(v2.items[0]?.kind).toBe("tile");
   });
 
+  it("migrateV1ToV2 skips rowPanel buckets with no child grids", () => {
+    const tiles: DashboardTile[] = [
+      { ...baseTile("a", "perf.cpu", "solo") },
+      { ...baseTile("b", "perf.ram", "solo") },
+    ];
+    expect(migrateV1ToV2(tiles)).toEqual([]);
+  });
+
+  it("compareRootItemsByPosition sorts group without grid like 0,0", () => {
+    const g: DashboardGroup = { kind: "group", id: "g", showBorder: true, children: [] };
+    const t: RootLayoutItem = {
+      kind: "tile",
+      ...baseTile("t", "dhcp.pools"),
+      displayMode: "full",
+      grid: { col: 0, row: 1, colSpan: 6, rowSpan: 1 },
+    };
+    expect(compareRootItemsByPosition(g, t)).toBeLessThan(0);
+    expect(compareRootItemsByPosition(t, g)).toBeGreaterThan(0);
+  });
+
   it("migrateV1ToV2 groups rowPanel and translates inner grids", () => {
     const tiles: DashboardTile[] = [
       { ...baseTile("a", "perf.cpu", "p1"), grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 } },
@@ -179,6 +200,25 @@ describe("layoutTree", () => {
     );
     if (next[0]?.kind === "tile") expect(next[0].region).toBeUndefined();
     if (next[1]?.kind === "tile") expect(next[1].region).toBe("z");
+  });
+
+  it("mapTileInLayout updates only the matching child when a group has multiple children", () => {
+    const c1 = { ...baseTile("c1", "perf.cpu"), grid: { col: 0, row: 0, colSpan: 2, rowSpan: 1 } };
+    const c2 = { ...baseTile("c2", "perf.ram"), grid: { col: 2, row: 0, colSpan: 2, rowSpan: 1 } };
+    const g: DashboardGroup = { kind: "group", id: "g", showBorder: true, children: [c1, c2] };
+    const next = mapTileInLayout([g], "c1", (t) => ({ ...t, region: "hit" }));
+    const ch = (next[0] as DashboardGroup).children;
+    expect(ch[0]?.region).toBe("hit");
+    expect(ch[1]?.region).toBeUndefined();
+  });
+
+  it("mapRootItemsReplaceGroup leaves non-matching items as-is", () => {
+    const t: RootLayoutItem = { kind: "tile", ...baseTile("t", "dhcp.pools") };
+    const g: DashboardGroup = { kind: "group", id: "g", showBorder: true, children: [] };
+    const nextG: DashboardGroup = { ...g, showBorder: false };
+    const out = mapRootItemsReplaceGroup([t, g], "g", nextG);
+    expect(out[0]).toBe(t);
+    expect((out[1] as DashboardGroup).showBorder).toBe(false);
   });
 
   it("mapRootItemsReplaceGroup swaps a group", () => {

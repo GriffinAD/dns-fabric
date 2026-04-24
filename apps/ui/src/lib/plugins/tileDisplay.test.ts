@@ -46,6 +46,16 @@ describe("applyPerfCompactAsPercentOnly", () => {
     expect(t.options?.display_style).toBe("percent_only");
   });
 
+  it("applies percent_only when compact perf tile omits options", () => {
+    const t = applyPerfCompactAsPercentOnly({
+      id: "x",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+    });
+    expect(t.options?.display_style).toBe("percent_only");
+  });
+
   it("leaves full mode and non-perf tiles unchanged", () => {
     const full = applyPerfCompactAsPercentOnly({
       id: "x",

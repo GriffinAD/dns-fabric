@@ -71,6 +71,25 @@ describe("handlePerfTileGridHint", () => {
     expect(t1 && "grid" in t1 && t1.grid?.colSpan).toBe(6);
   });
 
+  it("uses tileColSpan when tile has no grid and applies origin 0,0", () => {
+    const items: DashboardLayoutV2["items"] = [
+      {
+        kind: "tile",
+        id: "t1",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "full",
+      },
+    ];
+    let saved: DashboardLayoutV2 | null = null;
+    handlePerfTileGridHint(items, "t1", { colSpan: 3, rowSpan: 2 }, (next) => {
+      saved = next as DashboardLayoutV2;
+    });
+    expect(saved).not.toBeNull();
+    const t0 = saved!.items[0];
+    expect(t0 && "grid" in t0 && t0.grid).toMatchObject({ col: 0, row: 0, colSpan: 3, rowSpan: 2 });
+  });
+
   it("non-ram shrinks to 1 col when hint colSpan is 1", () => {
     const items: DashboardLayoutV2["items"] = [
       {

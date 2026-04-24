@@ -80,6 +80,40 @@ describe("createOverlayActions", () => {
     expect(group).toEqual(g);
   });
 
+  it("saveTileFromOverlay updates in place when tile stays in the same group", () => {
+    const tile: DashboardTile = {
+      id: "t1",
+      pluginId: "p",
+      hostControl: "single-panel",
+      displayMode: "full",
+      grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+    };
+    let layout: DashboardLayoutV2 = {
+      version: 2,
+      items: [{ kind: "group", id: "g1", showBorder: true, children: [tile], grid: { col: 0, row: 0, colSpan: 12, rowSpan: 2 } }],
+    };
+    let applied = 0;
+    const o = createOverlayActions({
+      getLayout: () => layout,
+      getEditorOpen: () => false,
+      getSettingsTile: () => null,
+      getSettingsGroup: () => null,
+      setSettingsTile: () => {},
+      setSettingsGroup: () => {},
+      applyLayoutStructure: (next) => {
+        applied += 1;
+        if (next.version === 2) layout = next;
+      },
+    });
+    o.saveTileFromOverlay({ ...tile, displayMode: "compact" }, "g1");
+    expect(applied).toBe(1);
+    const g = layout.items[0];
+    expect(g?.kind).toBe("group");
+    if (g?.kind === "group") {
+      expect(g.children[0]?.displayMode).toBe("compact");
+    }
+  });
+
   it("saveTileFromOverlay updates in place when parent unchanged", () => {
     const tile: DashboardTile = {
       id: "t1",
@@ -228,6 +262,39 @@ describe("createOverlayActions", () => {
     expect(applied).toBe(0);
   });
 
+  it("saveTileFromOverlay moves a tile from one group to another", () => {
+    const tile: DashboardTile = {
+      id: "t1",
+      pluginId: "p",
+      hostControl: "single-panel",
+      displayMode: "full",
+      grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+    };
+    let layout: DashboardLayoutV2 = {
+      version: 2,
+      items: [
+        { kind: "group", id: "g1", showBorder: true, children: [tile], grid: { col: 0, row: 0, colSpan: 6, rowSpan: 2 } },
+        { kind: "group", id: "g2", showBorder: true, children: [], grid: { col: 6, row: 0, colSpan: 6, rowSpan: 2 } },
+      ],
+    };
+    let saved: DashboardLayoutV2 | null = null;
+    const o = createOverlayActions({
+      getLayout: () => layout,
+      getEditorOpen: () => false,
+      getSettingsTile: () => null,
+      getSettingsGroup: () => null,
+      setSettingsTile: () => {},
+      setSettingsGroup: () => {},
+      applyLayoutStructure: (next) => {
+        if (next.version === 2) saved = next;
+      },
+    });
+    o.saveTileFromOverlay(tile, "g2");
+    expect(saved).not.toBeNull();
+    const g2 = saved!.items.find((i): i is DashboardGroup => i.kind === "group" && i.id === "g2");
+    expect(g2?.children.some((c) => c.id === "t1")).toBe(true);
+  });
+
   it("saveTileFromOverlay moves tile to new parent", () => {
     const tile: DashboardTile = {
       id: "t1",
@@ -284,6 +351,42 @@ describe("createOverlayActions", () => {
     o.deleteRootLayoutItem("t1");
     expect(settingsTile).toBeNull();
     expect(layout.items.length).toBe(0);
+  });
+
+  it("deleteGroupChildTile leaves non-matching root items unchanged in the map", () => {
+    const root: DashboardTile = {
+      id: "rt",
+      pluginId: "p",
+      hostControl: "single-panel",
+      displayMode: "full",
+    };
+    const child: DashboardTile = {
+      id: "c1",
+      pluginId: "p",
+      hostControl: "single-panel",
+      displayMode: "full",
+    };
+    let layout: DashboardLayoutV2 = {
+      version: 2,
+      items: [
+        { kind: "tile", ...root },
+        { kind: "group", id: "g", showBorder: true, children: [child] },
+      ],
+    };
+    const o = createOverlayActions({
+      getLayout: () => layout,
+      getEditorOpen: () => false,
+      getSettingsTile: () => null,
+      getSettingsGroup: () => null,
+      setSettingsTile: () => {},
+      setSettingsGroup: () => {},
+      applyLayoutStructure: (next) => {
+        if (next.version === 2) layout = next;
+      },
+    });
+    o.deleteGroupChildTile("g", "c1");
+    expect(layout.items[0]?.kind).toBe("tile");
+    expect(layout.items[1]?.kind === "group" && layout.items[1].children.length).toBe(0);
   });
 
   it("deleteGroupChildTile keeps tile settings when another tile remains in layout", () => {
