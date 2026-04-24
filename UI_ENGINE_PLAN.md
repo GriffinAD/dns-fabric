@@ -43,6 +43,21 @@ commits or todos.
 
 ---
 
+## Execution status (living)
+
+This section tracks what is **actually landed** vs the aspirational Phase 2 bullets
+below (some of those describe a later “full registry” with `DataTableTile`, Zod,
+and per-plugin settings fragments).
+
+| Phase | Status | Notes |
+|------|--------|--------|
+| **P0** | Done | Plugin guard script, baseline dir / blueprint changelog per prior work. |
+| **P1** | Done | `gridHints`, `dashboardBootstrap`, `overlayActions`, TileSettings split, `stripWidth`, mock routes test. **Line-count caps** for `App.svelte` / `DashboardHost.svelte` / overlay may still be open — treat as stretch. |
+| **P2** | **Partial** | **Landed:** `builtinMeta.ts` (default col spans + RAM grid-hint rule, no Svelte imports), `registry.ts` with `ManifestRegistry`, `resolvePluginTileMount`, `PluginTileMount.svelte`, `DashboardHost` delegates tile body to mount (no `if/else` on plugin id there), `tileColSpan` / `handlePerfTileGridHint` use `builtinMeta`. Vitest: `builtinMeta.test.ts`, `registry.test.ts`. **Not done:** per-folder plugin indexes, `DataTableTile` merge, Zod + `TileFallback` in mount, `gridPolicy` on registry (still `builtinMeta` + TODO), `PerfOptionsForm` as registration fragment, **blocking** `check:ui-plugin-guard`. |
+| **P3–P8** | Not started | As in sections below. |
+
+---
+
 ## Phase 0 — Safety net (≈ ½ day)
 
 **Goal:** establish the before-picture and guardrails so no later phase can
@@ -123,9 +138,9 @@ literals, via a `ManifestRegistry` and a `<PluginTileMount/>`.
 **Changes:**
 
 - **P2.1** Add `apps/ui/src/lib/plugins/registry.ts` exporting a
-  `ManifestRegistry` instance and a `registerBuiltins()` function called
-  from boot. Also export the `PluginRegistration` TS type (per
-  [`UI_ENGINE_SPEC.md`](UI_ENGINE_SPEC.md) §3.4).
+  `ManifestRegistry` instance (built-in ids seeded in the registry; optional
+  `register()` for future dynamic plugins). Also export the `PluginRegistration`
+  TS type (per [`UI_ENGINE_SPEC.md`](UI_ENGINE_SPEC.md) §3.4).
 - **P2.2** Convert each existing plugin into a registration:
   - `lib/plugins/perf/index.ts` registers `perf.summary`, `perf.cpu`,
     `perf.ram`, `perf.network`, `perf.disk`. The four thin `CpuTile`,

@@ -1,3 +1,4 @@
+import { perfGridHintOnlyExpandColSpan } from "../plugins/builtinMeta";
 import { clampGridColSpan, clampGridRowSpan, tileColSpan } from "./gridPlacement";
 import { findTileInLayout, mapTileInLayout } from "./layoutTree";
 import type { DashboardLayout, DashboardLayoutV2, DashboardTile } from "./types";
@@ -8,8 +9,8 @@ export type ApplyLayoutStructureFn = (
 ) => void;
 
 /**
- * Applies perf-tile grid span hints from gauge layout. Preserves perf.ram “only expand” behaviour.
- * TODO(P2): move `perf.ram` policy to plugin registry `gridPolicy` (UI_ENGINE_PLAN Phase 2).
+ * Applies perf-tile grid span hints from gauge layout. RAM uses “only expand” via
+ * `perfGridHintOnlyExpandColSpan` (see `builtinMeta.ts`). TODO(P2): move policy to registry `gridPolicy`.
  */
 export function handlePerfTileGridHint(
   items: DashboardLayoutV2["items"],
@@ -25,7 +26,7 @@ export function handlePerfTileGridHint(
   const prevCs = t.grid?.colSpan ?? tileColSpan(t);
   const prevRs = t.grid?.rowSpan ?? 1;
   const nextCs =
-    t.pluginId === "perf.ram"
+    perfGridHintOnlyExpandColSpan(t.pluginId)
       ? clampGridColSpan(Math.max(prevCs, wantCs))
       : wantCs === 1
         ? 1

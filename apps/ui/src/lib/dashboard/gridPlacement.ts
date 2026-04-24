@@ -1,3 +1,4 @@
+import { builtinDefaultColSpan } from "../plugins/builtinMeta";
 import { ensureLayoutV2 } from "./layoutTree";
 import type {
   DashboardGroup,
@@ -32,16 +33,7 @@ export const GROUP_CHILD_INNER_STRIP_MAX_EXTENT = 10_000;
 
 /** Default width in columns when the tile has no custom `grid.colSpan`. */
 export function tileColSpan(tile: DashboardTile): number {
-  if (tile.pluginId === "perf.summary") return 12;
-  if (
-    tile.pluginId === "perf.cpu" ||
-    tile.pluginId === "perf.ram" ||
-    tile.pluginId === "perf.network" ||
-    tile.pluginId === "perf.disk"
-  ) {
-    return 1;
-  }
-  return 6;
+  return builtinDefaultColSpan(tile.pluginId) ?? 6;
 }
 
 export function clampGridColSpan(n: number): number {

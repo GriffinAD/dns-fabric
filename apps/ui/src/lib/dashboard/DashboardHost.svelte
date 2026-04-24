@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Card from "flowbite-svelte/Card.svelte";
   import GripVertical from "lucide-svelte/icons/grip-vertical";
   import Pencil from "lucide-svelte/icons/pencil";
   import Trash2 from "lucide-svelte/icons/trash-2";
@@ -14,15 +13,6 @@
 
   import type { PluginEntry } from "../api/types";
   import { DataGateway } from "../dataGateway";
-  import CpuTile from "../plugins/CpuTile.svelte";
-  import DhcpClientsTile from "../plugins/DhcpClientsTile.svelte";
-  import DhcpPoolsTile from "../plugins/DhcpPoolsTile.svelte";
-  import DhcpReservationsTile from "../plugins/DhcpReservationsTile.svelte";
-  import DiskTile from "../plugins/DiskTile.svelte";
-  import DiscoveryTile from "../plugins/DiscoveryTile.svelte";
-  import NwTile from "../plugins/NwTile.svelte";
-  import PerfTile from "../plugins/PerfTile.svelte";
-  import RamTile from "../plugins/RamTile.svelte";
   import {
     effectiveColSpan,
     effectiveRowSpan,
@@ -36,6 +26,7 @@
     reorderTilesPreservingSlotOrigins,
   } from "./gridPlacement";
   import GroupReadNoWrap from "./GroupReadNoWrap.svelte";
+  import PluginTileMount from "./PluginTileMount.svelte";
   import TileEditChrome from "./TileEditChrome.svelte";
   import { dedupeById } from "./layoutTree";
   import { stripScrollportObserve } from "./stripWidth";
@@ -282,57 +273,15 @@
   }
 </script>
 
-{#snippet renderTile(tile: DashboardTile, inGroup: boolean)}
-  {#if tile.pluginId === "dhcp.pools"}
-    <DhcpPoolsTile {gateway} {tile} />
-  {:else if tile.pluginId === "dhcp.clients"}
-    <DhcpClientsTile {gateway} {tile} />
-  {:else if tile.pluginId === "dhcp.reservations"}
-    <DhcpReservationsTile {gateway} {tile} />
-  {:else if tile.pluginId === "discovery.records"}
-    <DiscoveryTile
-      {gateway}
-      {tile}
-      onOpenSettings={editLayout && onEditTile ? () => onEditTile(tile) : undefined}
-    />
-  {:else if tile.pluginId === "perf.summary"}
-    <PerfTile {gateway} {tile} {liveCpuPercent} />
-  {:else if tile.pluginId === "perf.cpu"}
-    <CpuTile
-      {gateway}
-      {tile}
-      {liveCpuPercent}
-      onGridHint={onPerfTileGridHint ? (hint) => onPerfTileGridHint(tile.id, hint) : undefined}
-    />
-  {:else if tile.pluginId === "perf.ram"}
-    <RamTile
-      {gateway}
-      {tile}
-      onGridHint={onPerfTileGridHint ? (hint) => onPerfTileGridHint(tile.id, hint) : undefined}
-    />
-  {:else if tile.pluginId === "perf.network"}
-    <NwTile
-      {gateway}
-      {tile}
-      onGridHint={onPerfTileGridHint ? (hint) => onPerfTileGridHint(tile.id, hint) : undefined}
-    />
-  {:else if tile.pluginId === "perf.disk"}
-    <DiskTile
-      {gateway}
-      {tile}
-      onGridHint={onPerfTileGridHint ? (hint) => onPerfTileGridHint(tile.id, hint) : undefined}
-    />
-  {:else}
-    <Card
-      size="xl"
-      class="box-border !max-w-full w-full min-w-0 flex-1 min-h-0 flex-col"
-    >
-      {#snippet children()}
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{tile.pluginId}</h3>
-        <p class="text-sm text-gray-600 dark:text-gray-400">Unknown plugin (placeholder).</p>
-      {/snippet}
-    </Card>
-  {/if}
+{#snippet renderTile(tile: DashboardTile, _inGroup: boolean)}
+  <PluginTileMount
+    {gateway}
+    {tile}
+    {liveCpuPercent}
+    {editLayout}
+    {onEditTile}
+    {onPerfTileGridHint}
+  />
 {/snippet}
 
 <div class="flex flex-col gap-4" data-testid="dashboard-host">
