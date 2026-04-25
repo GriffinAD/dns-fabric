@@ -102,6 +102,7 @@
       onSelectDashboardView={() => void selectDashboardView()}
       onOpenEditor={() => ls.openEditor()}
       onResetBaseline={() => void ls.resetToBaseline()}
+      onSaveLayoutToFile={() => void ls.saveLayoutToFile()}
       onGoHome={goHome}
       onGoAdmin={() => void goAdmin()}
     />

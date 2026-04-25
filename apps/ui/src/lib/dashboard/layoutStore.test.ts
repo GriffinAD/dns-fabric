@@ -3,6 +3,7 @@ import { get } from "svelte/store";
 
 import { DataGateway } from "../dataGateway";
 import * as layoutNormalize from "./layoutNormalize";
+import * as layoutStorage from "./layoutStorage";
 import { createLayoutStore } from "./layoutStore";
 import type { DashboardLayoutV2 } from "./types";
 
@@ -340,5 +341,33 @@ describe("createLayoutStore", () => {
     const ls = createLayoutStore({ gateway: gw });
     await ls.resetToBaseline();
     expect(get(ls.loadError)).toBe("offline");
+  });
+
+  it("saveLayoutToFile POSTs save-file, persists locally, and skips debounced PUT", async () => {
+    vi.useFakeTimers();
+    const gw = new DataGateway("");
+    const put = vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const postSave = vi
+      .spyOn(gw, "postDashboardLayoutSaveFile")
+      .mockResolvedValue({ filename: "Dashboard_Layout_2026-04-25_123456.json" });
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout(minimalLayout());
+    await ls.saveLayoutToFile();
+    expect(postSave).toHaveBeenCalledTimes(1);
+    expect(postSave).toHaveBeenCalledWith("default", expect.objectContaining({ version: 2, items: expect.any(Array) }));
+    await vi.advanceTimersByTimeAsync(500);
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it("saveLayoutToFile sets persistError and skips localStorage when POST fails", async () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "postDashboardLayoutSaveFile").mockRejectedValue(new Error("server down"));
+    const saveLocal = vi.spyOn(layoutStorage, "saveDashboardLayout");
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout(minimalLayout());
+    saveLocal.mockClear();
+    await ls.saveLayoutToFile();
+    expect(get(ls.persistError)).toBe("server down");
+    expect(saveLocal).not.toHaveBeenCalled();
   });
 });

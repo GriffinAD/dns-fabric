@@ -179,6 +179,24 @@ async def put_layout(
     return Response(status_code=204)
 
 
+@router.post("/dashboards/{dashboard_id}/layout/save-file")
+async def save_dashboard_layout_file(
+    dashboard_id: str,
+    request: Request,
+    __op: Annotated[AuthRole, Depends(require_operator)],
+    svc: Annotated[FabricService, Depends(get_fabric_service)],
+) -> dict[str, str]:
+    """Persist layout to the live store and write a timestamped JSON snapshot."""
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"title": "Invalid JSON", "status": 400},
+        ) from exc
+    return svc.save_layout_to_file(dashboard_id, body)
+
+
 @router.post("/dashboards/{dashboard_id}/layout/reset")
 def reset_layout(
     dashboard_id: str,

@@ -138,6 +138,20 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
       await flushPersist();
     },
 
+    /** Persist layout on the server (live store + timestamped snapshot under ``dashboard-layout-exports/``) and local cache. */
+    async saveLayoutToFile() {
+      clearDebounce();
+      loadError.set(null);
+      const current = get(layout);
+      try {
+        await gateway.postDashboardLayoutSaveFile(dashboardId, current);
+        persistError.set(null);
+        saveDashboardLayout(current);
+      } catch (e: unknown) {
+        persistError.set(e instanceof Error ? e.message : String(e));
+      }
+    },
+
     addRootTile(pluginId: string) {
       const L = get(layout);
       const n = L.items.length;

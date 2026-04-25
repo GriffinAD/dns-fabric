@@ -4,8 +4,10 @@ import { DEFAULT_DASHBOARD_LAYOUT } from "./defaultLayout";
 import * as gridPlacement from "./gridPlacement";
 import { iterateTilesInLayout } from "./layoutTree";
 import {
+  buildDashboardLayoutDownloadPayload,
   clearStoredDashboardLayoutAndUnlock,
-  setLocalPersistBlockedStateForTest,
+  dashboardLayoutExportFilename,
+  downloadDashboardLayoutFile,
   initialDashboardLayout,
   isLayoutLocalPersistBlocked,
   layoutJsonUnsupportedVersionMessage,
@@ -13,6 +15,7 @@ import {
   mergeMissingDefaultPlugins,
   parseDashboardLayout,
   saveDashboardLayout,
+  setLocalPersistBlockedStateForTest,
 } from "./layoutStorage";
 import type { DashboardLayout, DashboardLayoutV1, DashboardLayoutV2, DashboardTile } from "./types";
 import { isLayoutV2 } from "./types";
@@ -559,5 +562,52 @@ describe("localStorage persistence", () => {
     vi.unstubAllGlobals();
     vi.stubGlobal("localStorage", undefined);
     expect(loadDashboardLayout()).toBeNull();
+  });
+});
+
+describe("dashboard layout file export", () => {
+  it("dashboardLayoutExportFilename uses Dashboard_Layout_yyyy-MM-dd_hhmmss", () => {
+    const d = new Date(2026, 3, 25, 12, 34, 56);
+    expect(dashboardLayoutExportFilename(d)).toBe("Dashboard_Layout_2026-04-25_123456.json");
+  });
+
+  it("buildDashboardLayoutDownloadPayload is pretty-printed JSON with trailing newline", () => {
+    const L = { version: 2 as const, items: [] };
+    const s = buildDashboardLayoutDownloadPayload(L);
+    expect(s.endsWith("\n")).toBe(true);
+    expect(JSON.parse(s.trim())).toEqual(L);
+  });
+
+  it("downloadDashboardLayoutFile creates a blob download and revokes the URL", () => {
+    const createUrl = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:test");
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const anchor = document.createElement("a");
+    const clickSpy = vi.spyOn(anchor, "click").mockImplementation(() => {});
+    const removeSpy = vi.spyOn(anchor, "remove").mockImplementation(() => {});
+    const createSpy = vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+      if (tag === "a") return anchor;
+      return document.createElement(tag as "div");
+    });
+    const appendSpy = vi.spyOn(document.body, "appendChild").mockImplementation(() => anchor);
+
+    downloadDashboardLayoutFile(structuredClone(DEFAULT_DASHBOARD_LAYOUT));
+
+    expect(createSpy).toHaveBeenCalledWith("a");
+    expect(anchor.download).toMatch(/^Dashboard_Layout_\d{4}-\d{2}-\d{2}_\d{6}\.json$/);
+
+    downloadDashboardLayoutFile(structuredClone(DEFAULT_DASHBOARD_LAYOUT), "Server_Name.json");
+    expect(anchor.download).toBe("Server_Name.json");
+    expect(anchor.href).toBe("blob:test");
+    expect(clickSpy).toHaveBeenCalled();
+    expect(removeSpy).toHaveBeenCalled();
+    expect(appendSpy).toHaveBeenCalledWith(anchor);
+    expect(revoke).toHaveBeenCalledWith("blob:test");
+
+    createSpy.mockRestore();
+    appendSpy.mockRestore();
+    clickSpy.mockRestore();
+    removeSpy.mockRestore();
+    createUrl.mockRestore();
+    revoke.mockRestore();
   });
 });

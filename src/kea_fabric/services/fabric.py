@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import copy
 import json
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
@@ -173,6 +175,34 @@ class FabricService:
             )
         assert isinstance(body, dict)
         self._layout_store.set(dashboard_id, body)
+
+    def save_layout_to_file(self, dashboard_id: str, body: object) -> dict[str, str]:
+        """Persist layout; write ``Dashboard_Layout_<ts>.json`` under ``data_dir``."""
+        if not layout_validate.is_dashboard_layout(body):
+            raise HTTPException(
+                status_code=400,
+                detail={"title": "Invalid layout", "status": 400},
+            )
+        assert isinstance(body, dict)
+        self._layout_store.set(dashboard_id, body)
+        exports_dir = self._settings.data_dir / "dashboard-layout-exports"
+        exports_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        path = self._allocate_dashboard_export_path(exports_dir, ts)
+        path.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+        return {"filename": path.name}
+
+    @staticmethod
+    def _allocate_dashboard_export_path(exports_dir: Path, ts: str) -> Path:
+        base = exports_dir / f"Dashboard_Layout_{ts}.json"
+        if not base.exists():
+            return base
+        for n in range(1, 1000):
+            candidate = exports_dir / f"Dashboard_Layout_{ts}_{n}.json"
+            if not candidate.exists():
+                return candidate
+        msg = "Could not allocate a unique dashboard export filename"
+        raise HTTPException(status_code=500, detail={"title": msg, "status": 500})
 
     def reset_layout_from_orig(self, dashboard_id: str) -> dict[str, Any]:
         """Replace the live layout from read-only ``dashboard-layouts.orig.json``."""

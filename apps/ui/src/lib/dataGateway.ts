@@ -8,6 +8,7 @@ import {
   dhcpReservationListResponseSchema,
   discoveryRecordListResponseSchema,
   discoveryScanResponseSchema,
+  dashboardLayoutSaveFileResponseSchema,
   fabricEventSchema,
   healthResponseSchema,
   metaResponseSchema,
@@ -228,6 +229,15 @@ export class DataGateway {
 
   putDashboardLayout(dashboardId: string, layout: DashboardLayout): Promise<void> {
     return this.putJson(`/api/v1/dashboards/${encodeURIComponent(dashboardId)}/layout`, layout);
+  }
+
+  /** Persists layout server-side and writes ``Dashboard_Layout_<timestamp>.json`` under ``dashboard-layout-exports/``. */
+  postDashboardLayoutSaveFile(
+    dashboardId: string,
+    layout: DashboardLayout,
+  ): Promise<{ filename: string }> {
+    const path = `/api/v1/dashboards/${encodeURIComponent(dashboardId)}/layout/save-file`;
+    return this.postJsonValidated(path, layout, dashboardLayoutSaveFileResponseSchema);
   }
 
   /** Restores layout from ``dashboard-layouts.orig.json`` (server never writes that file). */

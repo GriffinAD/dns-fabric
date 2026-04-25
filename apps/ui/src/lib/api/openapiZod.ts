@@ -182,6 +182,12 @@ export const perfSummaryResponseSchema = z
   })
   .strict();
 
+export const dashboardLayoutSaveFileResponseSchema = z
+  .object({
+    filename: z.string(),
+  })
+  .strict();
+
 /** GET /api/v1/* JSON bodies served from baseFixtures (dev mocks). */
 export const mockFixtureSchemas: Record<string, z.ZodType<unknown>> = {
   "/api/v1/health": healthResponseSchema,

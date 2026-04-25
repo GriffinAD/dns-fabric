@@ -6,24 +6,26 @@
 
   let { draft = $bindable() }: { draft: DashboardTile } = $props();
 
-  function toggleCpuTotal() {
-    const cur = draft.options?.cpu_total === true;
-    draft = { ...draft, options: { ...draft.options, cpu_total: !cur } };
+  function toggleCpuTotal(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    draft = { ...draft, options: { ...draft.options, cpu_total: input.checked } };
   }
 
-  function toggleNetworkShowTotal() {
-    const showTotal = draft.options?.network_by_adapter === false;
+  function toggleNetworkShowTotal(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const showTotal = input.checked;
     draft = {
       ...draft,
-      options: { ...draft.options, network_by_adapter: showTotal ? true : false },
+      options: { ...draft.options, network_by_adapter: showTotal ? false : true },
     };
   }
 
-  function toggleDiskShowTotal() {
-    const showTotal = draft.options?.disk_by_volume === false;
+  function toggleDiskShowTotal(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const showTotal = input.checked;
     draft = {
       ...draft,
-      options: { ...draft.options, disk_by_volume: showTotal ? true : false },
+      options: { ...draft.options, disk_by_volume: showTotal ? false : true },
     };
   }
 </script>
@@ -34,19 +36,19 @@
     <div class="space-y-2">
       <span class="text-xs font-medium text-gray-600 dark:text-gray-300">Show as total</span>
       <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-        <input type="checkbox" checked={draft.options?.cpu_total === true} onchange={toggleCpuTotal} />
+        <input type="checkbox" checked={draft.options?.cpu_total === true} onclick={toggleCpuTotal} />
         CPU
       </label>
       <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
         <input
           type="checkbox"
           checked={draft.options?.network_by_adapter === false}
-          onchange={toggleNetworkShowTotal}
+          onclick={toggleNetworkShowTotal}
         />
         Network
       </label>
       <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-        <input type="checkbox" checked={draft.options?.disk_by_volume === false} onchange={toggleDiskShowTotal} />
+        <input type="checkbox" checked={draft.options?.disk_by_volume === false} onclick={toggleDiskShowTotal} />
         Disk
       </label>
     </div>
@@ -71,7 +73,7 @@
   <div class="space-y-3 border-t border-gray-200 pt-3 dark:border-gray-600">
     <span class="text-xs font-medium text-gray-500 dark:text-gray-400">CPU tile</span>
     <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-      <input type="checkbox" checked={draft.options?.cpu_total === true} onchange={toggleCpuTotal} />
+      <input type="checkbox" checked={draft.options?.cpu_total === true} onclick={toggleCpuTotal} />
       Show as total
     </label>
     <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
@@ -116,7 +118,7 @@
       <input
         type="checkbox"
         checked={draft.options?.network_by_adapter === false}
-        onchange={toggleNetworkShowTotal}
+        onclick={toggleNetworkShowTotal}
       />
       Show as total
     </label>
@@ -159,7 +161,7 @@
   <div class="space-y-3 border-t border-gray-200 pt-3 dark:border-gray-600">
     <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Disk tile</span>
     <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-      <input type="checkbox" checked={draft.options?.disk_by_volume === false} onchange={toggleDiskShowTotal} />
+      <input type="checkbox" checked={draft.options?.disk_by_volume === false} onclick={toggleDiskShowTotal} />
       Show as total
     </label>
     <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">

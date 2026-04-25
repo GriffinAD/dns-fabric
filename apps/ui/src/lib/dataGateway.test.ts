@@ -222,6 +222,43 @@ describe("DataGateway", () => {
     });
   });
 
+  it("postDashboardLayoutSaveFile sends POST and returns filename", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ filename: "Dashboard_Layout_2026-04-25_123456.json" }),
+      }),
+    );
+    const gw = new DataGateway("");
+    const layout: DashboardLayout = { version: 2, items: [] };
+    const out = await gw.postDashboardLayoutSaveFile("default", layout);
+    expect(out.filename).toBe("Dashboard_Layout_2026-04-25_123456.json");
+    expect(fetch).toHaveBeenCalledWith("/api/v1/dashboards/default/layout/save-file", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(layout),
+    });
+  });
+
+  it("postDashboardLayoutSaveFile sends Authorization when authToken option set", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ filename: "x.json" }),
+      }),
+    );
+    const gw = new DataGateway("", { authToken: "tok" });
+    const layout: DashboardLayout = { version: 2, items: [] };
+    await gw.postDashboardLayoutSaveFile("my-dash", layout);
+    expect(fetch).toHaveBeenCalledWith("/api/v1/dashboards/my-dash/layout/save-file", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer tok" },
+      body: JSON.stringify(layout),
+    });
+  });
+
   it("resetDashboardLayout sends POST and returns layout JSON", async () => {
     const body: DashboardLayout = { version: 1, tiles: [] };
     vi.stubGlobal(

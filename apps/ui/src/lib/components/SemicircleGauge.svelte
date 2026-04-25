@@ -118,7 +118,7 @@
       ? `aspect-ratio: ${vbW} / ${vbH}; width: 100%; height: auto; ${SVG_SURFACE_FX}`
       : SVG_SURFACE_FX,
   );
-  const cx = $derived(w / 2 + vbPad);
+  const cx = $derived(w / 2);
   const r = $derived(mini ? 24 : preview ? 100 : compact ? 42 : 56);
   const bottomClear = $derived(
     r / 2 + stroke / 2 + (mini ? 5 : compact ? 6 : preview ? 10 : 8),
@@ -268,7 +268,7 @@
       style:aspect-ratio={mini ? `${vbW} / ${vbH}` : undefined}
     >
       <svg
-        class="relative z-0 block h-full w-full max-w-full {mini ? '' : 'overflow-visible'}"
+        class="relative z-0 block h-full w-full max-w-full overflow-hidden"
         style={svgSurfaceStyle}
         color-rendering="optimizeQuality"
         viewBox={`${-vbPad} ${-vbPad} ${vbW} ${vbH}`}
@@ -381,6 +381,13 @@
           title={sublabel}
         >
           {sublabel}
+        </p>
+      {:else}
+        <p
+          class="m-0 w-full min-w-0 truncate text-center text-[9px] leading-tight text-gray-500 opacity-0 dark:text-gray-400"
+          aria-hidden="true"
+        >
+          &nbsp;
         </p>
       {/if}
     </div>

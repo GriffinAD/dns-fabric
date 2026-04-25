@@ -4,6 +4,7 @@
   import ArrowLeft from "lucide-svelte/icons/arrow-left";
   import House from "lucide-svelte/icons/house";
   import Pencil from "lucide-svelte/icons/pencil";
+  import Save from "lucide-svelte/icons/save";
   import Settings from "lucide-svelte/icons/settings";
 
   import ThemeControls from "../theme/ThemeControls.svelte";
@@ -18,6 +19,7 @@
     onSelectDashboardView,
     onOpenEditor,
     onResetBaseline,
+    onSaveLayoutToFile,
     onGoHome,
     onGoAdmin,
   }: {
@@ -27,6 +29,7 @@
     onSelectDashboardView: () => void;
     onOpenEditor: () => void;
     onResetBaseline: () => void;
+    onSaveLayoutToFile: () => void;
     onGoHome: () => void;
     onGoAdmin: () => void;
   } = $props();
@@ -97,6 +100,15 @@
               onclick={() => (resetConfirmOpen = true)}
             >
               Reset
+            </Button>
+            <Button
+              type="button"
+              color="alternative"
+              class="!p-2 shrink-0"
+              aria-label="Save dashboard layout on the server"
+              onclick={() => void onSaveLayoutToFile()}
+            >
+              <Save class="h-5 w-5" aria-hidden="true" />
             </Button>
             <Button
               type="button"

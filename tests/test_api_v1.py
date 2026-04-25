@@ -6,7 +6,7 @@ import asyncio
 import json
 from collections.abc import Iterator
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import Request
@@ -239,6 +239,104 @@ def test_layout_put_bad_json(client: TestClient) -> None:
         headers={"Content-Type": "application/json"},
     )
     assert r.status_code == 400
+
+
+def test_layout_save_file_writes_snapshot_and_persists(tmp_path: Path) -> None:
+    settings = ApiSettings(
+        data_dir=tmp_path,
+        api_token=None,
+        viewer_token=None,
+        sse_interval_seconds=0.05,
+    )
+    body = {
+        "version": 2,
+        "items": [
+            {
+                "kind": "tile",
+                "id": "t1",
+                "pluginId": "dhcp.pools",
+                "hostControl": "single-panel",
+                "displayMode": "full",
+            },
+        ],
+    }
+    with TestClient(create_app(settings=settings)) as c:
+        r = c.post("/api/v1/dashboards/default/layout/save-file", json=body)
+        assert r.status_code == 200
+        data = r.json()
+        assert "filename" in data
+        assert data["filename"].startswith("Dashboard_Layout_")
+        assert data["filename"].endswith(".json")
+        snap = tmp_path / "dashboard-layout-exports" / data["filename"]
+        assert snap.is_file()
+        r2 = c.get("/api/v1/dashboards/default/layout")
+        assert r2.status_code == 200
+        assert r2.json()["version"] == 2
+
+
+def test_layout_save_file_rejects_invalid_layout(client: TestClient) -> None:
+    r = client.post(
+        "/api/v1/dashboards/default/layout/save-file",
+        json={"version": 2, "items": [{}]},
+    )
+    assert r.status_code == 400
+
+
+def test_layout_save_file_rejects_bad_json(client: TestClient) -> None:
+    r = client.post(
+        "/api/v1/dashboards/default/layout/save-file",
+        content=b"{",
+        headers={"Content-Type": "application/json"},
+    )
+    assert r.status_code == 400
+
+
+def test_layout_save_file_alloc_exhausted_returns_500(tmp_path: Path) -> None:
+    ts = "2099-12-31_235959"
+    exports = tmp_path / "dashboard-layout-exports"
+    exports.mkdir(parents=True)
+    (exports / f"Dashboard_Layout_{ts}.json").write_text("{}", encoding="utf-8")
+    for n in range(1, 1000):
+        (exports / f"Dashboard_Layout_{ts}_{n}.json").write_text("{}", encoding="utf-8")
+
+    settings = ApiSettings(
+        data_dir=tmp_path,
+        api_token=None,
+        viewer_token=None,
+        sse_interval_seconds=0.05,
+    )
+    body = {"version": 2, "items": []}
+    fake_now = MagicMock()
+    fake_now.strftime.return_value = ts
+    with patch("kea_fabric.services.fabric.datetime") as mock_dt:
+        mock_dt.now.return_value = fake_now
+        with TestClient(create_app(settings=settings)) as c:
+            r = c.post("/api/v1/dashboards/default/layout/save-file", json=body)
+    assert r.status_code == 500
+
+
+def test_layout_save_file_collision_suffix_same_second(client: TestClient) -> None:
+    body = {
+        "version": 2,
+        "items": [
+            {
+                "kind": "tile",
+                "id": "t1",
+                "pluginId": "dhcp.pools",
+                "hostControl": "single-panel",
+                "displayMode": "full",
+            },
+        ],
+    }
+    r1 = client.post("/api/v1/dashboards/default/layout/save-file", json=body)
+    assert r1.status_code == 200
+    fn1 = r1.json()["filename"]
+    r2 = client.post("/api/v1/dashboards/default/layout/save-file", json=body)
+    assert r2.status_code == 200
+    fn2 = r2.json()["filename"]
+    assert fn1 != fn2
+    assert fn2.startswith("Dashboard_Layout_")
+    assert fn2.endswith(".json")
 
 
 def test_perf_summary(client: TestClient) -> None:

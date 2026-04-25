@@ -35,15 +35,42 @@ describe("applyPerfCompactAsPercentOnly", () => {
     expect(disk.options?.display_style).toBe("gauge");
   });
 
-  it("still forces percent_only for compact perf.network without by_adapter", () => {
+  it("does not force percent_only for compact perf.network when showing total (single gauge)", () => {
     const t = applyPerfCompactAsPercentOnly({
       id: "n",
       pluginId: "perf.network",
       hostControl: "single-panel",
       displayMode: "compact",
-      options: { display_style: "gauge" },
+      options: { network_by_adapter: false, display_style: "gauge" },
     });
-    expect(t.options?.display_style).toBe("percent_only");
+    expect(t.options?.display_style).toBe("gauge");
+  });
+
+  it("does not force percent_only for compact perf.disk when showing total (single gauge)", () => {
+    const t = applyPerfCompactAsPercentOnly({
+      id: "d",
+      pluginId: "perf.disk",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      options: { disk_by_volume: false, display_style: "gauge" },
+    });
+    expect(t.options?.display_style).toBe("gauge");
+  });
+
+  it("does not force percent_only for compact perf.summary when network and disk are totals", () => {
+    const t = applyPerfCompactAsPercentOnly({
+      id: "s",
+      pluginId: "perf.summary",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      options: {
+        cpu_total: true,
+        network_by_adapter: false,
+        disk_by_volume: false,
+        display_style: "gauge",
+      },
+    });
+    expect(t.options?.display_style).toBe("gauge");
   });
 
   it("applies percent_only when compact perf tile omits options", () => {

@@ -69,6 +69,41 @@ export function parseDashboardLayout(value: unknown): DashboardLayout | null {
   return parseDashboardLayoutZod(value);
 }
 
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** `Dashboard_Layout_{yyyy-MM-dd_hhmmss}.json` using local wall-clock time. */
+export function dashboardLayoutExportFilename(date = new Date()): string {
+  const y = date.getFullYear();
+  const mo = pad2(date.getMonth() + 1);
+  const d = pad2(date.getDate());
+  const h = pad2(date.getHours());
+  const mi = pad2(date.getMinutes());
+  const s = pad2(date.getSeconds());
+  return `Dashboard_Layout_${y}-${mo}-${d}_${h}${mi}${s}.json`;
+}
+
+export function buildDashboardLayoutDownloadPayload(layout: DashboardLayout): string {
+  return `${JSON.stringify(layout, null, 2)}\n`;
+}
+
+/** Browser download of layout JSON (optional filename, e.g. from server snapshot basename). */
+export function downloadDashboardLayoutFile(layout: DashboardLayout, downloadFilename?: string): void {
+  if (typeof document === "undefined") return;
+  const body = buildDashboardLayoutDownloadPayload(layout);
+  const blob = new Blob([body], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = downloadFilename ?? dashboardLayoutExportFilename();
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function loadDashboardLayout(): DashboardLayout | null {
   if (typeof localStorage === "undefined") return null;
   resetLayoutLocalPersistGate();

@@ -21,7 +21,7 @@
 
 <Card
   size="xl"
-  class="box-border h-full !max-w-full w-full min-w-0 flex-1 min-h-0 flex-col overflow-x-hidden overflow-y-auto"
+  class="box-border h-full !max-w-full w-full min-w-0 flex-1 min-h-0 flex-col overflow-hidden"
 >
   {#snippet children()}
     <div class="flex h-full min-h-0 w-full min-w-0 flex-col px-1.5 py-1 sm:px-2 sm:py-1.5">

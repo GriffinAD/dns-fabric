@@ -16,3 +16,6 @@ apps/ui/coverage/
 apps/ui/test-results/
 playwright-report/
 .DS_Store
+
+# Timestamped dashboard layout snapshots (server `dashboard-layout-exports/` or UI mock)
+**/Dashboard_Layout_*.json

@@ -120,6 +120,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+  /dashboards/{dashboardId}/layout/save-file:
+    post:
+      operationId: postDashboardLayoutSaveFile
+      summary: Persist layout to live store and write a timestamped JSON snapshot on disk
+      tags: [Dashboard]
+      parameters:
+        - $ref: "#/components/parameters/DashboardId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DashboardLayout"
+      responses:
+        "200":
+          description: Layout stored; snapshot filename on the server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardLayoutSaveFileResponse"
+        "400":
+          description: Invalid layout or JSON
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /events/stream:
     get:
       operationId: streamFabricEvents
@@ -557,6 +583,16 @@ components:
       description: >
         v1 is a flat `tiles` array. v2 uses `items` with nested `group` containers and optional
         `kind` on root tiles. Validated server-side against specs/dashboard/layout.schema.json.
+    DashboardLayoutSaveFileResponse:
+      type: object
+      additionalProperties: false
+      required: [filename]
+      properties:
+        filename:
+          type: string
+          description: >
+            Basename of the snapshot written under ``dashboard-layout-exports/`` next to
+            ``dashboard-layouts.json`` (e.g. ``Dashboard_Layout_2026-04-25_153045.json``).
     DiscoveryPauseRequest:
       type: object
       additionalProperties: false

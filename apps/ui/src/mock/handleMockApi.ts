@@ -1,9 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { parseDashboardLayout } from "../lib/dashboard/layoutStorage";
+import { dashboardLayoutExportFilename, parseDashboardLayout } from "../lib/dashboard/layoutStorage";
 import { baseFixtures } from "./fixtures";
 import { perfSummaryForTick } from "./perfSimulate";
 import { getDiscoveryScan, getPerfTick, getSavedLayout, nextPerfTick, setDiscoveryPaused, setSavedLayout } from "./state";
@@ -11,6 +11,7 @@ import { getDiscoveryScan, getPerfTick, getSavedLayout, nextPerfTick, setDiscove
 const _mockDir = dirname(fileURLToPath(import.meta.url));
 /** Repo-root ``.fabric-data/dashboard-layouts.orig.json`` (read-only; never written by the mock). */
 const BASELINE_LAYOUTS_FILE = join(_mockDir, "../../../../.fabric-data/dashboard-layouts.orig.json");
+const FABRIC_DATA_DIR = join(_mockDir, "../../../../.fabric-data");
 
 const listPaths = new Set([
   "/api/v1/dhcp/pools",
@@ -180,6 +181,36 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
       sendJson(res, 200, layout);
     } catch {
       sendJson(res, 500, { title: "baseline layout file is not valid JSON", status: 500 });
+    }
+    return true;
+  }
+
+  const saveFileMatch = pathOnly.match(/^\/api\/v1\/dashboards\/([^/]+)\/layout\/save-file$/);
+  if (method === "POST" && saveFileMatch) {
+    try {
+      const rawBody = await readBody(req);
+      const parsed = JSON.parse(rawBody) as unknown;
+      const layout = parseDashboardLayout(parsed);
+      if (!layout) {
+        sendJson(res, 400, { title: "Invalid layout", status: 400 });
+        return true;
+      }
+      setSavedLayout(layout);
+      const exportsDir = join(FABRIC_DATA_DIR, "dashboard-layout-exports");
+      mkdirSync(exportsDir, { recursive: true });
+      const stamp = dashboardLayoutExportFilename().replace(/\.json$/, "");
+      let basename = `${stamp}.json`;
+      let outPath = join(exportsDir, basename);
+      let i = 0;
+      while (existsSync(outPath) && i < 999) {
+        i += 1;
+        basename = `${stamp}_${i}.json`;
+        outPath = join(exportsDir, basename);
+      }
+      writeFileSync(outPath, JSON.stringify(layout, null, 2) + "\n", "utf8");
+      sendJson(res, 200, { filename: basename });
+    } catch {
+      sendJson(res, 400, { title: "Invalid JSON", status: 400 });
     }
     return true;
   }

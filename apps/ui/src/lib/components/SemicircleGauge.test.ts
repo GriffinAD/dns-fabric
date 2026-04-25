@@ -3,7 +3,21 @@ import { render, screen } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { GAUGE_ARC_THETA_LEFT } from "./gaugeMath";
 import SemicircleGauge from "./SemicircleGauge.svelte";
+
+function svgViewBoxNumbers(raw: string | null | undefined): {
+  minX: number;
+  minY: number;
+  width: number;
+  height: number;
+} {
+  const parts = (raw ?? "").trim().split(/\s+/).map(Number);
+  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) {
+    return { minX: 0, minY: 0, width: 0, height: 0 };
+  }
+  return { minX: parts[0]!, minY: parts[1]!, width: parts[2]!, height: parts[3]! };
+}
 
 function resetGaugeDataAttrs() {
   const root = document.documentElement;
@@ -90,7 +104,9 @@ describe("SemicircleGauge", () => {
 
   it("renders mini without sublabel (spacer only)", () => {
     const { container } = render(SemicircleGauge, { props: { mini: true, percent: 5 } });
-    expect(container.querySelector("p")).toBeNull();
+    const spacer = container.querySelector('p[aria-hidden="true"]');
+    expect(spacer).toBeTruthy();
+    expect(spacer?.textContent).toContain("\u00a0");
   });
 
   it("uses miniFillCell label sizing when mini", () => {
@@ -278,6 +294,23 @@ describe("SemicircleGauge", () => {
     });
     const svg = container.querySelector("svg");
     expect(svg?.getAttribute("viewBox")).toMatch(/-11 -11 182 122/);
+  });
+
+  it("keeps the arc centred on the viewBox horizontal midpoint (readout alignment)", () => {
+    const { container } = render(SemicircleGauge, { props: { percent: 1 } });
+    const vb = svgViewBoxNumbers(container.querySelector("svg")?.getAttribute("viewBox"));
+    const midX = vb.minX + vb.width / 2;
+    expect(midX).toBe(80);
+    const path = container.querySelector('path[stroke="var(--gauge-track-rest)"]');
+    const d = path?.getAttribute("d") ?? "";
+    const m = /^M\s+([\d.-]+)\s+([\d.-]+)/.exec(d);
+    expect(m).toBeTruthy();
+    const w = 160;
+    const r = 56;
+    const cx = w / 2;
+    const xLeft = cx + r * Math.cos(GAUGE_ARC_THETA_LEFT);
+    expect(Number(m![1])).toBeCloseTo(xLeft, 2);
+    expect(cx).toBeCloseTo(midX, 5);
   });
 
   it("enables compact dimensions", () => {
