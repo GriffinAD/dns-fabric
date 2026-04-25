@@ -467,7 +467,7 @@ components:
         perf_max_cols:
           type: integer
           minimum: 1
-          maximum: 12
+          maximum: 20
           description: >
             Max dashboard columns for a performance tile; extra gauges wrap inside the tile.
     GridPlacement:
@@ -475,19 +475,19 @@ components:
       additionalProperties: false
       required: [col, row, colSpan, rowSpan]
       description: >
-        12-column grid cell. Server validates col + colSpan <= 12 when present.
+        20-column grid cell for root and auto-wrap groups. Server validates col + colSpan <= 20 when present.
       properties:
         col:
           type: integer
           minimum: 0
-          maximum: 11
+          maximum: 10000
         row:
           type: integer
           minimum: 0
         colSpan:
           type: integer
           minimum: 1
-          maximum: 12
+          maximum: 20
         rowSpan:
           type: integer
           minimum: 1

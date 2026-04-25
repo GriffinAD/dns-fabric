@@ -414,7 +414,7 @@ def test_layout_validate_v2() -> None:
                     "kind": "group",
                     "id": "g-status",
                     "showBorder": True,
-                    "grid": {"col": 0, "row": 0, "colSpan": 12, "rowSpan": 1},
+                    "grid": {"col": 0, "row": 0, "colSpan": 20, "rowSpan": 1},
                     "children": [
                         {
                             "id": "c1",
@@ -493,16 +493,16 @@ def test_layout_validate_grid_bounds() -> None:
         }
 
     assert is_dashboard_layout(
-        layout_with_grid({"col": 0, "row": 0, "colSpan": 12, "rowSpan": 1}),
+        layout_with_grid({"col": 0, "row": 0, "colSpan": 20, "rowSpan": 1}),
     )
     assert is_dashboard_layout(
         layout_with_grid({"col": 6, "row": 0, "colSpan": 6, "rowSpan": 2}),
     )
     assert not is_dashboard_layout(
-        layout_with_grid({"col": 6, "row": 0, "colSpan": 7, "rowSpan": 1}),
+        layout_with_grid({"col": 14, "row": 0, "colSpan": 7, "rowSpan": 1}),
     )
     assert not is_dashboard_layout(
-        layout_with_grid({"col": 0, "row": 0, "colSpan": 12}),
+        layout_with_grid({"col": 0, "row": 0, "colSpan": 20}),
     )
     assert not is_dashboard_layout(
         layout_with_grid({"col": 0, "row": -1, "colSpan": 1, "rowSpan": 1}),
@@ -523,7 +523,7 @@ def test_layout_validate_grid_bounds() -> None:
 
 
 def test_layout_validate_v2_group_child_grid_modes() -> None:
-    """Cover innerWrap True (12-cell) vs False (horizontal strip) child grid rules."""
+    """innerWrap True (root cell) vs False (horizontal strip) child grid rules."""
     from kea_fabric.api.layout_validate import is_dashboard_layout
 
     child = {
@@ -546,7 +546,7 @@ def test_layout_validate_v2_group_child_grid_modes() -> None:
         "children": [
             {
                 **child,
-                "grid": {"col": 11, "row": 0, "colSpan": 2, "rowSpan": 1},
+                "grid": {"col": 19, "row": 0, "colSpan": 2, "rowSpan": 1},
             },
         ],
     }
@@ -554,7 +554,7 @@ def test_layout_validate_v2_group_child_grid_modes() -> None:
 
     strip_child = {
         **child,
-        "grid": {"col": 0, "row": 0, "colSpan": 12, "rowSpan": 1},
+        "grid": {"col": 0, "row": 0, "colSpan": 20, "rowSpan": 1},
     }
     group_strip = {
         "kind": "group",
@@ -569,7 +569,7 @@ def test_layout_validate_v2_group_child_grid_modes() -> None:
         "children": [
             {
                 **child,
-                "grid": {"col": 9999, "row": 0, "colSpan": 12, "rowSpan": 1},
+                "grid": {"col": 9999, "row": 0, "colSpan": 20, "rowSpan": 1},
             },
         ],
     }
@@ -729,7 +729,7 @@ def test_layout_validate_v2_group_shape() -> None:
                         "kind": "group",
                         "id": "g",
                         "showBorder": True,
-                        "grid": {"col": 0, "row": 0, "colSpan": 13, "rowSpan": 1},
+                        "grid": {"col": 0, "row": 0, "colSpan": 21, "rowSpan": 1},
                         "children": [],
                     },
                 ],

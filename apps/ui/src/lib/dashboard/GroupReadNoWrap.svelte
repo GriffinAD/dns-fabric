@@ -27,7 +27,7 @@
 
   let innerW = $state(0);
 
-  /** 12-metric colSpan `T` → width `T/G` of the group; row may exceed one “12-pack” and scroll. */
+  /** Root-metric colSpan `T` → width `T/G` of the group; row may exceed one root-width “pack” and scroll. */
   function widthPx(t: DashboardTile): string {
     const T = effectiveColSpan(t);
     const px = (Math.max(0, innerW) * T) / gCols;

@@ -3,10 +3,10 @@ import type { Page } from "@playwright/test";
 import type { DashboardLayout } from "../../../src/lib/dashboard/types";
 
 /**
- * Non-overlapping 12-col layout used by dashboard grid e2e. Matches how we expect the first row
- * to pack (4+2+2+2) and a full-width DHCP pools row, so localStorage is never ambiguous vs dev.
+ * Non-overlapping 20-col layout used by dashboard grid e2e. Matches how we expect the first row
+ * to pack (8+4+4+4) and a full-width DHCP pools row, so localStorage is never ambiguous vs dev.
  */
-export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
+export const E2E_EDITOR_GRID_LAYOUT: DashboardLayout = {
   version: 1,
   tiles: [
     {
@@ -15,7 +15,7 @@ export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
       hostControl: "single-panel",
       displayMode: "full",
       region: "status-zone",
-      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+      grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
       rowPanel: "status",
       options: { cpu_total: false, display_style: "gauge" },
     },
@@ -25,7 +25,7 @@ export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
       hostControl: "single-panel",
       displayMode: "full",
       region: "status-zone",
-      grid: { col: 4, row: 0, colSpan: 2, rowSpan: 1 },
+      grid: { col: 8, row: 0, colSpan: 4, rowSpan: 1 },
       rowPanel: "status",
       options: { display_style: "gauge" },
     },
@@ -35,7 +35,7 @@ export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
       hostControl: "single-panel",
       displayMode: "compact",
       region: "status-zone",
-      grid: { col: 6, row: 0, colSpan: 2, rowSpan: 1 },
+      grid: { col: 12, row: 0, colSpan: 4, rowSpan: 1 },
       rowPanel: "status",
       options: { network_by_adapter: true, display_style: "gauge" },
     },
@@ -45,7 +45,7 @@ export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
       hostControl: "single-panel",
       displayMode: "compact",
       region: "status-zone",
-      grid: { col: 8, row: 0, colSpan: 2, rowSpan: 1 },
+      grid: { col: 16, row: 0, colSpan: 4, rowSpan: 1 },
       rowPanel: "status",
       options: { disk_by_volume: true, display_style: "gauge" },
     },
@@ -55,7 +55,7 @@ export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
       hostControl: "single-panel",
       displayMode: "compact",
       region: "primary-grid",
-      grid: { col: 0, row: 1, colSpan: 12, rowSpan: 1 },
+      grid: { col: 0, row: 1, colSpan: 20, rowSpan: 1 },
     },
     {
       id: "tile-discovery",
@@ -63,7 +63,7 @@ export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
       hostControl: "single-panel",
       displayMode: "full",
       region: "primary-grid",
-      grid: { col: 0, row: 2, colSpan: 6, rowSpan: 2 },
+      grid: { col: 0, row: 2, colSpan: 10, rowSpan: 2 },
     },
     {
       id: "tile-clients",
@@ -71,7 +71,7 @@ export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
       hostControl: "single-panel",
       displayMode: "full",
       region: "primary-grid",
-      grid: { col: 0, row: 4, colSpan: 12, rowSpan: 2 },
+      grid: { col: 0, row: 4, colSpan: 20, rowSpan: 2 },
     },
     {
       id: "tile-reservations",
@@ -79,23 +79,23 @@ export const E2E_EDITOR_12COL_LAYOUT: DashboardLayout = {
       hostControl: "single-panel",
       displayMode: "full",
       region: "primary-grid",
-      grid: { col: 0, row: 6, colSpan: 12, rowSpan: 1 },
+      grid: { col: 0, row: 6, colSpan: 20, rowSpan: 1 },
     },
   ],
 };
 
-/** Same grid as `E2E_EDITOR_12COL_LAYOUT` plus a tile that throws when `VITE_E2E_THROWING=1` (plugin isolation e2e). */
+/** Same grid as `E2E_EDITOR_GRID_LAYOUT` plus a tile that throws when `VITE_E2E_THROWING=1` (plugin isolation e2e). */
 export const E2E_EDITOR_LAYOUT_WITH_THROWING: DashboardLayout = {
-  ...E2E_EDITOR_12COL_LAYOUT,
+  ...E2E_EDITOR_GRID_LAYOUT,
   tiles: [
-    ...E2E_EDITOR_12COL_LAYOUT.tiles,
+    ...E2E_EDITOR_GRID_LAYOUT.tiles,
     {
       id: "tile-e2e-throw",
       pluginId: "e2e.throwing",
       hostControl: "single-panel",
       displayMode: "full",
       region: "primary-grid",
-      grid: { col: 0, row: 7, colSpan: 12, rowSpan: 1 },
+      grid: { col: 0, row: 7, colSpan: 20, rowSpan: 1 },
     },
   ],
 };
@@ -103,7 +103,7 @@ export const E2E_EDITOR_LAYOUT_WITH_THROWING: DashboardLayout = {
 /** Call in `test.beforeEach` so `page.goto` runs after the script (deterministic layout, no dev localStorage). */
 export async function seedEditorLayoutInLocalStorageBeforeNavigation(page: Page): Promise<void> {
   const key = "kea-fabric-dashboard-layout";
-  const value = JSON.stringify(E2E_EDITOR_12COL_LAYOUT);
+  const value = JSON.stringify(E2E_EDITOR_GRID_LAYOUT);
   await page.addInitScript(
     (args: { key: string; value: string }) => {
       localStorage.setItem(args.key, args.value);

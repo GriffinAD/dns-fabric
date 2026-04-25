@@ -6,12 +6,12 @@
     "gridPlacement": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Root and auto-wrap group tiles: 0–11 col, col+colSpan ≤ 12. Group with Auto wrap off may use a wider col strip (max ~10000); API and UI validate per context.",
+      "description": "Root and auto-wrap group tiles: 0–19 col, col+colSpan ≤ 20. Group with Auto wrap off may use a wider col strip (max ~10000); API and UI validate per context.",
       "required": ["col", "row", "colSpan", "rowSpan"],
       "properties": {
         "col": { "type": "integer", "minimum": 0, "maximum": 10000 },
         "row": { "type": "integer", "minimum": 0 },
-        "colSpan": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "colSpan": { "type": "integer", "minimum": 1, "maximum": 20 },
         "rowSpan": {
           "type": "integer",
           "minimum": 1,
@@ -30,7 +30,7 @@
         "disk_by_volume": { "type": "boolean" },
         "display_style": { "type": "string", "enum": ["gauge", "percent_only"] },
         "gauge_gradient_mode": { "type": "string", "enum": ["smooth", "banded"] },
-        "perf_max_cols": { "type": "integer", "minimum": 1, "maximum": 12 }
+        "perf_max_cols": { "type": "integer", "minimum": 1, "maximum": 20 }
       }
     },
     "dashboardTile": {
@@ -65,7 +65,7 @@
     "dashboardGroup": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Container on the root 12-column grid; inner tiles use the same column rules inside the group.",
+      "description": "Container on the root 20-column grid; inner tiles use the same column rules inside the group.",
       "required": ["kind", "id", "children"],
       "properties": {
         "kind": { "const": "group" },

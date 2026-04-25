@@ -4,7 +4,7 @@
  */
 import { z } from "zod";
 
-import { isCompleteGridPlacement, isCompleteGroupChildGrid } from "./gridPlacement";
+import { GRID_COLUMNS, isCompleteGridPlacement, isCompleteGroupChildGrid } from "./gridPlacement";
 import { tileOptionsSchemaForPlugin } from "./tileOptionsZod";
 import type {
   DashboardGroup,
@@ -22,7 +22,7 @@ export const dashboardGridPlacementSchema = z
   .object({
     col: z.number().int().min(0).max(10000),
     row: z.number().int().min(0),
-    colSpan: z.number().int().min(1).max(12),
+    colSpan: z.number().int().min(1).max(GRID_COLUMNS),
     rowSpan: z.number().int().min(1).max(12),
   })
   .strict();

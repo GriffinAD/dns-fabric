@@ -71,4 +71,22 @@ describe("BasePagination", () => {
     });
     expect(screen.queryByRole("spinbutton")).toBeNull();
   });
+
+  it("supports compact and expanded density widths", () => {
+    const { container, rerender } = render(BasePagination, {
+      props: { page: 2, totalPages: 10, density: "compact", onChange: vi.fn() },
+    });
+    expect(container.querySelector(".w-\\[12rem\\]")).toBeTruthy();
+    rerender({ page: 2, totalPages: 10, density: "expanded", onChange: vi.fn() });
+    expect(container.querySelector(".w-\\[20rem\\]")).toBeTruthy();
+  });
+
+  it("does not call onChange when clicking the current page", async () => {
+    const onChange = vi.fn();
+    render(BasePagination, {
+      props: { page: 4, totalPages: 10, onChange },
+    });
+    await fireEvent.click(screen.getByRole("button", { name: "Go to page 4" }));
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

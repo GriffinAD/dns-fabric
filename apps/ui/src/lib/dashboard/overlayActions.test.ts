@@ -90,7 +90,7 @@ describe("createOverlayActions", () => {
     };
     let layout: DashboardLayoutV2 = {
       version: 2,
-      items: [{ kind: "group", id: "g1", showBorder: true, children: [tile], grid: { col: 0, row: 0, colSpan: 12, rowSpan: 2 } }],
+      items: [{ kind: "group", id: "g1", showBorder: true, children: [tile], grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 } }],
     };
     let applied = 0;
     const o = createOverlayActions({
@@ -148,7 +148,7 @@ describe("createOverlayActions", () => {
       id: "g",
       showBorder: true,
       children: [],
-      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      grid: { col: 0, row: 0, colSpan: 20, rowSpan: 1 },
     };
     let layout: DashboardLayoutV2 = { version: 2, items: [g0] };
     let group: DashboardGroup | null = g0;
@@ -225,7 +225,7 @@ describe("createOverlayActions", () => {
               grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
             },
           ],
-          grid: { col: 0, row: 0, colSpan: 12, rowSpan: 2 },
+          grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 },
         },
       ],
     };
@@ -306,7 +306,7 @@ describe("createOverlayActions", () => {
     let layout: DashboardLayoutV2 = {
       version: 2,
       items: [
-        { kind: "group", id: "g", showBorder: true, children: [tile], grid: { col: 0, row: 0, colSpan: 12, rowSpan: 2 } },
+        { kind: "group", id: "g", showBorder: true, children: [tile], grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 } },
       ],
     };
     let saved: DashboardLayoutV2 | null = null;

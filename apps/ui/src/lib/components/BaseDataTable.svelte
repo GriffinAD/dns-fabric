@@ -748,7 +748,7 @@
                 type="text"
                 pattern="[0-9]*"
                 inputmode="numeric"
-                class="h-8 w-16 rounded-md border !border-gray-400 !bg-gray-200 px-2 text-center text-xs font-medium text-gray-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-500,#22c55e)] dark:!border-gray-600 dark:!bg-gray-700 dark:text-white"
+                class="h-8 w-16 rounded-md border border-default-medium bg-neutral-secondary-medium px-2 text-center text-xs font-medium text-heading shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-500,#22c55e)]"
                 bind:value={gotoPageValue}
                 aria-label={`Go to page, between 1 and ${pageData.totalPages}`}
                 onkeydown={(event) => {
@@ -762,7 +762,7 @@
             <label class="ml-auto inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
               <span class="font-medium tracking-[0.01em]">Page size</span>
               <select
-                class="h-8 rounded-md border border-gray-300 bg-white px-2 text-xs font-medium text-gray-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-500,#22c55e)] dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                class="h-8 rounded-md border border-default-medium bg-neutral-secondary-medium px-2 text-xs font-medium text-heading shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-500,#22c55e)]"
                 bind:value={pageSizeSelectValue}
                 aria-label="Rows per page"
                 onchange={(event) => {
@@ -775,7 +775,8 @@
                 }}
               >
                 {#each pageSizeOptions as option (option)}
-                  <option value={String(option)}>{option}</option>
+                  {@const optionText = /* v8 ignore next */ String(option)}
+                  <option value={optionText}>{optionText}</option>
                 {/each}
               </select>
             </label>

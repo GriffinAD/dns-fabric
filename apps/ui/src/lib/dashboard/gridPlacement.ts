@@ -25,8 +25,8 @@ export const GRID_ROW_SPAN_MAX = 12;
 
 /**
  * For group children when **Auto wrap is off** (`innerWrap` not true), horizontal
- * `col`/`colSpan` use the same 1/12 “dashboard width” units, but a row can extend
- * **past 12** along X so many tiles can sit on one scroller row (no `col+colSpan ≤ 12`).
+ * `col`/`colSpan` use the same 1/N “dashboard width” units (N = `GRID_COLUMNS`), but a row can extend
+ * **past N** along X so many tiles can sit on one scroller row (no `col+colSpan ≤ N`).
  */
 export const GROUP_CHILD_INNER_STRIP_MAX_EXTENT = 10_000;
 
@@ -95,13 +95,21 @@ export function isCompleteGridPlacement(g: GridPlacement | null | undefined): bo
   ) {
     return false;
   }
-  if (!(col >= 0 && col <= 11 && colSpan >= 1 && colSpan <= 12 && col + colSpan <= 12)) return false;
+  if (
+    !(col >= 0 &&
+      col <= GRID_COLUMNS - 1 &&
+      colSpan >= 1 &&
+      colSpan <= GRID_COLUMNS &&
+      col + colSpan <= GRID_COLUMNS)
+  ) {
+    return false;
+  }
   if (row < 0 || rowSpan < 1 || rowSpan > GRID_ROW_SPAN_MAX) return false;
   return true;
 }
 
 /**
- * `autoWrap === true` → same 0–11 / col+colSpan ≤ 12 as the root grid.
+ * `autoWrap === true` → same 0…(GRID_COLUMNS−1) / col+colSpan ≤ GRID_COLUMNS as the root grid.
  * `autoWrap === false` → “horizontal strip” (many tiles on one scroller row); `col` may exceed 11.
  */
 export function isCompleteGroupChildGrid(
@@ -362,8 +370,8 @@ export function normalizeDashboardTiles(tiles: DashboardTile[]): DashboardTile[]
  * stay on each tile; if that creates overlap, fall back to compact packing.
  */
 /**
- * @param groupAutoWrap - `true` = group with Auto wrap. `false` = no wrap (wider than 12-col
- *   strip allowed). Omitted = legacy 12-only behavior (e.g. unit tests without a group).
+ * @param groupAutoWrap - `true` = group with Auto wrap. `false` = no wrap (wider than root-col
+ *   strip allowed). Omitted = legacy root-width-only behavior (e.g. unit tests without a group).
  */
 export function reorderTilesPreservingSlotOrigins(
   prevTiles: DashboardTile[],
@@ -441,7 +449,7 @@ export function groupOuterColSpan(g: DashboardGroup): number {
   if (cg != null && Number.isInteger(cg.colSpan) && cg.colSpan >= 1 && cg.colSpan <= GRID_COLUMNS) {
     return clampGridColSpan(cg.colSpan);
   }
-  return 12;
+  return GRID_COLUMNS;
 }
 
 /**
@@ -631,7 +639,7 @@ function normalizeGroupChildrenPreservingColOrigins(tiles: DashboardTile[]): Das
 }
 
 /**
- * Pack the root 12-col grid. Group children: do **not** defrag inner rows on save (editing
+ * Pack the root N-col grid (`GRID_COLUMNS`). Group children: do **not** defrag inner rows on save (editing
  * the container’s outer col/row span must not reslot or narrow inner tiles in place),
  * and do not run a blind `packTilesToGrid` (that would reset inner spans).
  */
@@ -800,10 +808,10 @@ export function gridAreaStyle(g: GridPlacement): string {
 
 /**
  * Placement inside a **group** whose inner grid has `innerColumns` physical tracks (G = group
- * width in root columns). The JSON 12-based contract is **one column unit = one main-dashboard
- * column** (same as the root 12-col grid), not 1/12 of the group only. Each physical `1fr`
- * track is therefore 1/12 of the full dashboard width, so a span of T uses `min(T, G)` tracks
- * and keeps the same pixel width as a root-level tile of width T, instead of `T*G/12` tracks
+ * width in root columns). The JSON grid contract is **one column unit = one main-dashboard
+ * column** (same as the root `GRID_COLUMNS`-wide grid), not 1/G of the group only. Each physical `1fr`
+ * track is therefore 1/`GRID_COLUMNS` of the full dashboard width, so a span of T uses `min(T, G)` tracks
+ * and keeps the same pixel width as a root-level tile of width T, instead of `T*G/GRID_COLUMNS` tracks
  * (which made widgets look “shrunk” in narrow groups).
  */
 export function groupGridAreaStyle(placement: GridPlacement, innerColumns: number): string {
@@ -832,12 +840,12 @@ export function gridColumnSpanStyle(tile: DashboardTile): string {
 }
 
 /**
- * How many of the G physical group tracks a tile uses for its 12 contract width. One track =
- * one main-dashboard column, so this is `min(T, G)` (width T/12 of the viewport, capped by the
- * container), not `round(T*G/12)`.
+ * How many of the G physical group tracks a tile uses for its root contract width. One track =
+ * one main-dashboard column, so this is `min(T, G)` (width T/`GRID_COLUMNS` of the viewport, capped by the
+ * container), not `round(T*G/GRID_COLUMNS)`.
  */
-export function groupInnerWidthInPhysicalTracks(colSpan12: number, innerColumns: number): number {
-  const T = clampGridColSpan(colSpan12);
+export function groupInnerWidthInPhysicalTracks(contractColSpan: number, innerColumns: number): number {
+  const T = clampGridColSpan(contractColSpan);
   const m = Math.max(
     1,
     Math.min(GROUP_CHILD_INNER_STRIP_MAX_EXTENT, Math.floor(Number(innerColumns)) || 1),

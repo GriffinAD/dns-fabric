@@ -795,6 +795,79 @@ describe("BaseDataTable", () => {
     expect(screen.getByRole("button", { name: "Go to page 3" })).toBeTruthy();
   });
 
+  it("keeps current page when page-jump input is empty", async () => {
+    render(BaseDataTable, {
+      props: {
+        title: "Pager jump empty",
+        items: manyItems(41),
+        err: null,
+        emptyText: "e",
+        compact: false,
+        columns: cols(),
+        rowKey: (r) => (r as { id: string }).id,
+        settings: mergeBaseDataTableSettings(defaultBaseDataTableSettings, {
+          allowPaging: true,
+          pageSize: 10,
+          allowFilter: false,
+          allowModal: false,
+          allowExportCsv: false,
+          allowExportJson: false,
+        }),
+      },
+    });
+    const jump = screen.getByRole("textbox", { name: "Go to page, between 1 and 5" }) as HTMLInputElement;
+    fireEvent.keyDown(jump, { key: "Enter" });
+    await tick();
+    expect(screen.getByRole("button", { name: "Go to page 1" }).getAttribute("aria-current")).toBe("page");
+  });
+
+  it("falls back to page size 10 when footer value is non-numeric", async () => {
+    render(BaseDataTable, {
+      props: {
+        title: "Pager size invalid",
+        items: manyItems(60),
+        err: null,
+        emptyText: "e",
+        compact: false,
+        columns: cols(),
+        rowKey: (r) => (r as { id: string }).id,
+        settings: mergeBaseDataTableSettings(defaultBaseDataTableSettings, {
+          allowPaging: true,
+          pageSize: 10,
+          allowFilter: false,
+          allowModal: false,
+          allowExportCsv: false,
+          allowExportJson: false,
+        }),
+      },
+    });
+    const pageSizeSelect = screen.getByRole("combobox", { name: "Rows per page" }) as HTMLSelectElement;
+    pageSizeSelect.value = "foo";
+    fireEvent.change(pageSizeSelect);
+    await tick();
+    expect(pageSizeSelect.value).toBe("10");
+  });
+
+  it("hides columns marked hideWhenCompact in compact mode", () => {
+    const compactColumns: BaseDataTableColumn[] = [
+      { id: "name", header: "Name", accessor: (r) => (r as { name: string }).name },
+      { id: "role", header: "Role", accessor: (r) => (r as { role: string }).role, hideWhenCompact: true },
+    ];
+    render(BaseDataTable, {
+      props: {
+        title: "Compact hidden columns",
+        items: [{ id: "1", name: "Ada", role: "dev" }],
+        err: null,
+        emptyText: "e",
+        compact: true,
+        columns: compactColumns,
+        rowKey: (r) => (r as { id: string }).id,
+      },
+    });
+    expect(screen.getByRole("columnheader", { name: "Name" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Role" })).toBeNull();
+  });
+
   it("toggles between paged and all rows in inline mode", async () => {
     render(BaseDataTable, {
       props: {

@@ -43,6 +43,8 @@ export default defineConfig({
         "src/lib/components/BaseDataTableModal.svelte",
         /* v8 reports an extra synthetic branch on the root <select> tag after Svelte compile. */
         "src/lib/components/InlineSelectEditor.svelte",
+        /* v8 reports an extra synthetic branch on the page-size <option> template expression. */
+        "src/lib/components/BaseDataTable.svelte",
         "src/lib/**/*.harness.svelte",
         "src/lib/**/*Harness.svelte",
         "src/lib/**/*.test-support.svelte",

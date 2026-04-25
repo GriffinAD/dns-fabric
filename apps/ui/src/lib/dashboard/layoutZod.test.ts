@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseDashboardLayoutZod } from "./layoutZod";
 
 describe("parseDashboardLayoutZod", () => {
-  it("rejects group child grid that breaks 12-col rule when innerWrap is on", () => {
+  it("rejects group child grid that breaks root wrap rule when innerWrap is on", () => {
     expect(
       parseDashboardLayoutZod({
         version: 2,
@@ -18,7 +18,7 @@ describe("parseDashboardLayoutZod", () => {
                 pluginId: "perf.cpu",
                 hostControl: "single-panel",
                 displayMode: "compact",
-                grid: { col: 14, row: 0, colSpan: 2, rowSpan: 1 },
+                grid: { col: 19, row: 0, colSpan: 2, rowSpan: 1 },
               },
             ],
           },
@@ -35,7 +35,7 @@ describe("parseDashboardLayoutZod", () => {
           {
             kind: "group",
             id: "g",
-            grid: { col: 6, row: 0, colSpan: 7, rowSpan: 1 },
+            grid: { col: 14, row: 0, colSpan: 7, rowSpan: 1 },
             children: [],
           },
         ],

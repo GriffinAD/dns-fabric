@@ -39,7 +39,7 @@
     <input
       type="number"
       min="1"
-      max="12"
+      max={GRID_COLUMNS}
       class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
       value={draft.grid!.colSpan}
       oninput={(e) => {
@@ -57,7 +57,7 @@
     />
     {#if selectedParentId !== PARENT_ID_DASHBOARD && containerWidthColumns != null}
       <span class="text-[11px] font-normal text-gray-500 dark:text-gray-500">
-        Same 1–12 column units as the main dashboard. Each unit is the same width as on the root grid. In a
+        Same 1–{GRID_COLUMNS} column units as the main dashboard. Each unit is the same width as on the root grid. In a
         {containerWidthColumns}-wide row, a width of {draft.grid!.colSpan} uses
         {groupInnerWidthInPhysicalTracks(draft.grid!.colSpan, containerWidthColumns)} of
         {containerWidthColumns} physical tracks (capped to the container).
@@ -85,7 +85,7 @@
     <span
       >{gridMode === "strip" && selectedParentId !== PARENT_ID_DASHBOARD
         ? "Start column (0+)"
-        : "Column (0–11)"}</span
+        : `Column (0–${GRID_COLUMNS - 1})`}</span
     >
     <input
       type="number"
@@ -108,7 +108,7 @@
     />
     {#if gridMode === "strip" && selectedParentId !== PARENT_ID_DASHBOARD}
       <span class="text-[11px] font-normal text-gray-500 dark:text-gray-500">
-        Auto wrap is off: one row can span more than 12 width-units, so the start column may be greater than 11.
+        Auto wrap is off: the inner row can extend past {GRID_COLUMNS} logical columns, so the start column can exceed {GRID_COLUMNS - 1}.
       </span>
     {/if}
   </label>

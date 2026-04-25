@@ -23,7 +23,7 @@
           colSpan: clampGridColSpan(gr.colSpan),
           rowSpan: clampGridRowSpan(gr.rowSpan),
         }
-      : { col: 0, row: 0, colSpan: 12, rowSpan: 1 };
+      : { col: 0, row: 0, colSpan: GRID_COLUMNS, rowSpan: 1 };
     return {
       ...g,
       showBorder: g.showBorder !== false,
@@ -117,7 +117,7 @@
           </p>
 
           <p class="text-xs text-gray-500 dark:text-gray-400">
-            Placement on the main dashboard grid (12 columns). Adjust column/row origin and span.
+            Placement on the main dashboard grid ({GRID_COLUMNS} columns). Adjust column/row origin and span.
           </p>
 
           <div class="grid grid-cols-2 gap-3">
@@ -126,7 +126,7 @@
               <input
                 type="number"
                 min="1"
-                max="12"
+                max={GRID_COLUMNS}
                 class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
                 value={draft.grid.colSpan}
                 data-testid="group-settings-col-span"
@@ -160,7 +160,7 @@
               />
             </label>
             <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-              <span>Column (0–11)</span>
+              <span>Column (0–{GRID_COLUMNS - 1})</span>
               <input
                 type="number"
                 min="0"

@@ -370,4 +370,13 @@ describe("createLayoutStore", () => {
     expect(get(ls.persistError)).toBe("server down");
     expect(saveLocal).not.toHaveBeenCalled();
   });
+
+  it("saveLayoutToFile stringifies non-Error POST rejections", async () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "postDashboardLayoutSaveFile").mockRejectedValue("offline");
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout(minimalLayout());
+    await ls.saveLayoutToFile();
+    expect(get(ls.persistError)).toBe("offline");
+  });
 });

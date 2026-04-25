@@ -3,7 +3,7 @@
  * `gridHints`, and perf tiles via `builtinMeta` re-exports.
  */
 
-export const GRID_COLUMNS = 12;
+export const GRID_COLUMNS = 20;
 
 export function clampGridColSpan(n: number): number {
   const v = Math.floor(Number(n));
@@ -12,7 +12,7 @@ export function clampGridColSpan(n: number): number {
 }
 
 const BUILTIN_DEFAULT_COL_SPAN: Record<string, number> = {
-  "perf.summary": 12,
+  "perf.summary": 20,
   "perf.cpu": 1,
   "perf.ram": 1,
   "perf.network": 1,
@@ -39,5 +39,5 @@ export function perfGridHintOnlyExpandColSpan(pluginId: string): boolean {
 
 /** Default root `grid.colSpan` when a tile has no saved width. */
 export function tileColSpanForPlugin(tile: { pluginId: string }): number {
-  return builtinDefaultColSpan(tile.pluginId) ?? 6;
+  return builtinDefaultColSpan(tile.pluginId) ?? 10;
 }

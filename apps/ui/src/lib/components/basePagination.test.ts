@@ -20,6 +20,11 @@ describe("basePagination helpers", () => {
     ]);
   });
 
+  it("returns no tokens when totalPages <= 1", () => {
+    expect(buildPaginationTokens(1, 1, 7)).toEqual([]);
+    expect(buildPaginationTokens(0, 1, 7)).toEqual([]);
+  });
+
   it("keeps first/last visible and uses ellipsis in compact mode", () => {
     const tokens = buildPaginationTokens(42, 8, 5);
     expect(tokens).toEqual([

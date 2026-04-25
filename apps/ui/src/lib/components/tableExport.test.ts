@@ -80,6 +80,13 @@ describe("tableExport", () => {
     expect(csv).not.toContain("display");
   });
 
+  it("uses empty string when exported csv value is undefined", () => {
+    const cols: BaseDataTableColumn[] = [{ header: "A", accessor: () => undefined }];
+    const csv = buildCsvExport([{}], cols, { compact: false });
+    expect(csv).toContain("A");
+    expect(csv).toContain("\r\n");
+  });
+
   it("omits hideWhenCompact columns in compact export", () => {
     const cols: BaseDataTableColumn[] = [
       { header: "A", accessor: (r) => (r as { a: string }).a },

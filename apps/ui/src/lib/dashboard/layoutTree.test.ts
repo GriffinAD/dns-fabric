@@ -46,7 +46,7 @@ describe("layoutTree", () => {
       id: "g1",
       showBorder: true,
       children: [t1, t2],
-      grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+      grid: { col: 0, row: 0, colSpan: 20, rowSpan: 1 },
     };
     const v2: DashboardLayoutV2 = { version: 2, items: [g] };
     const out = ensureLayoutV2(v2);

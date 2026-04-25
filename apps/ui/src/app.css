@@ -90,7 +90,7 @@ html[data-color-preset="gray"] {
 }
 
 /*
- * Grid: min-width 0 on *tracks* (fr) is handled by `minmax(0,1fr)` in Tailwind’s grid-cols-12.
+ * Grid: min-width 0 on *tracks* (fr) is handled by `minmax(0,1fr)` in the dashboard `repeat(20, …)` grid.
  * Do not set min-width:0 on the tile wrapper itself — as a flex child of the cell it can
  * shrink the item shorter than the grid area (pools/perf tiles “don’t fill” their spans).
  * Keep min-width:0 on inner flex rows (DashboardHost) and on non-tile dnd nodes only.
@@ -137,14 +137,14 @@ html[data-color-preset="gray"] {
 }
 
 /*
- * Edit layout: column guides on the same box as `grid-cols-12` (gap + padding driven
+ * Edit layout: column guides on the same box as the 20-column `repeat(20, …)` grid (gap + padding driven
  * by `--dashboard-gap`; see `[data-testid="editor-drop-zone"]` and `DashboardControls`).
  * Draw at each *track start* (and the far right), not at track *ends*:
  * left edge of col k (0-based) = k * (d-track + d-gap) — matches
  * `grid-column: (k+1) / …`. Old guides used n·d + (n−1)·g (end of col n), which
  * sat one gap to the *left* of the next track start and made only column 0 look aligned.
  *
- * Use `100cqi` (query container) so `--d-track` matches the same width the 12 `fr` columns
+ * Use `100cqi` (query container) so `--d-track` matches the same width the 20 `fr` columns
  * split, not a possibly different `100%` resolution used only for this background in some cases.
  * Parent [data-testid="editor-grid-chrome"] sets `container-type: inline-size`.
  */
@@ -180,11 +180,11 @@ html[data-color-preset="gray"] {
 [data-testid="editor-drop-zone"] {
   /* Column-guide ruler math follows the same gap as the grid tracks so guides land at
    * track boundaries regardless of the user's chosen padding. Drop-zone itself now has
-   * `padding-inline: var(--d-gap)`, so the inline 12-track area is `100cqi - 2*--d-gap`
+   * `padding-inline: var(--d-gap)`, so the inline 20-track area is `100cqi - 2*--d-gap`
    * wide. Guides are painted into the content box only (origin/clip) so the ruler moves
    * with the tiles as padding changes. */
   --d-gap: var(--dashboard-gap, 0px);
-  --d-track: calc((100cqi - 2 * var(--d-gap) - 11 * var(--d-gap)) / 12);
+  --d-track: calc((100cqi - 2 * var(--d-gap) - 19 * var(--d-gap)) / 20);
   --d-cell: calc(var(--d-track) + var(--d-gap));
   --d-ruler: rgba(0, 0, 0, 0.12);
   /* Do not use scrollbar-gutter: stable here: it can reserve right inset so grid tracks
@@ -305,10 +305,82 @@ html[data-color-preset="gray"] {
     linear-gradient(
       to right,
       #0000 0,
-      #0000 calc(12 * var(--d-track) + 11 * var(--d-gap) - 0.5px),
-      var(--d-ruler) calc(12 * var(--d-track) + 11 * var(--d-gap) - 0.5px),
-      var(--d-ruler) calc(12 * var(--d-track) + 11 * var(--d-gap) + 0.5px),
-      #0000 calc(12 * var(--d-track) + 11 * var(--d-gap) + 0.5px),
+      #0000 calc(12 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(12 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(12 * var(--d-cell) + 0.5px),
+      #0000 calc(12 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(13 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(13 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(13 * var(--d-cell) + 0.5px),
+      #0000 calc(13 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(14 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(14 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(14 * var(--d-cell) + 0.5px),
+      #0000 calc(14 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(15 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(15 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(15 * var(--d-cell) + 0.5px),
+      #0000 calc(15 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(16 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(16 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(16 * var(--d-cell) + 0.5px),
+      #0000 calc(16 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(17 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(17 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(17 * var(--d-cell) + 0.5px),
+      #0000 calc(17 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(18 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(18 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(18 * var(--d-cell) + 0.5px),
+      #0000 calc(18 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(19 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(19 * var(--d-cell) - 0.5px),
+      var(--d-ruler) calc(19 * var(--d-cell) + 0.5px),
+      #0000 calc(19 * var(--d-cell) + 0.5px),
+      #0000 100%
+    ),
+    linear-gradient(
+      to right,
+      #0000 0,
+      #0000 calc(20 * var(--d-track) + 19 * var(--d-gap) - 0.5px),
+      var(--d-ruler) calc(20 * var(--d-track) + 19 * var(--d-gap) - 0.5px),
+      var(--d-ruler) calc(20 * var(--d-track) + 19 * var(--d-gap) + 0.5px),
+      #0000 calc(20 * var(--d-track) + 19 * var(--d-gap) + 0.5px),
       #0000 100%
     );
 }

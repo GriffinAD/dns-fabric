@@ -3,7 +3,7 @@ import { GRID_COLUMNS } from "./gridPlacement";
 /**
  * Split `trackCount` virtual columns across `n` gauges in one row.
  * Returns integer column spans (sum = trackCount) so gauge cell edges line up with that sub-grid
- * (e.g. 8 when the parent container spans 8 root columns, not 12).
+ * (e.g. 8 when the parent container spans 8 root columns, not `GRID_COLUMNS`).
  * When `n > trackCount`, returns `null` (caller should use an equal-`fr` row instead).
  */
 export function columnSpansOn(trackCount: number, n: number): number[] | null {
@@ -15,7 +15,7 @@ export function columnSpansOn(trackCount: number, n: number): number[] | null {
   return Array.from({ length: n }, (_, i) => base + (i < rem ? 1 : 0));
 }
 
-/** @deprecated use columnSpansOn(12, n) for clarity; kept for call sites. */
+/** @deprecated use `columnSpansOn(GRID_COLUMNS, n)` for clarity; kept for call sites. */
 export function columnSpansOn12(n: number): number[] | null {
-  return columnSpansOn(12, n);
+  return columnSpansOn(GRID_COLUMNS, n);
 }

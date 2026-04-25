@@ -2,7 +2,7 @@ import type { DisplayMode, HostControl, TileOptions } from "../api/types";
 
 export type { TileOptions };
 
-/** 12-column grid placement (root grid or inner group grid, same 0–11 column contract). */
+/** Root grid placement (same 0…(GRID_COLUMNS−1) column contract; see `pluginGridPolicy.GRID_COLUMNS`). */
 export interface GridPlacement {
   col: number;
   row: number;
@@ -12,7 +12,7 @@ export interface GridPlacement {
 
 /**
  * A dashboard tile. May appear on the **root** grid or as a child of a `group` (inner grid;
- * `grid` is then relative to the group’s 12 columns / rows).
+ * `grid` is then relative to the group’s inner columns / rows).
  */
 export interface DashboardTile {
   id: string;
@@ -27,7 +27,7 @@ export interface DashboardTile {
 }
 
 /**
- * A container that sits on the root grid and holds tiles on an inner 12×n grid
+ * A container that sits on the root grid and holds tiles on an inner G×n grid
  * (same column semantics as the main dashboard); can span any root rows/columns.
  */
 export interface DashboardGroup {
@@ -39,10 +39,10 @@ export interface DashboardGroup {
    * When true, child tiles are laid out in array order, wrapping to a new row when a row
    * would exceed the container width (G root columns), with grid positions repacked on save.
    * When false or omitted, children keep saved col/colSpan; horizontal position can extend past
-   * a 12-column “pack” so one row can scroll (see `GROUP_CHILD_INNER_STRIP_MAX_EXTENT` in gridPlacement).
+   * a root-width “pack” so one row can scroll (see `GROUP_CHILD_INNER_STRIP_MAX_EXTENT` in gridPlacement).
    */
   innerWrap?: boolean;
-  /** Placement on the root 12-column grid. */
+  /** Placement on the root grid (`GRID_COLUMNS` wide). */
   grid?: GridPlacement;
   children: DashboardTile[];
 }

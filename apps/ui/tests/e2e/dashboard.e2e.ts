@@ -132,16 +132,16 @@ test("layout editor lists tiles in layout order (DnD targets)", async ({ page })
 test.skip("edit layout: grid tracks, --d-track ruler, tile shells, and Flowbite cards line up (no false pass)", async ({
   page,
 }) => {
-  /* Skipped: asserts 12-col placement on every `editor-tile`. The seeded layout groups the
+  /* Skipped: asserts 20-col placement on every `editor-tile`. The seeded layout groups the
    * status perf row in a container; inner tiles are laid out in a strip, not as direct children
-   * of the root 12-column grid. Revisit with a flat fixture or scope checks to root-level tiles. */
+   * of the root 20-column grid. Revisit with a flat fixture or scope checks to root-level tiles. */
   await page.goto("/");
   await page.getByRole("button", { name: "Edit layout" }).click();
   const zone = page.getByTestId("editor-drop-zone");
   const err = await zone.evaluate((dropZone) => {
     const z = dropZone.getBoundingClientRect();
     const zCs = getComputedStyle(dropZone);
-    // Drop-zone now has `padding-inline: var(--dashboard-gap)`; the 12 fr tracks occupy the
+    // Drop-zone now has `padding-inline: var(--dashboard-gap)`; the 20 fr tracks occupy the
     // *content box* (clientWidth − paddingLeft − paddingRight), so use that for track math.
     const padLeft = parseFloat(zCs.paddingLeft) || 0;
     const padRight = parseFloat(zCs.paddingRight) || 0;
@@ -153,14 +153,16 @@ test.skip("edit layout: grid tracks, --d-track ruler, tile shells, and Flowbite 
     // invalidated every track/width expectation below.
     const colGap = Number.isFinite(colGapRaw) ? colGapRaw : rem;
     const gap = colGap;
-    const trackFromFr = (contentW - 11 * gap) / 12;
+    const trackCount = 20;
+    const gapCount = trackCount - 1;
+    const trackFromFr = (contentW - gapCount * gap) / trackCount;
     const contentLeft = z.left + padLeft;
     // Used by the old ruler "clientWidth" sanity check below.
     const w = contentW;
     const errors: string[] = [];
     const thresholdGrid = 1;
     const thresholdCard = 1.5;
-    const thresholdRuler = 1.25; // CSS var used for background guides vs 12fr math
+    const thresholdRuler = 1.25; // CSS var used for background guides vs fr-track math
 
     function colPlacement(tile: HTMLElement): { col1: number; span: number } | null {
       const cs = getComputedStyle(tile);
@@ -201,26 +203,26 @@ test.skip("edit layout: grid tracks, --d-track ruler, tile shells, and Flowbite 
 
     if (Math.abs(trackVarPx - trackFromFr) > thresholdRuler) {
       errors.push(
-        `RULER vs 12fr: var(--d-track) used width is ${trackVarPx.toFixed(2)}px but (clientWidth−11*gap)/12 is ${trackFromFr.toFixed(2)}px — column guides and grid columns can look misaligned while tile math “passes”.`,
+        `RULER vs ${trackCount}fr: var(--d-track) used width is ${trackVarPx.toFixed(2)}px but (clientWidth−${gapCount}*gap)/${trackCount} is ${trackFromFr.toFixed(2)}px — column guides and grid columns can look misaligned while tile math “passes”.`,
       );
     }
 
-    // Closure: 12 equal tracks + 11 gaps = inner width
-    if (Math.abs(12 * trackFromFr + 11 * gap - w) > 1) {
+    // Closure: N equal tracks + (N−1) gaps = inner width
+    if (Math.abs(trackCount * trackFromFr + gapCount * gap - w) > 1) {
       errors.push(
-        `12-track math: 12*track+11*gap=${(12 * trackFromFr + 11 * gap).toFixed(2)} but clientWidth=${w} — formula/clientWidth mismatch.`,
+        `${trackCount}-track math: ${trackCount}*track+${gapCount}*gap=${(trackCount * trackFromFr + gapCount * gap).toFixed(2)} but clientWidth=${w} — formula/clientWidth mismatch.`,
       );
     }
 
-    // Span-12 tile must fill the same width the fr columns sum to; catches shrink without contradicting dL/dR.
+    // Span-20 tile must fill the same width the fr columns sum to; catches shrink without contradicting dL/dR.
     const pools = dropZone.querySelector<HTMLElement>("[data-testid=\"editor-tile\"][data-tile-id=\"tile-pools\"]");
     if (pools) {
       const g = colPlacement(pools);
-      if (g?.span === 12) {
-        const impliedTrack = (pools.getBoundingClientRect().width - 11 * gap) / 12;
+      if (g?.span === 20) {
+        const impliedTrack = (pools.getBoundingClientRect().width - gapCount * gap) / trackCount;
         if (Math.abs(impliedTrack - trackFromFr) > thresholdRuler) {
           errors.push(
-            `pools (span 12) implies track ${impliedTrack.toFixed(2)}px vs fr ${trackFromFr.toFixed(2)}px — full-width row not matching grid columns.`,
+            `pools (span 20) implies track ${impliedTrack.toFixed(2)}px vs fr ${trackFromFr.toFixed(2)}px — full-width row not matching grid columns.`,
           );
         }
       }
@@ -267,7 +269,7 @@ test.skip("edit layout: grid tracks, --d-track ruler, tile shells, and Flowbite 
       const dR = Math.abs(r.right - expectRight);
       if (dL > thresholdGrid) {
         errors.push(
-          `${id}: left edge off by ${dL.toFixed(2)}px (expected from 12 fr tracks + gap)`,
+          `${id}: left edge off by ${dL.toFixed(2)}px (expected from ${trackCount} fr tracks + gap)`,
         );
       }
       if (dR > thresholdGrid) {
@@ -313,6 +315,6 @@ test.skip("edit layout: grid tracks, --d-track ruler, tile shells, and Flowbite 
   expect(err.nTiles).toBe(8);
   expect(
     Math.abs(err.trackVarPx - err.trackFromFr),
-    "var(--d-track) and 12fr track must match (ruler vs engine)",
+    "var(--d-track) and 20fr track must match (ruler vs engine)",
   ).toBeLessThanOrEqual(1.25);
 });

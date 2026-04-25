@@ -20,11 +20,11 @@ describe("DEFAULT_DASHBOARD_LAYOUT", () => {
     const ram = g && g.kind === "group" ? g.children.find((t) => t.pluginId === "perf.ram") : undefined;
     expect(ram?.rowPanel).toBeUndefined();
     expect(ram?.options?.display_style).toBe("gauge");
-    expect(ram?.grid?.colSpan).toBe(2);
+    expect(ram?.grid?.colSpan).toBe(4);
     const root = DEFAULT_DASHBOARD_LAYOUT.items.filter((i): i is RootTileItem => i.kind === "tile");
     const clients = root.find((t) => t.pluginId === "dhcp.clients");
-    expect(clients?.grid?.colSpan).toBe(3);
+    expect(clients?.grid?.colSpan).toBe(5);
     const reservations = root.find((t) => t.pluginId === "dhcp.reservations");
-    expect(reservations?.grid?.colSpan).toBe(12);
+    expect(reservations?.grid?.colSpan).toBe(20);
   });
 });

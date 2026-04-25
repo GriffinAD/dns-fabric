@@ -112,7 +112,7 @@ describe("parseDashboardLayout", () => {
     ).toBeNull();
   });
 
-  it("rejects group child grid past col 11 when Auto wrap is on", () => {
+  it("rejects group child grid past root wrap boundary when Auto wrap is on", () => {
     const bad = parseDashboardLayout({
       version: 2,
       items: [
@@ -126,7 +126,7 @@ describe("parseDashboardLayout", () => {
               pluginId: "perf.cpu",
               hostControl: "single-panel",
               displayMode: "compact",
-              grid: { col: 14, row: 0, colSpan: 2, rowSpan: 1 },
+              grid: { col: 19, row: 0, colSpan: 2, rowSpan: 1 },
             },
           ],
         },
@@ -145,19 +145,19 @@ describe("parseDashboardLayout", () => {
     expect(
       parseDashboardLayout({
         version: 1,
-        tiles: [{ ...base, grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 } }],
+        tiles: [{ ...base, grid: { col: 0, row: 0, colSpan: 20, rowSpan: 1 } }],
       }),
     ).not.toBeNull();
     expect(
       parseDashboardLayout({
         version: 1,
-        tiles: [{ ...base, grid: { col: 6, row: 0, colSpan: 7, rowSpan: 1 } }],
+        tiles: [{ ...base, grid: { col: 14, row: 0, colSpan: 7, rowSpan: 1 } }],
       }),
     ).toBeNull();
     expect(
       parseDashboardLayout({
         version: 1,
-        tiles: [{ ...base, grid: { col: 0, row: 0, colSpan: 12 } }],
+        tiles: [{ ...base, grid: { col: 0, row: 0, colSpan: 20 } }],
       }),
     ).toBeNull();
     expect(
@@ -512,7 +512,7 @@ describe("localStorage persistence", () => {
           pluginId: "perf.summary",
           hostControl: "single-panel" as const,
           displayMode: "full" as const,
-          grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+          grid: { col: 0, row: 0, colSpan: 20, rowSpan: 1 },
         },
       ],
     };
@@ -534,7 +534,7 @@ describe("localStorage persistence", () => {
           pluginId: "perf.summary",
           hostControl: "single-panel" as const,
           displayMode: "full" as const,
-          grid: { col: 0, row: 0, colSpan: 12, rowSpan: 1 },
+          grid: { col: 0, row: 0, colSpan: 20, rowSpan: 1 },
         },
         {
           id: "tile-pools-only",
@@ -609,5 +609,12 @@ describe("dashboard layout file export", () => {
     removeSpy.mockRestore();
     createUrl.mockRestore();
     revoke.mockRestore();
+  });
+
+  it("downloadDashboardLayoutFile is a no-op when document is unavailable", () => {
+    const doc = globalThis.document;
+    vi.stubGlobal("document", undefined);
+    expect(() => downloadDashboardLayoutFile({ version: 2, items: [] })).not.toThrow();
+    vi.stubGlobal("document", doc);
   });
 });

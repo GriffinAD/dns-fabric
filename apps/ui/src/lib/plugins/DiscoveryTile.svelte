@@ -1,6 +1,7 @@
 <script lang="ts">
   import Button from "flowbite-svelte/Button.svelte";
   import Card from "flowbite-svelte/Card.svelte";
+import Spinner from "flowbite-svelte/Spinner.svelte";
   import Pause from "lucide-svelte/icons/pause";
   import Play from "lucide-svelte/icons/play";
   import Settings from "lucide-svelte/icons/settings";
@@ -191,6 +192,9 @@
             >
               {statusLabel}
             </span>
+            {#if scanState === "running" && !err}
+              <Spinner type="pulse" color="blue" />
+            {/if}
             <Button
               class="!h-9 !rounded-md ml-auto"
               color="alternative"

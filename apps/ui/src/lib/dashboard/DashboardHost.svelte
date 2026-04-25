@@ -334,7 +334,7 @@
       ondrop={onCanvasDrop}
     >
       <div
-        class="relative grid min-h-[120px] w-full auto-rows-[minmax(0,auto)] grid-cols-12 content-start place-items-stretch pb-[min(50vh,40rem)]"
+        class="relative grid min-h-[120px] w-full auto-rows-[minmax(0,auto)] grid-cols-[repeat(20,minmax(0,1fr))] content-start place-items-stretch pb-[min(50vh,40rem)]"
         data-testid="editor-drop-zone"
         role="group"
         aria-label="Dashboard tile grid"
@@ -587,7 +587,7 @@
     </div>
   {:else}
     <div
-      class="grid w-full auto-rows-[minmax(0,auto)] grid-cols-12 content-start place-items-stretch"
+      class="grid w-full auto-rows-[minmax(0,auto)] grid-cols-[repeat(20,minmax(0,1fr))] content-start place-items-stretch"
       data-dashboard-tile-grid
       aria-label="Dashboard tiles"
     >

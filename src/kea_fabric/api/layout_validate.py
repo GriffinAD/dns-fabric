@@ -7,6 +7,7 @@ from typing import Any
 _HOST = frozenset({"single-panel", "tab-control", "vertical-stack", "split-grid"})
 _DISPLAY = frozenset({"compact", "full"})
 _GROUP_CHILD_INNER_STRIP_MAX_EXTENT = 10_000
+_GRID_COLUMNS = 20
 
 
 def _valid_grid_cell(value: object) -> bool:
@@ -22,7 +23,11 @@ def _valid_grid_cell(value: object) -> bool:
         return False
     if not all(isinstance(x, int) for x in (col, row, cspan, rspan)):
         return False
-    if not (0 <= col <= 11 and 1 <= cspan <= 12 and col + cspan <= 12):
+    if not (
+        0 <= col <= _GRID_COLUMNS - 1
+        and 1 <= cspan <= _GRID_COLUMNS
+        and col + cspan <= _GRID_COLUMNS
+    ):
         return False
     if row < 0 or rspan < 1 or rspan > 12:
         return False
@@ -30,7 +35,7 @@ def _valid_grid_cell(value: object) -> bool:
 
 
 def _valid_group_child_grid(value: object, *, parent_auto_wrap: bool) -> bool:
-    """Group child: auto-wrap uses the root 12 cell; no-wrap allows a long strip."""
+    """Group child: auto-wrap uses root-width cell; no-wrap allows a long strip."""
     if not isinstance(value, dict):
         return False
     g = value
@@ -46,7 +51,7 @@ def _valid_group_child_grid(value: object, *, parent_auto_wrap: bool) -> bool:
     if parent_auto_wrap:
         return _valid_grid_cell(value)
     strip_ok = col + cspan <= _GROUP_CHILD_INNER_STRIP_MAX_EXTENT
-    if not (1 <= cspan <= 12 and col >= 0 and strip_ok):
+    if not (1 <= cspan <= _GRID_COLUMNS and col >= 0 and strip_ok):
         return False
     if row < 0 or rspan < 1 or rspan > 12:
         return False

@@ -92,11 +92,11 @@
     </label>
     <PerfGaugeGradientSelect bind:draft />
     <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-      <span>Max gauge columns (empty = 12)</span>
+      <span>Max gauge columns (empty = 20)</span>
       <input
         type="number"
         min="1"
-        max="12"
+        max="20"
         class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
         value={draft.options?.perf_max_cols != null ? String(draft.options.perf_max_cols) : ""}
         oninput={(e) => {
@@ -138,11 +138,11 @@
     </label>
     <PerfGaugeGradientSelect bind:draft />
     <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-      <span>Max gauge columns (empty = 12)</span>
+      <span>Max gauge columns (empty = 20)</span>
       <input
         type="number"
         min="1"
-        max="12"
+        max="20"
         class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
         value={draft.options?.perf_max_cols != null ? String(draft.options.perf_max_cols) : ""}
         oninput={(e) => {
@@ -180,11 +180,11 @@
     </label>
     <PerfGaugeGradientSelect bind:draft />
     <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-      <span>Max gauge columns (empty = 12)</span>
+      <span>Max gauge columns (empty = 20)</span>
       <input
         type="number"
         min="1"
-        max="12"
+        max="20"
         class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
         value={draft.options?.perf_max_cols != null ? String(draft.options.perf_max_cols) : ""}
         oninput={(e) => {
@@ -219,11 +219,11 @@
     </label>
     <PerfGaugeGradientSelect bind:draft />
     <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-      <span>Max gauge columns (empty = 12)</span>
+      <span>Max gauge columns (empty = 20)</span>
       <input
         type="number"
         min="1"
-        max="12"
+        max="20"
         class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
         value={draft.options?.perf_max_cols != null ? String(draft.options.perf_max_cols) : ""}
         oninput={(e) => {
