@@ -91,6 +91,7 @@
   let pageSize = $state(10);
   let pageSizeSelectValue = $state("10");
   let gotoPageValue = $state<string | number>("");
+  let collapsed = $state(false);
   let modalOpen = $state(false);
   let exportMenuOpen = $state(false);
   let exportDefault = $state<"json" | "csv">("json");
@@ -363,6 +364,12 @@
     doExportJson();
   }
 
+  function toggleCollapsed() {
+    collapsed = !collapsed;
+    if (collapsed) exportMenuOpen = false;
+    announce = collapsed ? `${title} collapsed` : `${title} expanded`;
+  }
+
   const theadClass = $derived(
     settings.fixedHeader
       ? "sticky top-0 z-[2] bg-gray-400/40 dark:bg-gray-800"
@@ -405,14 +412,41 @@
 >
   {#snippet children()}
     <div class="flex shrink-0 flex-col gap-2 border-b border-gray-100 p-4 dark:border-gray-700">
-      <div class="flex items-start justify-between gap-2">
-        <h3
-          id={titleDomId}
-          class="text-lg font-semibold text-gray-900 dark:text-white"
-        >
-          {title}
-        </h3>
-        {#if settings.allowExportCsv || settings.allowExportJson}
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <div
+        class="flex items-start justify-between gap-2 cursor-pointer"
+        role="button"
+        tabindex="0"
+        aria-label={collapsed ? "Expand table" : "Collapse table"}
+        aria-expanded={collapsed ? "false" : "true"}
+        data-testid="table-collapse-toggle"
+        onclick={toggleCollapsed}
+        onkeydown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggleCollapsed();
+          }
+        }}
+      >
+        <div class="inline-flex items-center gap-1.5 select-none">
+          <svg aria-hidden="true" viewBox="0 0 20 20" class="h-4 w-4 text-gray-500 dark:text-gray-400" fill="currentColor">
+            {#if collapsed}
+              <path d="M7.22 4.97a.75.75 0 0 1 1.06 0L13.31 10l-5.03 5.03a.75.75 0 0 1-1.06-1.06L11.19 10 7.22 6.03a.75.75 0 0 1 0-1.06Z" />
+            {:else}
+              <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.18l3.71-3.95a.75.75 0 1 1 1.08 1.04l-4.25 4.53a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z" />
+            {/if}
+          </svg>
+          <h3
+            id={titleDomId}
+            class="text-lg font-semibold text-gray-900 dark:text-white"
+          >
+            {title}
+          </h3>
+        </div>
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        {#if !collapsed}
+          <div class="flex items-center gap-2" onclick={(event) => event.stopPropagation()}>
+          {#if settings.allowExportCsv || settings.allowExportJson}
           <div class="relative inline-flex items-stretch">
             <Button
               type="button"
@@ -475,7 +509,7 @@
               </div>
             {/if}
           </div>
-        {:else if refreshInHeader}
+          {:else if refreshInHeader}
           <Button
             type="button"
             size="sm"
@@ -493,10 +527,17 @@
               />
             </svg>
           </Button>
+          {/if}
+          </div>
         {/if}
       </div>
       <div class="sr-only" aria-live="polite">{announce}</div>
-      {#if settings.allowFilter || settings.allowModal || inlineExpandedMode || (settings.allowRefresh && !refreshInHeader) || (settings.allowEdit && inlineExpandedMode)}
+      {#if !collapsed &&
+        (settings.allowFilter ||
+          settings.allowModal ||
+          inlineExpandedMode ||
+          (settings.allowRefresh && !refreshInHeader) ||
+          (settings.allowEdit && inlineExpandedMode))}
         <div
           role="toolbar"
           aria-label={`${title} table actions`}
@@ -601,7 +642,11 @@
       {/if}
     </div>
 
-    {#if loading && items.length === 0}
+    {#if collapsed}
+      <div class="px-4 pb-4 pt-2 text-sm text-gray-500 dark:text-gray-400" data-testid="table-collapsed-note">
+        Collapsed
+      </div>
+    {:else if loading && items.length === 0}
       <div class="flex flex-1 flex-col gap-2 p-4" aria-busy="true" data-testid="table-loading">
         {#each [1, 2, 3, 4, 5] as i (i)}
           <div class="h-4 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>

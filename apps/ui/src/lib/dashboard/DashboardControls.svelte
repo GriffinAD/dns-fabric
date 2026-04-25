@@ -30,13 +30,14 @@
   <div class="min-w-0 sm:w-32">
     <label
       for="dashboard-gap"
-      class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+      class="mb-1 block text-xs font-medium whitespace-nowrap text-gray-700 dark:text-gray-300"
     >
       Padding (px)
     </label>
     <Input
       id="dashboard-gap"
       type="number"
+      size="sm"
       min={DASHBOARD_GAP_MIN_PX}
       max={DASHBOARD_GAP_MAX_PX}
       step={1}

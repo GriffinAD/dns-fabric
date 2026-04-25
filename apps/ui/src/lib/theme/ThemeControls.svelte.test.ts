@@ -41,14 +41,16 @@ describe("ThemeControls", () => {
   it("hides accent select when showAccent is false", () => {
     render(ThemeControls, { props: { showAccent: false } });
     expect(screen.queryByLabelText("Accent")).toBeNull();
-    expect(screen.getByLabelText("Appearance")).toBeTruthy();
+    expect(screen.getByTestId("theme-appearance-toggle")).toBeTruthy();
   });
 
-  it("commits appearance and accent", () => {
+  it("toggles appearance mode and commits accent", () => {
     render(ThemeControls, { props: { showAccent: true } });
-    const appearance = document.querySelector("#theme-appearance") as HTMLSelectElement;
-    fireEvent.change(appearance, { target: { value: "dark" } });
+    const appearanceToggle = screen.getByTestId("theme-appearance-toggle");
+    fireEvent.click(appearanceToggle); // light -> dark
     expect(loadThemePreferences().mode).toBe("dark");
+    fireEvent.click(appearanceToggle); // dark -> light
+    expect(loadThemePreferences().mode).toBe("light");
 
     const accent = document.querySelector("#theme-accent") as HTMLSelectElement;
     fireEvent.change(accent, { target: { value: "gray" } });

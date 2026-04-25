@@ -493,7 +493,8 @@ html[data-color-preset="gray"] {
     color: #fff !important;
   }
 
-  :root:not(.dark) button[class*="border"],
+  /* Exclude bare icon toggles (no Flowbite data-scope); `class*="border"` would match e.g. `border-0`. */
+  :root:not(.dark) button[class*="border"]:not([data-ghost-icon-toggle]),
   :root:not(.dark) [role="button"][class*="border"],
   :root:not(.dark) input[class*="border"],
   :root:not(.dark) select[class*="border"],

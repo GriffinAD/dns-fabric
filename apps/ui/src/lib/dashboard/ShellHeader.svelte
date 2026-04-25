@@ -44,6 +44,10 @@
   $effect(() => {
     if (!editorOpen) resetConfirmOpen = false;
   });
+
+  /** Height-only (zero width) so it does not widen icon columns — matches ThemeControls label band on sm+. */
+  const headerLabelBandSpacerClass =
+    "mb-1 hidden h-[1.125rem] w-0 max-w-0 shrink-0 overflow-hidden sm:block";
 </script>
 
 <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -74,56 +78,83 @@
         <DashboardControls />
       {/if}
       {#if route === "admin"}
-        <Button type="button" color="alternative" class="inline-flex shrink-0 items-center gap-2" onclick={onGoHome}>
+        <Button
+          type="button"
+          color="alternative"
+          size="sm"
+          class="inline-flex shrink-0 items-center gap-2"
+          onclick={onGoHome}
+        >
           <House class="h-4 w-4" aria-hidden="true" />
           Dashboard
         </Button>
       {:else if !editorOpen}
-        <Button type="button" class="inline-flex shrink-0 items-center gap-2" onclick={() => void onGoAdmin()}>
-          <Settings class="h-4 w-4" aria-hidden="true" />
-          Admin
-        </Button>
+        <div class="flex flex-col items-end">
+          <span class={headerLabelBandSpacerClass} aria-hidden="true"></span>
+          <Button
+            type="button"
+            size="sm"
+            class="inline-flex shrink-0 items-center gap-2"
+            onclick={() => void onGoAdmin()}
+          >
+            <Settings class="h-4 w-4" aria-hidden="true" />
+            Admin
+          </Button>
+        </div>
       {/if}
       {#if route === "home"}
-        <div
-          role="toolbar"
-          aria-label="Dashboard mode"
-          class="flex flex-wrap items-center {editorOpen ? 'gap-3' : 'gap-1'}"
-        >
-          {#if editorOpen}
-            <Button
-              type="button"
-              color="danger"
-              class="outline shrink-0"
-              aria-label="Reset dashboard layout to saved baseline"
-              aria-haspopup="dialog"
-              onclick={() => (resetConfirmOpen = true)}
-            >
-              Reset
-            </Button>
-            <Button
-              type="button"
-              color="alternative"
-              class="!p-2 shrink-0"
-              aria-label="Save dashboard layout on the server"
-              onclick={() => void onSaveLayoutToFile()}
-            >
-              <Save class="h-5 w-5" aria-hidden="true" />
-            </Button>
-            <Button
-              type="button"
-              color="alternative"
-              class="!p-2"
-              aria-label="Return to dashboard"
-              onclick={() => onSelectDashboardView()}
-            >
-              <ArrowLeft class="h-5 w-5" aria-hidden="true" />
-            </Button>
-          {:else}
-            <Button type="button" color="alternative" class="!p-2" aria-label="Edit layout" onclick={() => onOpenEditor()}>
-              <Pencil class="h-5 w-5" aria-hidden="true" />
-            </Button>
-          {/if}
+        <div class="flex flex-col items-end">
+          <span class={headerLabelBandSpacerClass} aria-hidden="true"></span>
+          <div
+            role="toolbar"
+            aria-label="Dashboard mode"
+            class="flex flex-wrap items-end {editorOpen ? 'gap-3' : 'gap-1'}"
+          >
+            {#if editorOpen}
+              <Button
+                type="button"
+                color="danger"
+                size="sm"
+                class="outline shrink-0"
+                aria-label="Reset dashboard layout to saved baseline"
+                aria-haspopup="dialog"
+                onclick={() => (resetConfirmOpen = true)}
+              >
+                Reset
+              </Button>
+              <Button
+                type="button"
+                color="alternative"
+                size="sm"
+                class="!p-2 shrink-0"
+                aria-label="Save dashboard layout on the server"
+                onclick={() => void onSaveLayoutToFile()}
+              >
+                <Save class="h-5 w-5" aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                color="alternative"
+                size="sm"
+                class="!p-2"
+                aria-label="Return to dashboard"
+                onclick={() => onSelectDashboardView()}
+              >
+                <ArrowLeft class="h-5 w-5" aria-hidden="true" />
+              </Button>
+            {:else}
+              <Button
+                type="button"
+                color="alternative"
+                size="sm"
+                class="!p-2"
+                aria-label="Edit layout"
+                onclick={() => onOpenEditor()}
+              >
+                <Pencil class="h-5 w-5" aria-hidden="true" />
+              </Button>
+            {/if}
+          </div>
         </div>
       {/if}
     </div>

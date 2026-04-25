@@ -1,5 +1,7 @@
 <script lang="ts">
   import Select from "flowbite-svelte/Select.svelte";
+  import Moon from "lucide-svelte/icons/moon";
+  import Sun from "lucide-svelte/icons/sun";
 
   import {
     type ColorPreset,
@@ -12,12 +14,6 @@
 
   let { showAccent = true, showGaugeSegmentToggle = false }: { showAccent?: boolean; showGaugeSegmentToggle?: boolean } =
     $props();
-
-  const appearanceItems: { value: ThemeMode; name: string }[] = [
-    { value: "system", name: "System" },
-    { value: "light", name: "Light" },
-    { value: "dark", name: "Dark" },
-  ];
 
   const accentItems: { value: ColorPreset; name: string }[] = [
     { value: "default", name: "Default (blue)" },
@@ -32,6 +28,12 @@
   let gaugeSegmentDivisions = $state(initial.gaugeSegmentDivisions);
 
   const segmentedArc = $derived(gaugeSegmentEnabled);
+  const effectiveIsDark = $derived(
+    mode === "dark" ? true : mode === "light" ? false : getSystemPrefersDark(),
+  );
+  const appearanceToggleLabel = $derived(
+    effectiveIsDark ? "Switch to light mode" : "Switch to dark mode",
+  );
 
   /** Re-sync from storage when the document theme updates (e.g. Admin), so effective 0 in DOM does not clobber the stored block count. */
   $effect(() => {
@@ -82,6 +84,11 @@
     gaugeSegmentEnabled = checked;
     commit();
   }
+
+  function toggleAppearanceMode() {
+    mode = effectiveIsDark ? "light" : "dark";
+    commit();
+  }
 </script>
 
 <div
@@ -89,33 +96,49 @@
   data-testid="theme-controls"
   aria-label="Theme"
 >
-  <div class="min-w-0 sm:w-40">
-    <label
-      for="theme-appearance"
-      class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+  <div class="flex min-w-0 flex-col items-end sm:w-auto sm:self-end">
+    <span class="sr-only">Appearance</span>
+    <!-- Label-row height only (no wide invisible text — that was stretching the button to a pill). -->
+    <span
+      class="mb-1 hidden h-[1.125rem] w-0 max-w-0 shrink-0 overflow-hidden sm:block"
+      aria-hidden="true"
+    ></span>
+    <button
+      id="theme-appearance-toggle"
+      type="button"
+      data-ghost-icon-toggle
+      style="border: none; box-shadow: none;"
+      class="group inline-flex w-fit shrink-0 cursor-pointer items-center justify-center rounded-base bg-transparent p-2 text-heading ring-0 outline-none hover:bg-neutral-secondary-medium focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-transparent dark:hover:bg-transparent dark:active:bg-transparent dark:focus-visible:ring-offset-gray-900"
+      aria-label={appearanceToggleLabel}
+      title={appearanceToggleLabel}
+      data-testid="theme-appearance-toggle"
+      onclick={toggleAppearanceMode}
     >
-      Appearance
-    </label>
-    <Select
-      id="theme-appearance"
-      class="w-full"
-      bind:value={mode}
-      placeholder=""
-      items={appearanceItems}
-      onchange={commit}
-    />
+      {#if effectiveIsDark}
+        <Sun
+          class="h-5 w-5 shrink-0 stroke-2 opacity-90 transition-[stroke-width,opacity] duration-150 ease-out group-hover:stroke-[2.75] group-hover:opacity-100"
+          aria-hidden="true"
+        />
+      {:else}
+        <Moon
+          class="h-5 w-5 shrink-0 stroke-2 opacity-90 transition-[stroke-width,opacity] duration-150 ease-out group-hover:stroke-[2.75] group-hover:opacity-100"
+          aria-hidden="true"
+        />
+      {/if}
+    </button>
   </div>
   {#if showAccent}
     <div class="min-w-0 sm:w-40">
       <label
         for="theme-accent"
-        class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+        class="mb-1 block text-xs font-medium whitespace-nowrap text-gray-700 dark:text-gray-300"
       >
         Accent
       </label>
       <Select
         id="theme-accent"
         class="w-full"
+        size="sm"
         bind:value={colorPreset}
         placeholder=""
         items={accentItems}

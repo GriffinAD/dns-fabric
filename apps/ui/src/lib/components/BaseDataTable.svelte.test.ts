@@ -113,6 +113,56 @@ describe("BaseDataTable", () => {
     expect(screen.getByText("no hits")).toBeTruthy();
   });
 
+  it("collapses and expands from the header toggle", async () => {
+    render(BaseDataTable, {
+      props: {
+        title: "Collapsible",
+        items: [{ id: "1", name: "Ada", role: "dev" }],
+        err: null,
+        emptyText: "empty",
+        compact: false,
+        columns: cols(),
+        rowKey: (r) => (r as { id: string }).id,
+      },
+    });
+    expect(screen.getByText("Ada")).toBeTruthy();
+    const toggle = screen.getByTestId("table-collapse-toggle");
+    fireEvent.click(toggle);
+    await tick();
+    expect(screen.queryByText("Ada")).toBeNull();
+    expect(screen.getByTestId("table-collapsed-note")).toBeTruthy();
+    fireEvent.click(toggle);
+    await tick();
+    expect(screen.getByText("Ada")).toBeTruthy();
+  });
+
+  it("hides header export controls while collapsed", async () => {
+    render(BaseDataTable, {
+      props: {
+        title: "Exporty",
+        items: [{ id: "1", name: "Ada", role: "r" }],
+        err: null,
+        emptyText: "e",
+        compact: false,
+        columns: cols(),
+        rowKey: (r) => (r as { id: string }).id,
+        settings: mergeBaseDataTableSettings(defaultBaseDataTableSettings, {
+          allowPaging: false,
+          allowModal: false,
+          allowFilter: false,
+          allowExportCsv: false,
+        }),
+      },
+    });
+    expect(screen.getByRole("button", { name: "Open export options" })).toBeTruthy();
+    fireEvent.click(screen.getByTestId("table-collapse-toggle"));
+    await tick();
+    expect(screen.queryByRole("button", { name: "Open export options" })).toBeNull();
+    fireEvent.click(screen.getByTestId("table-collapse-toggle"));
+    await tick();
+    expect(screen.getByRole("button", { name: "Open export options" })).toBeTruthy();
+  });
+
   it("cycles sort when clicking the same header", async () => {
     render(BaseDataTable, {
       props: {
