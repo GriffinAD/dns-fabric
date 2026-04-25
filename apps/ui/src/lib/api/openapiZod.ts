@@ -75,46 +75,46 @@ export const dhcpPoolListResponseSchema = z
   })
   .strict();
 
+export const dhcpClientSchema = z
+  .object({
+    id: z.string(),
+    hardware_address: z.string(),
+    assigned_address: z.string(),
+    pool_id: z.string(),
+    hostname: z.string().nullable().optional(),
+    client_category: z.string().nullable().optional(),
+    vendor_name: z.string().nullable().optional(),
+    scan_status: z.string().nullable().optional(),
+    lease_started_at: z.string().nullable().optional(),
+    lease_expires_at: z.string().nullable().optional(),
+    subnet_cidr: z.string().nullable().optional(),
+    services: z.array(z.string()).optional(),
+  })
+  .strict();
+
 export const dhcpClientListResponseSchema = z
   .object({
-    items: z.array(
-      z
-        .object({
-          id: z.string(),
-          hardware_address: z.string(),
-          assigned_address: z.string(),
-          pool_id: z.string(),
-          hostname: z.string().nullable().optional(),
-          client_category: z.string().nullable().optional(),
-          vendor_name: z.string().nullable().optional(),
-          scan_status: z.string().nullable().optional(),
-          lease_started_at: z.string().nullable().optional(),
-          lease_expires_at: z.string().nullable().optional(),
-          subnet_cidr: z.string().nullable().optional(),
-          services: z.array(z.string()).optional(),
-        })
-        .strict(),
-    ),
+    items: z.array(dhcpClientSchema),
+  })
+  .strict();
+
+export const dhcpReservationSchema = z
+  .object({
+    id: z.string(),
+    hardware_address: z.string(),
+    reserved_address: z.string(),
+    hostname: z.string().nullable().optional(),
+    category: z.string().nullable().optional(),
+    subnet_cidr: z.string().nullable().optional(),
+    vendor_name: z.string().nullable().optional(),
+    scan_status: z.string().nullable().optional(),
+    services: z.array(z.string()).optional(),
   })
   .strict();
 
 export const dhcpReservationListResponseSchema = z
   .object({
-    items: z.array(
-      z
-        .object({
-          id: z.string(),
-          hardware_address: z.string(),
-          reserved_address: z.string(),
-          hostname: z.string().nullable().optional(),
-          category: z.string().nullable().optional(),
-          subnet_cidr: z.string().nullable().optional(),
-          vendor_name: z.string().nullable().optional(),
-          scan_status: z.string().nullable().optional(),
-          services: z.array(z.string()).optional(),
-        })
-        .strict(),
-    ),
+    items: z.array(dhcpReservationSchema),
   })
   .strict();
 

@@ -109,6 +109,48 @@ class FabricService:
         paused = bool(body["paused"]) if "paused" in body else True
         return state.set_discovery_paused(paused)
 
+    def patch_client(self, client_id: str, body: object) -> dict[str, Any]:
+        if not isinstance(body, dict):
+            raise HTTPException(
+                status_code=400,
+                detail={"title": "Invalid JSON", "status": 400},
+            )
+        allowed = {"hostname", "vendor_name"}
+        patch = {k: v for k, v in body.items() if k in allowed}
+        if not patch:
+            raise HTTPException(
+                status_code=400,
+                detail={"title": "No editable fields provided", "status": 400},
+            )
+        row = self._dhcp.update_client(client_id, patch)
+        if row is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"title": "client not found", "status": 404},
+            )
+        return row
+
+    def patch_reservation(self, reservation_id: str, body: object) -> dict[str, Any]:
+        if not isinstance(body, dict):
+            raise HTTPException(
+                status_code=400,
+                detail={"title": "Invalid JSON", "status": 400},
+            )
+        allowed = {"hardware_address", "reserved_address", "hostname"}
+        patch = {k: v for k, v in body.items() if k in allowed}
+        if not patch:
+            raise HTTPException(
+                status_code=400,
+                detail={"title": "No editable fields provided", "status": 400},
+            )
+        row = self._dhcp.update_reservation(reservation_id, patch)
+        if row is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"title": "reservation not found", "status": 404},
+            )
+        return row
+
     def get_perf(self, mock: str | None) -> dict[str, Any]:
         if mock == "error":
             raise HTTPException(status_code=503)

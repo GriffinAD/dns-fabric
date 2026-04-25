@@ -71,6 +71,40 @@ def get_reservations(
     return svc.list_reservations(mock)
 
 
+@router.patch("/dhcp/clients/{client_id}")
+async def patch_client(
+    client_id: str,
+    request: Request,
+    __op: Annotated[AuthRole, Depends(require_operator)],
+    svc: Annotated[FabricService, Depends(get_fabric_service)],
+) -> dict[str, Any]:
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail={"title": "Invalid JSON", "status": 400},
+        ) from None
+    return svc.patch_client(client_id, body)
+
+
+@router.patch("/dhcp/reservations/{reservation_id}")
+async def patch_reservation(
+    reservation_id: str,
+    request: Request,
+    __op: Annotated[AuthRole, Depends(require_operator)],
+    svc: Annotated[FabricService, Depends(get_fabric_service)],
+) -> dict[str, Any]:
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail={"title": "Invalid JSON", "status": 400},
+        ) from None
+    return svc.patch_reservation(reservation_id, body)
+
+
 @router.get("/discovery/records")
 def get_discovery_records(
     _: Annotated[AuthRole, Depends(resolve_auth_role)],
