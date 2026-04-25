@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const STORAGE_KEY = "kea-fabric-ui-theme";
 
-export const colorPresetSchema = z.enum(["default", "emerald"]);
+export const colorPresetSchema = z.enum(["default", "emerald", "gray"]);
 export const themeModeSchema = z.enum(["light", "dark", "system"]);
 export const gaugeCapStyleSchema = z.enum(["rounded", "flat"]);
 

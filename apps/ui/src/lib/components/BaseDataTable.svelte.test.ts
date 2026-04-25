@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import BaseDataTable from "./BaseDataTable.svelte";
-import BaseDataTableHarness from "./BaseDataTable.coverage.harness.svelte";
-import BaseDataTablePageClampHarness from "./BaseDataTable.pageClamp.harness.svelte";
+import BaseDataTableHarness from "./BaseDataTableCoverageHarness.svelte";
+import BaseDataTablePageClampHarness from "./BaseDataTablePageClampHarness.svelte";
 import type { BaseDataTableColumn } from "./baseDataTable";
 import { defaultBaseDataTableSettings, mergeBaseDataTableSettings } from "./baseDataTable";
 

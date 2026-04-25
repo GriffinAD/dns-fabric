@@ -60,7 +60,7 @@
   >
     <button
       type="button"
-      class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-sm text-gray-700 shadow-sm transition-[background-color,border-color,color,box-shadow] hover:border-gray-400 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-400 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-500 dark:hover:bg-gray-800 dark:disabled:border-gray-700 dark:disabled:bg-gray-900 dark:disabled:text-gray-500"
+      class="pager-nav-btn inline-flex h-8 w-8 items-center justify-center rounded-md border !border-gray-400 !bg-gray-300 text-sm text-gray-700 shadow-sm transition-[background-color,border-color,color,box-shadow] hover:!border-gray-400 hover:!bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-500,#22c55e)] disabled:cursor-not-allowed disabled:!border-gray-300 disabled:!bg-gray-200 disabled:text-gray-400 dark:!border-[var(--color-primary-700,#1d4ed8)] dark:!bg-[var(--color-primary-800,#1e3a8a)] dark:text-gray-100 dark:hover:!border-[var(--color-primary-600,#2563eb)] dark:hover:!bg-[var(--color-primary-700,#1d4ed8)] dark:hover:text-white dark:disabled:!border-gray-800 dark:disabled:!bg-gray-900 dark:disabled:text-gray-500"
       aria-label="Previous page"
       aria-disabled={canPrevious ? "false" : "true"}
       disabled={!canPrevious}
@@ -77,8 +77,8 @@
             <button
               type="button"
               class={token.page === page
-                ? "inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-gray-300 px-2 text-xs font-semibold text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
-                : "inline-flex h-7 min-w-7 items-center justify-center rounded-md px-2 text-xs font-medium text-gray-700 transition-colors hover:bg-white hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-100"}
+                ? "inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-gray-300 px-2 text-xs font-semibold text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-500,#22c55e)] dark:bg-gray-700 dark:text-gray-100"
+                : "inline-flex h-7 min-w-7 items-center justify-center rounded-md px-2 text-xs font-medium text-gray-700 transition-colors hover:bg-white hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-500,#22c55e)] dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-100"}
               aria-label={`Go to page ${token.page}`}
               aria-current={token.page === page ? "page" : undefined}
               onkeydown={onKeyNav}
@@ -100,7 +100,7 @@
 
     <button
       type="button"
-      class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-sm text-gray-700 shadow-sm transition-[background-color,border-color,color,box-shadow] hover:border-gray-400 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-400 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-500 dark:hover:bg-gray-800 dark:disabled:border-gray-700 dark:disabled:bg-gray-900 dark:disabled:text-gray-500"
+      class="pager-nav-btn inline-flex h-8 w-8 items-center justify-center rounded-md border !border-gray-400 !bg-gray-300 text-sm text-gray-700 shadow-sm transition-[background-color,border-color,color,box-shadow] hover:!border-gray-400 hover:!bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-500,#22c55e)] disabled:cursor-not-allowed disabled:!border-gray-300 disabled:!bg-gray-200 disabled:text-gray-400 dark:!border-[var(--color-primary-700,#1d4ed8)] dark:!bg-[var(--color-primary-800,#1e3a8a)] dark:text-gray-100 dark:hover:!border-[var(--color-primary-600,#2563eb)] dark:hover:!bg-[var(--color-primary-700,#1d4ed8)] dark:hover:text-white dark:disabled:!border-gray-800 dark:disabled:!bg-gray-900 dark:disabled:text-gray-500"
       aria-label="Next page"
       aria-disabled={canNext ? "false" : "true"}
       disabled={!canNext}
@@ -112,3 +112,4 @@
 
   </div>
 {/if}
+

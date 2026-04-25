@@ -365,8 +365,8 @@
 
   const theadClass = $derived(
     settings.fixedHeader
-      ? "sticky top-0 z-[2] bg-white dark:bg-gray-800"
-      : "bg-white dark:bg-gray-800",
+      ? "sticky top-0 z-[2] bg-gray-400/40 dark:bg-gray-800"
+      : "bg-gray-400/40 dark:bg-gray-800",
   );
 
   const scrollWrapClass = $derived(
@@ -555,7 +555,7 @@
               size="sm"
               color="alternative"
               class={editMode
-                ? "!h-9 !rounded-md w-9 justify-center px-2 ring-1 ring-green-500/60 text-green-700 dark:text-green-300"
+                ? "!h-9 !rounded-md w-9 justify-center px-2 ring-1 ring-[var(--color-primary-500,#22c55e)] text-[var(--color-primary-700,#15803d)] dark:text-[var(--color-primary-300,#86efac)]"
                 : "!h-9 !rounded-md w-9 justify-center px-2"}
               aria-label="Toggle edit mode"
               title={editMode ? "Done editing" : "Edit"}
@@ -632,14 +632,14 @@
       {/if}
       <div class={`flex min-h-0 flex-1 flex-col ${scrollWrapClass}`}>
         <div class={bodyScrollerClass} data-testid="table-body-scroll">
-          <Table hoverable={true}>
+          <Table hoverable={true} class="bg-gray-300 dark:bg-gray-900">
             <TableHead class={theadClass}>
               {#each visibleColumns as col (columnStableId(col))}
                 <TableHeadCell class="bg-inherit" aria-sort={headerAriaSort(col)}>
                   {#if isColumnSortable(settings.allowSort, col)}
                     <button
                       type="button"
-                      class="inline-flex items-center gap-1 font-semibold text-gray-900 transition-colors hover:text-green-600 dark:text-white dark:hover:text-green-400"
+                      class="inline-flex items-center gap-1 font-semibold text-gray-900 transition-colors hover:text-[var(--color-primary-600,#16a34a)] dark:text-white dark:hover:text-[var(--color-primary-400,#4ade80)]"
                       onclick={() => onHeaderSort(col)}
                     >
                       {@html String(col.header)}
@@ -664,7 +664,7 @@
             </TableHead>
             <TableBody>
               {#each displayRows as row (rowKey(row))}
-                <TableBodyRow>
+                <TableBodyRow class="bg-gray-200 even:bg-gray-300/40 dark:bg-gray-900 dark:even:bg-gray-800/60">
                   {#each visibleColumns as col (columnStableId(col))}
                     <TableBodyCell class={`${rowHeightClass} ${col.cellClass ?? ""}`.trim()}>
                       {#if inlineExpandedMode && settings.allowEdit && editMode && col.editable && col.fieldKey}
@@ -748,7 +748,7 @@
                 type="text"
                 pattern="[0-9]*"
                 inputmode="numeric"
-                class="h-8 w-16 rounded-md border border-gray-300 bg-white px-2 text-center text-xs font-medium text-gray-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                class="h-8 w-16 rounded-md border !border-gray-400 !bg-gray-200 px-2 text-center text-xs font-medium text-gray-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-500,#22c55e)] dark:!border-gray-600 dark:!bg-gray-700 dark:text-white"
                 bind:value={gotoPageValue}
                 aria-label={`Go to page, between 1 and ${pageData.totalPages}`}
                 onkeydown={(event) => {
@@ -762,7 +762,7 @@
             <label class="ml-auto inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
               <span class="font-medium tracking-[0.01em]">Page size</span>
               <select
-                class="h-8 rounded-md border border-gray-300 bg-white px-2 text-xs font-medium text-gray-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                class="h-8 rounded-md border border-gray-300 bg-white px-2 text-xs font-medium text-gray-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-500,#22c55e)] dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                 bind:value={pageSizeSelectValue}
                 aria-label="Rows per page"
                 onchange={(event) => {

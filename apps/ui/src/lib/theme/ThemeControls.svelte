@@ -22,6 +22,7 @@
   const accentItems: { value: ColorPreset; name: string }[] = [
     { value: "default", name: "Default (blue)" },
     { value: "emerald", name: "Emerald" },
+    { value: "gray", name: "Gray" },
   ];
 
   const initial = loadThemePreferences();

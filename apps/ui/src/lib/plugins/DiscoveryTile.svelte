@@ -70,7 +70,7 @@
   );
 
   const pauseBtnClass =
-    "inline-flex shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700";
+    "inline-flex shrink-0 items-center justify-center rounded-md border border-gray-400 bg-gray-300 text-gray-800 hover:bg-gray-200 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700";
 
   async function refresh() {
     err = null;

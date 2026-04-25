@@ -5,7 +5,7 @@ gate: Rolling
 owner: GriffinAD
 peer_reviewer: GriffinAD
 status: Accepted
-last_review: 2026-04-22
+last_review: 2026-04-25
 adrs: [ADR-0046, ADR-0047]
 invariants: []
 ---
@@ -40,7 +40,7 @@ apply consistently.
 | --- | --- | --- |
 | `version` | `1` | Schema version; bump and migrate when shape changes. |
 | `mode` | `"light"` \| `"dark"` \| `"system"` | Appearance: `system` follows `prefers-color-scheme`. |
-| `colorPreset` | `"default"` \| `"emerald"` | Maps Flowbite `--color-primary-*` to the default blue scale or an emerald scale (`html[data-color-preset="emerald"]` in `apps/ui/src/app.css`). |
+| `colorPreset` | `"default"` \| `"emerald"` \| `"gray"` | Maps Flowbite `--color-primary-*` to default blue, emerald, or gray scales (`html[data-color-preset="*"]` in `apps/ui/src/app.css`). |
 
 Invalid or missing JSON falls back to `{ "version": 1, "mode": "system", "colorPreset": "default" }`.
 
@@ -57,6 +57,10 @@ Invalid or missing JSON falls back to `{ "version": 1, "mode": "system", "colorP
 - **Prefer** shared shell patterns: `dark:` utility pairs, Flowbite components,
   and future semantic utilities documented here—avoid new one-off color stacks in
   plugins.
+- **Accent-bearing interactions** (focus rings, active/edit affordances, hover
+  emphasis for interactive controls) should use `--color-primary-*` tokens
+  rather than hard-coded utility accents (for example, avoid fixed `green-*`
+  classes for generic interaction affordances).
 - **Do not** add parallel font, icon, or third-party design systems (see `ui.md`,
   `ui-icons.md`, `ui-fonts.md`, ADR-0046).
 - Untrusted or iframe-hosted UIs remain isolated per `ui.md`; this document
@@ -81,7 +85,8 @@ Implementation: `gaugeArcSegmentsForFill` in
 ### Contrast and verification
 
 - New chrome or tiles should be checked in **light and dark** effective modes
-  and, when using `colorPreset`, in **default** and **emerald** accents.
+  and, when using `colorPreset`, in **default**, **emerald**, and **gray**
+  accents.
 - Error and success text should use existing semantic reds/greens; gauge progress
   uses the zone `stroke-*` classes defined next to `gaugeArcSegmentsForFill`.
 
@@ -109,3 +114,4 @@ Implementation: `gaugeArcSegmentsForFill` in
 | 2026-04-19 | Accepted | GriffinAD | Self-review; Tier C Rolling baseline acceptance (doc gates closed). |
 | 2026-04-22 | Accepted | GriffinAD | Documented storage schema, `data-color-preset`, gauge bands, plugin rules. |
 | 2026-04-22 | Accepted | GriffinAD | Cross-ref ADR-0047 (data charts + themed surfaces). |
+| 2026-04-25 | Accepted | GriffinAD | Added `gray` preset to schema and token-first accent guidance for interactive states. |

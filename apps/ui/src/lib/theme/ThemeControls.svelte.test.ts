@@ -51,8 +51,8 @@ describe("ThemeControls", () => {
     expect(loadThemePreferences().mode).toBe("dark");
 
     const accent = document.querySelector("#theme-accent") as HTMLSelectElement;
-    fireEvent.change(accent, { target: { value: "emerald" } });
-    expect(loadThemePreferences().colorPreset).toBe("emerald");
+    fireEvent.change(accent, { target: { value: "gray" } });
+    expect(loadThemePreferences().colorPreset).toBe("gray");
   });
 
   it("toggles gauge arc segments when header control is shown", () => {

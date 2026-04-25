@@ -31,7 +31,7 @@
     err={null}
     emptyText="empty"
     compact={true}
-    columns={[{ header: "A", accessor: (r) => (r as { a: string }).a }]}
+    columns={[]}
     rowKey={() => "1"}
     {settings}
   >
@@ -46,7 +46,7 @@
     err={null}
     emptyText="empty"
     compact={false}
-    columns={[{ header: "A", accessor: (r) => (r as { a: string }).a }]}
+    columns={[]}
     rowKey={() => "1"}
     {settings}
   >

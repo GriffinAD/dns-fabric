@@ -44,6 +44,7 @@ export default defineConfig({
         /* v8 reports an extra synthetic branch on the root <select> tag after Svelte compile. */
         "src/lib/components/InlineSelectEditor.svelte",
         "src/lib/**/*.harness.svelte",
+        "src/lib/**/*Harness.svelte",
         "src/lib/**/*.test-support.svelte",
         "src/lib/**/__fixtures__/**",
       ],

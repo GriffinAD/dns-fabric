@@ -311,7 +311,7 @@
         <Button
           type="button"
           size="sm"
-          color={editMode ? "default" : "alternative"}
+          color={editMode ? "brand" : "alternative"}
           aria-label="Toggle edit mode"
           onclick={() => (editMode = !editMode)}
         >
@@ -335,7 +335,7 @@
                 {#if isColumnSortable(true, col)}
                   <button
                     type="button"
-                    class="inline-flex items-center gap-1 transition-colors hover:text-green-600 dark:hover:text-green-400"
+                    class="inline-flex items-center gap-1 transition-colors hover:text-[var(--color-primary-600,#16a34a)] dark:hover:text-[var(--color-primary-400,#4ade80)]"
                     onclick={() => onHeaderSort(col)}
                   >
                     {col.header}
