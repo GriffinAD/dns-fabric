@@ -45,6 +45,66 @@ describe("tileOptionsSchemaForPlugin", () => {
     expect(r.success).toBe(false);
   });
 
+  it("accepts optional nested table settings for non-perf plugins", () => {
+    const r = tileOptionsSchemaForPlugin("dhcp.clients").safeParse({
+      table: {
+        allowSort: false,
+        allowModal: true,
+        pageSize: 25,
+        rowHeightMode: "compact",
+        defaultSortColumnId: "hostname",
+        defaultSortDirection: "desc",
+        interactionMode: "inline",
+      },
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts legacy interactionMode alias and normalizes to inline", () => {
+    const r = tileOptionsSchemaForPlugin("dhcp.clients").safeParse({
+      table: { interactionMode: "inline-expanded" },
+    });
+    expect(r.success).toBe(true);
+    if (!r.success) return;
+    const parsed = r.data as { table?: { interactionMode?: string } };
+    expect(parsed.table?.interactionMode).toBe("inline");
+  });
+
+  it("rejects unknown keys inside options.table (strict)", () => {
+    const r = tileOptionsSchemaForPlugin("dhcp.reservations").safeParse({
+      table: { unknownFlag: true },
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects invalid pageSize inside options.table", () => {
+    const r = tileOptionsSchemaForPlugin("dhcp.pools").safeParse({
+      table: { pageSize: 0 },
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects invalid rowHeightMode inside options.table", () => {
+    const r = tileOptionsSchemaForPlugin("dhcp.pools").safeParse({
+      table: { rowHeightMode: "tiny" },
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects invalid defaultSortDirection inside options.table", () => {
+    const r = tileOptionsSchemaForPlugin("dhcp.pools").safeParse({
+      table: { defaultSortDirection: "up" },
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects invalid interactionMode inside options.table", () => {
+    const r = tileOptionsSchemaForPlugin("dhcp.pools").safeParse({
+      table: { interactionMode: "drawer" },
+    });
+    expect(r.success).toBe(false);
+  });
+
   it("integrates with layout Zod for each built-in id", () => {
     for (const pluginId of BUILTIN_PLUGIN_IDS) {
       const tile = {

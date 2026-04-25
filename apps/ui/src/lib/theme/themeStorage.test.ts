@@ -188,6 +188,11 @@ describe("themeStorage", () => {
       expect(document.documentElement.dataset.gaugeSegmentGap).toBe("0.325");
       expect(document.documentElement.dataset.gaugeSegmentGapPx).toBeUndefined();
     });
+
+    it("accepts gray preset and writes it to data-color-preset", () => {
+      applyDocumentTheme("light", "gray", false);
+      expect(document.documentElement.dataset.colorPreset).toBe("gray");
+    });
   });
 
   describe("getSystemPrefersDark", () => {

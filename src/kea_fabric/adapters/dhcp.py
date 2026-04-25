@@ -31,24 +31,66 @@ class DhcpDataSource(Protocol):
 
     def perf_payload(self) -> dict[str, Any]: ...
 
+    def update_client(
+        self,
+        client_id: str,
+        patch: dict[str, Any],
+    ) -> dict[str, Any] | None: ...
+
+    def update_reservation(
+        self,
+        reservation_id: str,
+        patch: dict[str, Any],
+    ) -> dict[str, Any] | None: ...
+
 
 class MockDhcpAdapter:
     """Deterministic fixtures; list ``mock=`` toggles run in the service layer."""
 
+    def __init__(self) -> None:
+        self._pools = copy.deepcopy(STUB_POOLS)
+        self._clients = copy.deepcopy(STUB_CLIENTS)
+        self._reservations = copy.deepcopy(STUB_RESERVATIONS)
+        self._discovery_records = copy.deepcopy(STUB_DISCOVERY_RECORDS)
+
     def pools_payload(self) -> dict[str, Any]:
-        return copy.deepcopy(STUB_POOLS)
+        return copy.deepcopy(self._pools)
 
     def clients_payload(self) -> dict[str, Any]:
-        return copy.deepcopy(STUB_CLIENTS)
+        return copy.deepcopy(self._clients)
 
     def reservations_payload(self) -> dict[str, Any]:
-        return copy.deepcopy(STUB_RESERVATIONS)
+        return copy.deepcopy(self._reservations)
 
     def discovery_records_payload(self) -> dict[str, Any]:
-        return copy.deepcopy(STUB_DISCOVERY_RECORDS)
+        return copy.deepcopy(self._discovery_records)
 
     def plugins_payload(self) -> dict[str, Any]:
         return copy.deepcopy(STUB_PLUGINS)
 
     def perf_payload(self) -> dict[str, Any]:
         return copy.deepcopy(perf_summary_for_tick(state.get_perf_tick()))
+
+    def update_client(
+        self,
+        client_id: str,
+        patch: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        for idx, row in enumerate(self._clients["items"]):
+            if row.get("id") == client_id:
+                updated = {**row, **patch}
+                self._clients["items"][idx] = updated
+                return copy.deepcopy(updated)
+        return None
+
+    def update_reservation(
+        self,
+        reservation_id: str,
+        patch: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        for idx, row in enumerate(self._reservations["items"]):
+            if row.get("id") == reservation_id:
+                updated = {**row, **patch}
+                self._reservations["items"][idx] = updated
+                return copy.deepcopy(updated)
+        return None

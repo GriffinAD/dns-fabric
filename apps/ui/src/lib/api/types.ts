@@ -88,6 +88,11 @@ export interface DhcpClientListResponse {
   items: DhcpClient[];
 }
 
+export interface DhcpClientPatch {
+  hostname?: string | null;
+  vendor_name?: string | null;
+}
+
 export interface DhcpReservation {
   id: string;
   hardware_address: string;
@@ -102,6 +107,12 @@ export interface DhcpReservation {
 
 export interface DhcpReservationListResponse {
   items: DhcpReservation[];
+}
+
+export interface DhcpReservationPatch {
+  hardware_address?: string;
+  reserved_address?: string;
+  hostname?: string | null;
 }
 
 export interface DiscoveryRecord {

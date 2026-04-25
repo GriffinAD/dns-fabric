@@ -181,6 +181,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DhcpClientListResponse"
+  /dhcp/clients/{clientId}:
+    patch:
+      operationId: patchDhcpClient
+      summary: Update editable DHCP client fields
+      tags: [DHCP]
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DhcpClientPatchRequest"
+      responses:
+        "200":
+          description: Updated client row
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DhcpClient"
   /dhcp/reservations:
     get:
       operationId: listDhcpReservations
@@ -198,6 +222,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DhcpReservationListResponse"
+  /dhcp/reservations/{reservationId}:
+    patch:
+      operationId: patchDhcpReservation
+      summary: Update editable DHCP reservation fields
+      tags: [DHCP]
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DhcpReservationPatchRequest"
+      responses:
+        "200":
+          description: Updated reservation row
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DhcpReservation"
   /discovery/records:
     get:
       operationId: listDiscoveryRecords
@@ -682,6 +730,17 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DhcpClient"
+    DhcpClientPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        hostname:
+          type: string
+          nullable: true
+        vendor_name:
+          type: string
+          nullable: true
+      minProperties: 1
     DhcpReservation:
       type: object
       additionalProperties: false
@@ -722,6 +781,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DhcpReservation"
+    DhcpReservationPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        hardware_address:
+          type: string
+        reserved_address:
+          type: string
+        hostname:
+          type: string
+          nullable: true
+      minProperties: 1
     DiscoveryRecord:
       type: object
       additionalProperties: false

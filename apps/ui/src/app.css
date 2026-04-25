@@ -60,7 +60,7 @@
   );
 }
 
-/* Optional shell accent: maps Flowbite `--color-primary-*` to emerald (see lib/theme/themeStorage). */
+/* Optional shell accents: map Flowbite `--color-primary-*` to preset scales (see lib/theme/themeStorage). */
 html[data-color-preset="emerald"] {
   --color-primary-50: var(--color-emerald-50);
   --color-primary-100: var(--color-emerald-100);
@@ -73,6 +73,20 @@ html[data-color-preset="emerald"] {
   --color-primary-800: var(--color-emerald-800);
   --color-primary-900: var(--color-emerald-900);
   --color-primary-950: var(--color-emerald-950);
+}
+
+html[data-color-preset="gray"] {
+  --color-primary-50: var(--color-gray-50);
+  --color-primary-100: var(--color-gray-100);
+  --color-primary-200: var(--color-gray-200);
+  --color-primary-300: var(--color-gray-300);
+  --color-primary-400: var(--color-gray-400);
+  --color-primary-500: var(--color-gray-500);
+  --color-primary-600: var(--color-gray-600);
+  --color-primary-700: var(--color-gray-700);
+  --color-primary-800: var(--color-gray-800);
+  --color-primary-900: var(--color-gray-900);
+  --color-primary-950: var(--color-gray-950);
 }
 
 /*
@@ -318,6 +332,129 @@ html[data-color-preset="emerald"] {
   /* disable chrome cancel button (Flowbite doc) */
   input[type="search"]::-webkit-search-cancel-button {
     display: none;
+  }
+
+  /*
+   * Light-mode parity with dark layout semantics:
+   * - row/group containers carry the visual elevation
+   * - nested cards inside those containers stay flat/chromeless
+   * - standalone dashboard cards keep subtle card chrome
+   */
+  :root:not(.dark) body {
+    background-color: var(--color-gray-100, #f3f4f6) !important;
+  }
+
+  :root:not(.dark) [data-dashboard-tile-grid] [data-row-panel],
+  :root:not(.dark) [data-dashboard-tile-grid] [data-dashboard-group] {
+    background-color: #fff !important;
+    border: 1px solid var(--color-gray-400, #9ca3af) !important;
+    box-shadow:
+      0 2px 6px rgb(15 23 42 / 0.13),
+      0 12px 26px rgb(15 23 42 / 0.15) !important;
+  }
+
+  :root:not(.dark) [data-scope="card"] {
+    background-color: #fff !important;
+    border-color: var(--color-gray-400, #9ca3af) !important;
+    box-shadow:
+      0 2px 5px rgb(15 23 42 / 0.11),
+      0 10px 22px rgb(15 23 42 / 0.13) !important;
+  }
+
+  /*
+   * Dark-mode elevation parity: standalone dashboard cards should retain depth.
+   * Nested cards inside row/group containers remain flat via the in-row-panel rule.
+   */
+  .dark [data-dashboard-tile-grid] [data-scope="card"] {
+    box-shadow:
+      0 1px 4px rgb(2 6 23 / 0.3),
+      0 8px 18px rgb(2 6 23 / 0.36) !important;
+  }
+
+  /* Cards inside row/group containers stay flat in all themes. */
+  [data-dashboard-tile-grid] [data-row-panel] [data-scope="card"],
+  [data-dashboard-tile-grid] [data-dashboard-group] [data-scope="card"] {
+    box-shadow: none !important;
+    --tw-shadow: 0 0 #0000 !important;
+  }
+
+  :root:not(.dark) button[class*="bg-white"],
+  :root:not(.dark) [role="button"][class*="bg-white"] {
+    background-color: var(--color-gray-100, #f3f4f6) !important;
+  }
+
+  :root:not(.dark) button[class*="bg-white"]:hover,
+  :root:not(.dark) [role="button"][class*="bg-white"]:hover {
+    background-color: var(--color-gray-200, #e5e7eb) !important;
+  }
+
+  /* Flowbite neutral button tokens (e.g. alternative buttons like Export JSON). */
+  :root:not(.dark) [data-scope="button"].bg-neutral-secondary-medium,
+  :root:not(.dark) [data-scope="button"].bg-neutral-primary,
+  :root:not(.dark) [data-scope="button"].bg-neutral-primary-soft {
+    background-color: var(--color-primary-300, #d1d5db) !important;
+    border-color: var(--color-primary-400, #9ca3af) !important;
+    color: var(--color-gray-800, #1f2937) !important;
+  }
+
+  :root:not(.dark) [data-scope="button"].bg-neutral-secondary-medium:hover,
+  :root:not(.dark) [data-scope="button"].bg-neutral-primary:hover,
+  :root:not(.dark) [data-scope="button"].bg-neutral-primary-soft:hover {
+    background-color: var(--color-primary-200, #e5e7eb) !important;
+    border-color: var(--color-primary-400, #9ca3af) !important;
+    color: var(--color-gray-900, #111827) !important;
+  }
+
+  .dark [data-scope="button"].bg-neutral-secondary-medium,
+  .dark [data-scope="button"].bg-neutral-primary,
+  .dark [data-scope="button"].bg-neutral-primary-soft {
+    background-color: var(--color-primary-800, #1e3a8a) !important;
+    border-color: var(--color-primary-700, #1d4ed8) !important;
+    color: var(--color-gray-100, #f3f4f6) !important;
+  }
+
+  .dark [data-scope="button"].bg-neutral-secondary-medium:hover,
+  .dark [data-scope="button"].bg-neutral-primary:hover,
+  .dark [data-scope="button"].bg-neutral-primary-soft:hover {
+    background-color: var(--color-primary-700, #1d4ed8) !important;
+    border-color: var(--color-primary-600, #2563eb) !important;
+    color: #fff !important;
+  }
+
+  :root:not(.dark) button[class*="border"],
+  :root:not(.dark) [role="button"][class*="border"],
+  :root:not(.dark) input[class*="border"],
+  :root:not(.dark) select[class*="border"],
+  :root:not(.dark) textarea[class*="border"] {
+    border-color: var(--color-gray-400, #9ca3af) !important;
+  }
+
+  /* Keep disabled pagination nav borders visually distinct in both themes. */
+  :root:not(.dark) .pager-nav-btn:disabled {
+    border-color: var(--color-gray-300, #d1d5db) !important;
+  }
+
+  .dark .pager-nav-btn:disabled {
+    border-color: var(--color-gray-800, #1f2937) !important;
+  }
+
+  :root:not(.dark) input,
+  :root:not(.dark) select,
+  :root:not(.dark) textarea {
+    background-color: var(--color-gray-200, #e5e7eb) !important;
+    border-color: var(--color-gray-400, #9ca3af) !important;
+  }
+
+  :root:not(.dark) [data-dashboard-tile-grid] [data-in-row-panel="true"] [data-scope="card"] {
+    border-width: 0 !important;
+    box-shadow: none !important;
+    --tw-shadow: 0 0 #0000 !important;
+  }
+
+  /* Internal component divider lines (e.g. under titles) in light mode. */
+  :root:not(.dark) [data-scope="card"] .border-gray-100,
+  :root:not(.dark) [data-scope="card"] .border-gray-200 {
+    border-color: var(--color-gray-400, #9ca3af) !important;
   }
 
   /*

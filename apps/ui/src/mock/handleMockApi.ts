@@ -19,6 +19,11 @@ const listPaths = new Set([
   "/api/v1/discovery/records",
 ]);
 
+const dhcpClientsState = structuredClone(baseFixtures["/api/v1/dhcp/clients"] as { items: Record<string, unknown>[] });
+const dhcpReservationsState = structuredClone(
+  baseFixtures["/api/v1/dhcp/reservations"] as { items: Record<string, unknown>[] },
+);
+
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -102,6 +107,56 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
     return true;
   }
 
+  const patchClientMatch = pathOnly.match(/^\/api\/v1\/dhcp\/clients\/([^/]+)$/);
+  if (method === "PATCH" && patchClientMatch) {
+    try {
+      const rawBody = await readBody(req);
+      const body = rawBody ? (JSON.parse(rawBody) as Record<string, unknown>) : {};
+      const allowed = new Set(["hostname", "vendor_name"]);
+      const patch = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.has(k)));
+      if (Object.keys(patch).length === 0) {
+        sendJson(res, 400, { title: "No editable fields provided", status: 400 });
+        return true;
+      }
+      const id = decodeURIComponent(patchClientMatch[1]!);
+      const idx = dhcpClientsState.items.findIndex((r) => r.id === id);
+      if (idx < 0) {
+        sendJson(res, 404, { title: "client not found", status: 404 });
+        return true;
+      }
+      dhcpClientsState.items[idx] = { ...dhcpClientsState.items[idx], ...patch };
+      sendJson(res, 200, dhcpClientsState.items[idx]);
+    } catch {
+      sendJson(res, 400, { title: "Invalid JSON", status: 400 });
+    }
+    return true;
+  }
+
+  const patchReservationMatch = pathOnly.match(/^\/api\/v1\/dhcp\/reservations\/([^/]+)$/);
+  if (method === "PATCH" && patchReservationMatch) {
+    try {
+      const rawBody = await readBody(req);
+      const body = rawBody ? (JSON.parse(rawBody) as Record<string, unknown>) : {};
+      const allowed = new Set(["hardware_address", "reserved_address", "hostname"]);
+      const patch = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.has(k)));
+      if (Object.keys(patch).length === 0) {
+        sendJson(res, 400, { title: "No editable fields provided", status: 400 });
+        return true;
+      }
+      const id = decodeURIComponent(patchReservationMatch[1]!);
+      const idx = dhcpReservationsState.items.findIndex((r) => r.id === id);
+      if (idx < 0) {
+        sendJson(res, 404, { title: "reservation not found", status: 404 });
+        return true;
+      }
+      dhcpReservationsState.items[idx] = { ...dhcpReservationsState.items[idx], ...patch };
+      sendJson(res, 200, dhcpReservationsState.items[idx]);
+    } catch {
+      sendJson(res, 400, { title: "Invalid JSON", status: 400 });
+    }
+    return true;
+  }
+
   const resetMatch = pathOnly.match(/^\/api\/v1\/dashboards\/([^/]+)\/layout\/reset$/);
   if (method === "POST" && resetMatch) {
     const dashboardId = resetMatch[1]!;
@@ -175,7 +230,14 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
     return true;
   }
 
-  let payload: unknown = baseFixtures[pathOnly];
+  let payload: unknown;
+  if (pathOnly === "/api/v1/dhcp/clients") {
+    payload = dhcpClientsState;
+  } else if (pathOnly === "/api/v1/dhcp/reservations") {
+    payload = dhcpReservationsState;
+  } else {
+    payload = baseFixtures[pathOnly];
+  }
   if (payload === undefined) {
     sendJson(res, 404, { error: "not_found", path: pathOnly });
     return true;

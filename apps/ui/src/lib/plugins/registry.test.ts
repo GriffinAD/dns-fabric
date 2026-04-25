@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 
 import type { DashboardTile } from "../dashboard/types";
 import type { DataGateway } from "../dataGateway";
-import DataTableTile from "./DataTableTile.svelte";
+import DhcpClientsTile from "./DhcpClientsTile.svelte";
+import DhcpPoolsTile from "./DhcpPoolsTile.svelte";
+import DhcpReservationsTile from "./DhcpReservationsTile.svelte";
 import {
   manifestRegistry,
   registerDynamicPluginResolver,
@@ -65,10 +67,19 @@ describe("resolvePluginTileMount", () => {
     expect(m!.props.tile).toBe(t);
   });
 
-  it("dhcp.pools uses DataTableTile pools kind", () => {
+  it("dhcp.pools uses DhcpPoolsTile", () => {
     const m = resolvePluginTileMount({ gateway, tile: tile("dhcp.pools"), editLayout: false });
-    expect(m!.component).toBe(DataTableTile);
-    expect(m!.props.kind).toBe("pools");
+    expect(m!.component).toBe(DhcpPoolsTile);
+  });
+
+  it("dhcp.clients uses DhcpClientsTile", () => {
+    const m = resolvePluginTileMount({ gateway, tile: tile("dhcp.clients"), editLayout: false });
+    expect(m!.component).toBe(DhcpClientsTile);
+  });
+
+  it("dhcp.reservations uses DhcpReservationsTile", () => {
+    const m = resolvePluginTileMount({ gateway, tile: tile("dhcp.reservations"), editLayout: false });
+    expect(m!.component).toBe(DhcpReservationsTile);
   });
 
   it("perf.cpu uses PerfMetricTile with metric cpu", () => {
@@ -181,8 +192,8 @@ describe("registerDynamicPluginResolver", () => {
   it("resolves until teardown", () => {
     const id = `dynamic.${Math.random().toString(36).slice(2, 10)}`;
     const teardown = registerDynamicPluginResolver(id, (ctx) => ({
-      component: DataTableTile as Component<Record<string, unknown>>,
-      props: { gateway: ctx.gateway, tile: ctx.tile, kind: "pools" },
+      component: DhcpPoolsTile as Component<Record<string, unknown>>,
+      props: { gateway: ctx.gateway, tile: ctx.tile },
     }));
     const m = resolvePluginTileMount({ gateway, tile: tile(id), editLayout: false });
     expect(m).not.toBeNull();

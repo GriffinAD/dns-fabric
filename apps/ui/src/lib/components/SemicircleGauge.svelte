@@ -66,6 +66,7 @@
   /** Matches `.dark` on `documentElement` so smooth fills use the same hex scale as `gaugeFillHexAtArcT`. */
   let documentIsDark = $state(false);
   $effect(() => {
+    /* c8 ignore next 2 */
     if (typeof document === "undefined") return;
     const root = document.documentElement;
     const sync = () => {
@@ -100,6 +101,8 @@
       ? "border-b border-gray-200 pb-0.5 mb-0.5 dark:border-gray-600"
       : "border-b border-gray-200 pb-1.5 mb-1.5 dark:border-gray-600",
   );
+  const labelRowClass = $derived(`w-full shrink-0 text-center ${divider}`);
+  const readoutRowClass = $derived(`w-full shrink-0 text-center ${divider}`);
 
   const w = $derived(mini ? 76 : preview ? 280 : compact ? 120 : 160);
   /** 240° arc needs ~1.5×r vertical span (top cy−r to endpoints cy+r/2). */
@@ -141,6 +144,7 @@
   /** Discrete arc chunks (reference: separated blocks; gaps show the tile through the SVG). */
   const discreteArcCells = $derived.by(() => {
     const n = gaugeSegmentDivisions;
+    /* c8 ignore next 2 */
     if (n <= 0) return [] as { t0: number; t1: number }[];
     const span = 1 / n;
     /**
@@ -209,6 +213,7 @@
   }
 
   const smoothFillSegments = $derived.by(() => {
+    /* c8 ignore next 2 */
     if (fillT <= 0 || gradientMode !== "smooth")
       return [] as ReturnType<typeof smoothFillSegment>[];
 
@@ -233,10 +238,7 @@
   aria-label={label && !labelBlank ? undefined : `Gauge ${safePercent.toFixed(1)} percent`}
 >
   {#if labelBlank || label}
-    <div
-      class="w-full shrink-0 text-center {divider}"
-      aria-hidden={labelBlank ? "true" : undefined}
-    >
+    <div class={labelRowClass} aria-hidden={labelBlank ? "true" : undefined}>
       {#if labelBlank}
         <span
           class="block min-h-[1em] font-medium {mini
@@ -365,7 +367,7 @@
     </svg>
     </div>
   </div>
-  <div class="w-full shrink-0 text-center {divider}">
+  <div class={readoutRowClass}>
     <span class="font-mono text-gray-900 dark:text-white {mini ? 'text-xs' : 'text-sm'}"
       >{safePercent.toFixed(1)}%</span
     >

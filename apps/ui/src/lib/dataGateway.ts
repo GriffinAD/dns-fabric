@@ -2,7 +2,9 @@ import { z } from "zod";
 
 import {
   dhcpClientListResponseSchema,
+  dhcpClientSchema,
   dhcpPoolListResponseSchema,
+  dhcpReservationSchema,
   dhcpReservationListResponseSchema,
   discoveryRecordListResponseSchema,
   discoveryScanResponseSchema,
@@ -15,8 +17,12 @@ import {
 import { dashboardLayoutJsonSchema, normalizeLayoutFromJson } from "./dashboard/layoutZod";
 import type {
   DhcpClientListResponse,
+  DhcpClientPatch,
+  DhcpClient,
   DhcpPoolListResponse,
   DhcpReservationListResponse,
+  DhcpReservationPatch,
+  DhcpReservation,
   DiscoveryRecordListResponse,
   DiscoveryScanResponse,
   FabricEvent,
@@ -165,6 +171,43 @@ export class DataGateway {
     return parsed.data;
   }
 
+  private async patchJsonValidated<T>(path: string, reqBody: unknown, schema: z.ZodType<T>): Promise<T> {
+    const res = await fetch(this.url(path), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...this.authHeaders() },
+      body: JSON.stringify(reqBody),
+    });
+    if (!res.ok) {
+      throw new GatewayError({
+        code: "http_error",
+        path,
+        message: `PATCH ${path} failed: ${res.status} ${res.statusText}`,
+        status: res.status,
+      });
+    }
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      throw new GatewayError({
+        code: "parse_failed",
+        path,
+        message: `PATCH ${path} returned non-JSON`,
+      });
+    }
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      console.warn(`[DataGateway] Zod parse failed for ${path}`, parsed.error.flatten());
+      throw new GatewayError({
+        code: "parse_failed",
+        path,
+        message: `Invalid response shape for ${path}`,
+        zodError: parsed.error,
+      });
+    }
+    return parsed.data;
+  }
+
   getHealth(): Promise<HealthResponse> {
     return this.getJsonValidated("/api/v1/health", healthResponseSchema);
   }
@@ -235,6 +278,22 @@ export class DataGateway {
 
   listDhcpReservations(): Promise<DhcpReservationListResponse> {
     return this.getJsonValidated("/api/v1/dhcp/reservations", dhcpReservationListResponseSchema);
+  }
+
+  patchDhcpClient(clientId: string, patch: DhcpClientPatch): Promise<DhcpClient> {
+    return this.patchJsonValidated(
+      `/api/v1/dhcp/clients/${encodeURIComponent(clientId)}`,
+      patch,
+      dhcpClientSchema,
+    );
+  }
+
+  patchDhcpReservation(reservationId: string, patch: DhcpReservationPatch): Promise<DhcpReservation> {
+    return this.patchJsonValidated(
+      `/api/v1/dhcp/reservations/${encodeURIComponent(reservationId)}`,
+      patch,
+      dhcpReservationSchema,
+    );
   }
 
   listDiscoveryRecords(): Promise<DiscoveryRecordListResponse> {

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
 
-import GaugeTileLayoutHarness from "./GaugeTileLayout.test-support.svelte";
+import GaugeTileLayoutHarness from "./GaugeTileLayoutHarness.svelte";
 
 describe("GaugeTileLayout", () => {
   it("renders title and body when idle", () => {

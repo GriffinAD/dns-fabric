@@ -353,20 +353,22 @@ wires data and options.
 
 **Table family** (DHCP lists, reservations/static leases, future inventory grids):
 
-- A **`TablePluginShell`** (name TBD) composes: Flowbite-aligned **table chrome**
-  (toolbar slot, optional caption, refresh), **column definitions** (id, header,
-  accessor, sort key, `visibleInCompact?: boolean`), **pagination** (optional:
-  client-side slice vs server-driven `page` / `page_size` / `total` props —
-  leases and large datasets should prefer server paging when the API supports
-  it), **empty / loading / error** rows, and optional **row actions** (view,
-  edit, delete).
-- **Editing** is optional and staged: read-only grid first; then **row-level
-  edit** (modal or side panel) or **inline** cells behind a capability flag /
-  manifest extension — the shell owns the UX pattern; the plugin supplies
-  validators and `onSave` / `onDelete` callbacks. Static leases / reservations
-  are the natural “heavy” consumers once write APIs exist.
-- **DHCP pools / clients / reservations** become thin adapters: `fetchPage`,
-  column map, compact column set — not three copies of Card+Table+onMount.
+- **`BaseDataTable`** is the shared primitive: Flowbite-aligned **table chrome**
+  (filter, export CSV/JSON, optional refresh, “View all” modal), **column
+  definitions** (id, header, accessor, sort key, `visibleInCompact?: boolean`),
+  **client sort / filter / paging** (optional `ResizeObserver`-driven auto page
+  size), **empty / loading / error / no matches** states, and optional **editing**
+  in the modal (Zod-backed cells, per-row and save-all). **`TablePluginShell`**
+  is the thin legacy wrapper: it maps the old `columns` / `rows` props into
+  `BaseDataTable` with `tableShellLegacySettings()`.
+- Layout JSON may include **`options.table`** (strict patch of
+  `BaseDataTableSettings`) for non-perf tiles; plugins merge defaults in code.
+- **Editing** remains optional: DHCP data tiles default read-only; reservations
+  and future write APIs supply validators and `onSaveRow` / `onSaveAllDirty`
+  when enabled.
+- **DHCP pools / clients / reservations** stay thin adapters: `load()` /
+  `fetchPage`, column map, compact column set — not three copies of
+  Card+Table+onMount.
 
 **Custom plugins** skip Layer C and compose only Layers A + B (or third-party
 widgets inside Layer A), e.g. discovery toolbar, embed iframe, bespoke chart.

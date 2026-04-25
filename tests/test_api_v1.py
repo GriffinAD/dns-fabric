@@ -77,6 +77,73 @@ def test_dhcp_pools_empty_query(client: TestClient) -> None:
     assert r.json()["items"] == []
 
 
+def test_patch_dhcp_client_updates_allowed_fields(client: TestClient) -> None:
+    first = client.get("/api/v1/dhcp/clients").json()["items"][0]
+    r = client.patch(
+        f"/api/v1/dhcp/clients/{first['id']}",
+        json={"hostname": "renamed-host"},
+    )
+    assert r.status_code == 200
+    assert r.json()["hostname"] == "renamed-host"
+    r2 = client.get("/api/v1/dhcp/clients")
+    assert r2.status_code == 200
+    after = next(x for x in r2.json()["items"] if x["id"] == first["id"])
+    assert after["hostname"] == "renamed-host"
+
+
+def test_patch_dhcp_reservation_updates_allowed_fields(client: TestClient) -> None:
+    first = client.get("/api/v1/dhcp/reservations").json()["items"][0]
+    r = client.patch(
+        f"/api/v1/dhcp/reservations/{first['id']}",
+        json={"reserved_address": "192.168.2.250"},
+    )
+    assert r.status_code == 200
+    assert r.json()["reserved_address"] == "192.168.2.250"
+    r2 = client.get("/api/v1/dhcp/reservations")
+    assert r2.status_code == 200
+    after = next(x for x in r2.json()["items"] if x["id"] == first["id"])
+    assert after["reserved_address"] == "192.168.2.250"
+
+
+def test_patch_dhcp_rows_reject_invalid_patch(client: TestClient) -> None:
+    c = client.patch("/api/v1/dhcp/clients/cli-dyn-1", json={"pool_id": "x"})
+    assert c.status_code == 400
+    r = client.patch("/api/v1/dhcp/reservations/res-1", json={"category": "STATIC"})
+    assert r.status_code == 400
+
+
+def test_patch_dhcp_rows_reject_non_object_json(client: TestClient) -> None:
+    c = client.patch("/api/v1/dhcp/clients/cli-dyn-1", json=[])
+    assert c.status_code == 400
+    r = client.patch("/api/v1/dhcp/reservations/res-1", json=[])
+    assert r.status_code == 400
+
+
+def test_patch_dhcp_rows_reject_invalid_json(client: TestClient) -> None:
+    c = client.patch(
+        "/api/v1/dhcp/clients/cli-dyn-1",
+        content=b"not-json",
+        headers={"Content-Type": "application/json"},
+    )
+    assert c.status_code == 400
+    r = client.patch(
+        "/api/v1/dhcp/reservations/res-1",
+        content=b"not-json",
+        headers={"Content-Type": "application/json"},
+    )
+    assert r.status_code == 400
+
+
+def test_patch_dhcp_rows_404_when_id_missing(client: TestClient) -> None:
+    c = client.patch("/api/v1/dhcp/clients/missing", json={"hostname": "x"})
+    assert c.status_code == 404
+    r = client.patch(
+        "/api/v1/dhcp/reservations/missing",
+        json={"reserved_address": "192.168.2.200"},
+    )
+    assert r.status_code == 404
+
+
 def test_discovery_scan_and_pause(client: TestClient) -> None:
     r = client.get("/api/v1/discovery/scan")
     assert r.status_code == 200
@@ -726,6 +793,22 @@ def test_viewer_can_read_not_write(tmp_path: Path) -> None:
             headers=_auth_headers("op"),
         )
         assert r_op.status_code == 204
+        first = c.get(
+            "/api/v1/dhcp/clients",
+            headers=_auth_headers("vi"),
+        ).json()["items"][0]
+        r_patch_vi = c.patch(
+            f"/api/v1/dhcp/clients/{first['id']}",
+            json={"hostname": "nope"},
+            headers=_auth_headers("vi"),
+        )
+        assert r_patch_vi.status_code == 403
+        r_patch_op = c.patch(
+            f"/api/v1/dhcp/clients/{first['id']}",
+            json={"hostname": "yes"},
+            headers=_auth_headers("op"),
+        )
+        assert r_patch_op.status_code == 200
     state.reset_stub_state()
 
 

@@ -3,7 +3,9 @@ import type { Component } from "svelte";
 import type { DataGateway } from "../dataGateway";
 import type { DashboardTile } from "../dashboard/types";
 import { applyPerfCompactAsPercentOnly } from "./tileDisplay";
-import DataTableTile from "./DataTableTile.svelte";
+import DhcpClientsTile from "./DhcpClientsTile.svelte";
+import DhcpPoolsTile from "./DhcpPoolsTile.svelte";
+import DhcpReservationsTile from "./DhcpReservationsTile.svelte";
 import DiscoveryTile from "./DiscoveryTile.svelte";
 import PerfMetricTile from "./PerfMetricTile.svelte";
 import PerfTile from "./PerfTile.svelte";
@@ -89,22 +91,22 @@ function gridHint(
 
 function dhcpPools(ctx: TileHostContext): ResolvedPluginMount {
   return {
-    component: DataTableTile as Component<Record<string, unknown>>,
-    props: { gateway: ctx.gateway, tile: ctx.tile, kind: "pools" },
+    component: DhcpPoolsTile as Component<Record<string, unknown>>,
+    props: { gateway: ctx.gateway, tile: ctx.tile },
   };
 }
 
 function dhcpClients(ctx: TileHostContext): ResolvedPluginMount {
   return {
-    component: DataTableTile as Component<Record<string, unknown>>,
-    props: { gateway: ctx.gateway, tile: ctx.tile, kind: "clients" },
+    component: DhcpClientsTile as Component<Record<string, unknown>>,
+    props: { gateway: ctx.gateway, tile: ctx.tile },
   };
 }
 
 function dhcpReservations(ctx: TileHostContext): ResolvedPluginMount {
   return {
-    component: DataTableTile as Component<Record<string, unknown>>,
-    props: { gateway: ctx.gateway, tile: ctx.tile, kind: "reservations" },
+    component: DhcpReservationsTile as Component<Record<string, unknown>>,
+    props: { gateway: ctx.gateway, tile: ctx.tile },
   };
 }
 
