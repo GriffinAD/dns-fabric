@@ -11,6 +11,7 @@
   import type { Snippet } from "svelte";
 
   import BaseDataTableModal from "./BaseDataTableModal.svelte";
+  import BasePagination from "./BasePagination.svelte";
   import InlineSelectEditor from "./InlineSelectEditor.svelte";
   import type { BaseDataTableColumn, BaseDataTableSettingsPatch } from "./baseDataTable";
   import {
@@ -87,7 +88,9 @@
   let sortState = $state<TableSortState>({ columnId: null, direction: null });
   let page = $state(0);
   const configuredPageSize = $derived(Math.max(1, Math.floor(settings.pageSize)));
-  const pageSize = $derived(configuredPageSize);
+  let pageSize = $state(10);
+  let pageSizeSelectValue = $state("10");
+  let gotoPageValue = $state<string | number>("");
   let modalOpen = $state(false);
   let exportMenuOpen = $state(false);
   let exportDefault = $state<"json" | "csv">("json");
@@ -137,20 +140,28 @@
   const pageData = $derived(
     pagingEnabled ? paginateRows(sorted, page, pageSize) : { slice: sorted, totalPages: 1, page: 0 },
   );
+  const pageSizeOptions = $derived.by(() => {
+    const options = new Set([5, 10, 25, 50]);
+    options.add(pageSize);
+    return Array.from(options).sort((a, b) => a - b);
+  });
 
   const displayRows = $derived(pageData.slice);
 
   const filterActive = $derived(settings.allowFilter && filterQuery.trim().length > 0);
   const filterHintText = $derived(`Filters rows by visible columns. ${sorted.length} rows match.`);
   const rowCountText = $derived(`${sorted.length} rows`);
-  const pageLabelText = $derived(`Page ${pageData.page + 1} of ${pageData.totalPages}`);
-
   $effect(() => {
     void sorted.length;
     void pageData.totalPages;
     if (page > pageData.totalPages - 1) {
       page = Math.max(0, pageData.totalPages - 1);
     }
+  });
+
+  $effect(() => {
+    pageSize = configuredPageSize;
+    pageSizeSelectValue = String(configuredPageSize);
   });
 
   $effect(() => {
@@ -305,6 +316,20 @@
   function exportWorking() {
     const rows = rowsForExport(items, sorted, settings.exportScope);
     return { rows, cols: visibleColumns };
+  }
+
+  function gotoPageSubmit() {
+    const raw = String(gotoPageValue).trim();
+    if (raw.length === 0) return;
+    const parsed = Number.parseInt(raw, 10);
+    if (Number.isNaN(parsed)) {
+      gotoPageValue = "";
+      return;
+    }
+    const clamped = Math.max(1, Math.min(pageData.totalPages, parsed));
+    page = clamped - 1;
+    gotoPageValue = String(clamped);
+    announce = `Page ${clamped} of ${pageData.totalPages}`;
   }
 
   function doExportCsv() {
@@ -707,40 +732,53 @@
           </Table>
         </div>
         {#if pagingEnabled && pageData.totalPages > 1}
-          <div
-            class="flex shrink-0 items-center justify-between gap-2 border-t border-gray-100 px-4 py-2 dark:border-gray-700"
-            role="navigation"
-            aria-label="Pagination"
-          >
-            <Button
-              type="button"
-              size="xs"
-              color="alternative"
-              disabled={pageData.page <= 0}
-              aria-label="Previous page"
-              onclick={() => {
-                page = Math.max(0, page - 1);
-                announce = `Page ${page + 1} of ${pageData.totalPages}`;
+          <div class="flex shrink-0 items-center gap-3 border-t border-gray-100 px-4 py-2 dark:border-gray-700">
+            <BasePagination
+              page={pageData.page + 1}
+              totalPages={pageData.totalPages}
+              density="default"
+              onChange={(nextPage) => {
+                page = nextPage - 1;
+                announce = `Page ${nextPage} of ${pageData.totalPages}`;
               }}
-            >
-              Previous
-            </Button>
-            <span class="text-sm text-gray-600 dark:text-gray-400" aria-live="polite">
-              {@html pageLabelText}
-            </span>
-            <Button
-              type="button"
-              size="xs"
-              color="alternative"
-              disabled={pageData.page >= pageData.totalPages - 1}
-              aria-label="Next page"
-              onclick={() => {
-                page = Math.min(pageData.totalPages - 1, page + 1);
-                announce = `Page ${page + 1} of ${pageData.totalPages}`;
-              }}
-            >
-              Next
-            </Button>
+            />
+            <label class="ml-3 inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+              <span class="font-medium tracking-[0.01em]">Page</span>
+              <input
+                type="text"
+                pattern="[0-9]*"
+                inputmode="numeric"
+                class="h-8 w-16 rounded-md border border-gray-300 bg-white px-2 text-center text-xs font-medium text-gray-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                bind:value={gotoPageValue}
+                aria-label={`Go to page, between 1 and ${pageData.totalPages}`}
+                onkeydown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    gotoPageSubmit();
+                  }
+                }}
+              />
+            </label>
+            <label class="ml-auto inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+              <span class="font-medium tracking-[0.01em]">Page size</span>
+              <select
+                class="h-8 rounded-md border border-gray-300 bg-white px-2 text-xs font-medium text-gray-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                bind:value={pageSizeSelectValue}
+                aria-label="Rows per page"
+                onchange={(event) => {
+                  pageSizeSelectValue = (event.currentTarget as HTMLSelectElement).value;
+                  const next = Number.parseInt(pageSizeSelectValue, 10);
+                  pageSize = Number.isNaN(next) ? 10 : next;
+                  pageSizeSelectValue = String(pageSize);
+                  page = 0;
+                  announce = `Page size ${pageSize}`;
+                }}
+              >
+                {#each pageSizeOptions as option (option)}
+                  <option value={String(option)}>{option}</option>
+                {/each}
+              </select>
+            </label>
           </div>
         {/if}
       </div>

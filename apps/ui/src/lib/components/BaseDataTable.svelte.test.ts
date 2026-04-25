@@ -352,10 +352,10 @@ describe("BaseDataTable", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Next page" }));
     await tick();
-    expect(screen.getByRole("navigation", { name: "Pagination" }).textContent).toContain("Page 2 of 2");
+    expect(screen.getByRole("button", { name: "Go to page 2" }).getAttribute("aria-current")).toBe("page");
     fireEvent.click(screen.getByRole("button", { name: "Previous page" }));
     await tick();
-    expect(screen.getByRole("navigation", { name: "Pagination" }).textContent).toContain("Page 1 of 2");
+    expect(screen.getByRole("button", { name: "Go to page 1" }).getAttribute("aria-current")).toBe("page");
   });
 
   it("uses configured pageSize when autoPageSize is false", async () => {
@@ -379,10 +379,10 @@ describe("BaseDataTable", () => {
         }),
       },
     });
-    expect(screen.getByRole("navigation", { name: "Pagination" }).textContent).toContain("Page 1 of 3");
+    expect(screen.getByRole("button", { name: "Go to page 1" }).getAttribute("aria-current")).toBe("page");
     fireEvent.click(screen.getByRole("button", { name: "Next page" }));
     await tick();
-    expect(screen.getByRole("navigation", { name: "Pagination" }).textContent).toContain("Page 2 of 3");
+    expect(screen.getByRole("button", { name: "Go to page 2" }).getAttribute("aria-current")).toBe("page");
   });
 
   it("applies rowHeightMode classes to body cells", () => {
@@ -643,7 +643,7 @@ describe("BaseDataTable", () => {
     render(BaseDataTablePageClampHarness);
     fireEvent.click(screen.getByRole("button", { name: "Next page" }));
     await tick();
-    expect(screen.getByRole("navigation", { name: "Pagination" }).textContent).toContain("Page 2 of 2");
+    expect(screen.getByRole("button", { name: "Go to page 2" }).getAttribute("aria-current")).toBe("page");
     fireEvent.click(screen.getByTestId("shrink-items"));
     await tick();
     expect(screen.queryByRole("navigation", { name: "Pagination" })).toBeNull();
@@ -677,7 +677,8 @@ describe("BaseDataTable", () => {
     await tick();
     const scroller = document.querySelector('[data-testid="table-body-scroll"]');
     expect(scroller?.className).toContain("overflow-hidden");
-    expect(screen.getByText(/Page 1 of 5/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go to page 1" }).getAttribute("aria-current")).toBe("page");
+    expect((screen.getByRole("combobox", { name: "Rows per page" }) as HTMLSelectElement).value).toBe("8");
   });
 
   it("navigates pagination controls forward and backward", async () => {
@@ -699,13 +700,99 @@ describe("BaseDataTable", () => {
         }),
       },
     });
-    expect(screen.getByText(/Page 1 of 3/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go to page 1" }).getAttribute("aria-current")).toBe("page");
     fireEvent.click(screen.getByRole("button", { name: "Next page" }));
     await tick();
-    expect(screen.getByRole("navigation", { name: "Pagination" }).textContent).toContain("Page 2 of 3");
+    expect(screen.getByRole("button", { name: "Go to page 2" }).getAttribute("aria-current")).toBe("page");
     fireEvent.click(screen.getByRole("button", { name: "Previous page" }));
     await tick();
-    expect(screen.getByRole("navigation", { name: "Pagination" }).textContent).toContain("Page 1 of 3");
+    expect(screen.getByRole("button", { name: "Go to page 1" }).getAttribute("aria-current")).toBe("page");
+  });
+
+  it("jumps to entered page from footer input", async () => {
+    render(BaseDataTable, {
+      props: {
+        title: "Pager jump",
+        items: manyItems(41),
+        err: null,
+        emptyText: "e",
+        compact: false,
+        columns: cols(),
+        rowKey: (r) => (r as { id: string }).id,
+        settings: mergeBaseDataTableSettings(defaultBaseDataTableSettings, {
+          allowPaging: true,
+          pageSize: 10,
+          allowFilter: false,
+          allowModal: false,
+          allowExportCsv: false,
+          allowExportJson: false,
+        }),
+      },
+    });
+    const jump = screen.getByRole("textbox", { name: "Go to page, between 1 and 5" }) as HTMLInputElement;
+    jump.value = "4";
+    fireEvent.input(jump);
+    fireEvent.keyDown(jump, { key: "Enter" });
+    await tick();
+    expect(screen.getByRole("button", { name: "Go to page 4" }).getAttribute("aria-current")).toBe("page");
+  });
+
+  it("clears non-numeric page jump input on enter", async () => {
+    render(BaseDataTable, {
+      props: {
+        title: "Pager jump invalid",
+        items: manyItems(41),
+        err: null,
+        emptyText: "e",
+        compact: false,
+        columns: cols(),
+        rowKey: (r) => (r as { id: string }).id,
+        settings: mergeBaseDataTableSettings(defaultBaseDataTableSettings, {
+          allowPaging: true,
+          pageSize: 10,
+          allowFilter: false,
+          allowModal: false,
+          allowExportCsv: false,
+          allowExportJson: false,
+        }),
+      },
+    });
+    const jump = screen.getByRole("textbox", { name: "Go to page, between 1 and 5" }) as HTMLInputElement;
+    jump.value = "abc";
+    fireEvent.input(jump);
+    fireEvent.keyDown(jump, { key: "Enter" });
+    await tick();
+    expect(jump.value).toBe("");
+    expect(screen.getByRole("button", { name: "Go to page 1" }).getAttribute("aria-current")).toBe("page");
+  });
+
+  it("changes page size using footer selector", async () => {
+    render(BaseDataTable, {
+      props: {
+        title: "Pager size",
+        items: manyItems(60),
+        err: null,
+        emptyText: "e",
+        compact: false,
+        columns: cols(),
+        rowKey: (r) => (r as { id: string }).id,
+        settings: mergeBaseDataTableSettings(defaultBaseDataTableSettings, {
+          allowPaging: true,
+          pageSize: 10,
+          allowFilter: false,
+          allowModal: false,
+          allowExportCsv: false,
+          allowExportJson: false,
+        }),
+      },
+    });
+    expect(screen.getByRole("button", { name: "Go to page 6" })).toBeTruthy();
+    const pageSizeSelect = screen.getByRole("combobox", { name: "Rows per page" }) as HTMLSelectElement;
+    pageSizeSelect.value = "25";
+    fireEvent.change(pageSizeSelect);
+    await tick();
+    expect(screen.queryByRole("button", { name: "Go to page 6" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Go to page 3" })).toBeTruthy();
   });
 
   it("toggles between paged and all rows in inline mode", async () => {
@@ -726,14 +813,14 @@ describe("BaseDataTable", () => {
         }),
       },
     });
-    expect(screen.getByRole("navigation", { name: "Pagination" }).textContent).toContain("Page 1 of 3");
+    expect(screen.getByRole("button", { name: "Go to page 1" }).getAttribute("aria-current")).toBe("page");
     fireEvent.click(screen.getByRole("button", { name: "View all" }));
     await tick();
     expect(screen.getByRole("button", { name: "Show paged" })).toBeTruthy();
     expect(screen.queryByRole("navigation", { name: "Pagination" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Show paged" }));
     await tick();
-    expect(screen.getByRole("navigation", { name: "Pagination" }).textContent).toContain("Page 1 of 3");
+    expect(screen.getByRole("button", { name: "Go to page 1" }).getAttribute("aria-current")).toBe("page");
   });
 
   it("edits inline and saves all changed rows in inline mode", async () => {
@@ -1363,7 +1450,7 @@ describe("BaseDataTable", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next page" }));
     fireEvent.click(screen.getByRole("button", { name: "Next page" }));
     await tick();
-    expect(screen.getByRole("navigation", { name: "Pagination" }).textContent).toContain("Page 3 of 3");
+    expect(screen.getByRole("button", { name: "Go to page 3" }).getAttribute("aria-current")).toBe("page");
   });
 
   it("does nothing when save all is clicked without an onCommit handler", async () => {
