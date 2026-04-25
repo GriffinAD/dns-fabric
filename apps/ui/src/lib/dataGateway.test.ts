@@ -273,6 +273,96 @@ describe("DataGateway", () => {
     });
   });
 
+  it("patchDhcpClient sends PATCH and parses row", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            id: "c1",
+            hardware_address: "aa:bb:cc:dd:ee:ff",
+            assigned_address: "192.168.2.10",
+            pool_id: "p1",
+            hostname: "renamed",
+          }),
+      }),
+    );
+    const gw = new DataGateway("");
+    const row = await gw.patchDhcpClient("c1", { hostname: "renamed" });
+    expect(row.hostname).toBe("renamed");
+    expect(fetch).toHaveBeenCalledWith("/api/v1/dhcp/clients/c1", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hostname: "renamed" }),
+    });
+  });
+
+  it("patchDhcpReservation sends PATCH and parses row", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            id: "r1",
+            hardware_address: "aa:bb:cc:dd:ee:ff",
+            reserved_address: "192.168.2.22",
+          }),
+      }),
+    );
+    const gw = new DataGateway("");
+    const row = await gw.patchDhcpReservation("r1", { reserved_address: "192.168.2.22" });
+    expect(row.reserved_address).toBe("192.168.2.22");
+    expect(fetch).toHaveBeenCalledWith("/api/v1/dhcp/reservations/r1", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reserved_address: "192.168.2.22" }),
+    });
+  });
+
+  it("patchDhcpClient throws on non-OK response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+      }),
+    );
+    const gw = new DataGateway("");
+    await expect(gw.patchDhcpClient("missing", { hostname: "x" })).rejects.toThrow(/404/);
+  });
+
+  it("patchDhcpClient throws parse_failed on non-JSON body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.reject(new SyntaxError("bad json")),
+      }),
+    );
+    const gw = new DataGateway("");
+    await expect(gw.patchDhcpClient("c1", { hostname: "x" })).rejects.toMatchObject({
+      code: "parse_failed",
+      message: expect.stringContaining("non-JSON"),
+    });
+  });
+
+  it("patchDhcpReservation throws parse_failed on invalid shape", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: "r1", reserved_address: 123 }),
+      }),
+    );
+    const gw = new DataGateway("");
+    await expect(gw.patchDhcpReservation("r1", { reserved_address: "x" })).rejects.toMatchObject({
+      code: "parse_failed",
+    });
+  });
+
   it("subscribeFabricEvents wires EventSource", () => {
     const closeFn = vi.fn();
     class MockES {
