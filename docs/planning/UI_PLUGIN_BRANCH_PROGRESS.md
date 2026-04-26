@@ -3,6 +3,12 @@
 **Branch:** `plugin`  
 **Plan:** [.cursor/plans/ui-v2-plugin-branch.plan.md](../../.cursor/plans/ui-v2-plugin-branch.plan.md) (read-only reference; do not edit as part of routine work)
 
+## Current focus — Phase 2 (v3 nested groups)
+
+**Priority:** Ship **nested containers** as the next coordinated engine slice so we do not rework placement, host DnD zones, migration, undo, and server validation twice. Phases 3–10 already landed on **v2** (tiles-only inside groups); v3 adds **groups-as-children** with depth/cycle policy and a single migration path (`migrateV2ToV3` + golden fixtures). Align [`dashboard-plugin-blueprint.md`](../architecture/dashboard-plugin-blueprint.md) or a short ADR if host contracts change.
+
+**Scope reminder (from plan):** touch `types` / Zod / normalise, `migration/`, `layoutTree` / `gridPlacement`, `DashboardHost`, `layoutJsonUnsupportedVersionMessage`, `specs/dashboard/layout.schema.json`, OpenAPI, `layout_validate.py`, then Playwright + Phase 0 checklist for nested moves.
+
 ## Before (frozen @ branch cut)
 
 - **Palette:** flat edit-mode buttons inside `DashboardHost`; drag uses MIME + `text/plain` prefixes (`x-kea-fabric:plugin:…`, add-group tokens); `PaletteDrag` union is plugin vs group only.
@@ -42,7 +48,7 @@ Manual unless noted; all should pass on `plugin`.
 ## Target (end state)
 
 - First-class **migration** + **persistence** modules; thin shell/bootstrap.
-- **v3** recursive groups; schema + OpenAPI + Python validator aligned _(see Phase 2 — deferred)_.
+- **v3** recursive groups; schema + OpenAPI + Python validator aligned (**Phase 2 — in progress;** see section below).
 - Unified **palette** (plugins + core) with codec + PluginPalette UI + polish.
 - **Editor** toolbar + inspector; **DnD** interaction layer; **undo/redo** with documented remote rules.
 - **dashboardTileRegistry** + lint boundaries; **adminRouteRegistry** + engine public API doc.
@@ -93,11 +99,11 @@ _Update once merge to `main` is done._
 
 | Field | Content |
 | --- | --- |
-| **Status** | deferred |
-| **Done** | _(none on this branch — avoids half-working nested DnD after an earlier type spike was reverted.)_ |
-| **Remaining** | Per plan: ADR/types `GroupChild` recursive; `specs/dashboard/layout.schema.json` + OpenAPI + `layout_validate.py`; `layoutJsonUnsupportedVersionMessage` for v3; `migrateV2ToV3` + fixtures; recursive `DashboardHost` + `gridPlacement` / `svelte-dnd-action` zones; max depth / cycle policy; Playwright nested scenario. |
-| **Verification** | _(pending Phase 2 slice)_ |
-| **Notes / risks** | **Explicit follow-up PR** after `plugin` stabilizes persistence + palette + toolbar. Blueprint: [`docs/architecture/dashboard-plugin-blueprint.md`](../../docs/architecture/dashboard-plugin-blueprint.md). |
+| **Status** | in progress |
+| **Done** | _(none yet — prior nested spike was reverted; v2-only tree remains until this slice lands.)_ |
+| **Remaining** | Per plan: ADR or blueprint alignment; types `GroupChild` recursive; `specs/dashboard/layout.schema.json` + OpenAPI + `layout_validate.py`; `layoutJsonUnsupportedVersionMessage` for v3; `migrateV2ToV3` + golden fixtures; recursive `DashboardHost` + `gridPlacement` / `svelte-dnd-action` zones; max depth / cycle policy; undo + persistence round-trip on v3; Playwright nested scenario; Phase 0 checklist ticks for nested moves. |
+| **Verification** | `bash scripts/check_app.sh`; `npm run check:ui-unit`; targeted Playwright under `apps/ui/tests/e2e/` |
+| **Notes / risks** | **Raised to top priority** to avoid a second pass through host/placement/migration. Large surface—keep one linear PR series or ordered commits. Blueprint: [`docs/architecture/dashboard-plugin-blueprint.md`](../../docs/architecture/dashboard-plugin-blueprint.md). |
 
 ---
 
@@ -151,7 +157,7 @@ _Update once merge to `main` is done._
 | --- | --- |
 | **Status** | partial |
 | **Done** | `interactions/dragIntent.ts` + `DASHBOARD_DRAG_INTENT_KINDS` + unit test; progress doc intent taxonomy pointer in plan. |
-| **Remaining** | Ghost, snap preview, drop highlight, rAF throttle, reduced-motion path, Playwright per plan §Phase 7. |
+| **Remaining** | Ghost, snap preview, drop highlight, rAF throttle, reduced-motion path, Playwright per plan §Phase 7. **Host-level** drop UX should target the **v3** recursive drop matrix once Phase 2 lands (avoid polishing v2-only zones that will be replaced). |
 | **Verification** | `npm run check:ui-unit` |
 
 ---
