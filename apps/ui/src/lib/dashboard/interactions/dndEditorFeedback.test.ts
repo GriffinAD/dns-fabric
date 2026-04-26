@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  applyDashboardDragLift,
   dashboardEditorDropTargetStyle,
   dashboardEditorNestedFlipMs,
   dashboardEditorRootFlipMs,
@@ -60,5 +61,26 @@ describe("dashboardEditorDropTargetStyle", () => {
     expect(s.outline).toContain("var(--color-primary-500)");
     expect(s.outlineOffset).toBe("3px");
     expect(s.borderRadius).toBe("0.375rem");
+  });
+});
+
+describe("applyDashboardDragLift", () => {
+  it("no-ops when element is undefined", () => {
+    expect(() => applyDashboardDragLift(undefined, false)).not.toThrow();
+  });
+
+  it("uses light styling when reduced motion is on", () => {
+    const el = document.createElement("div");
+    applyDashboardDragLift(el, true);
+    expect(el.style.opacity).toBe("0.98");
+    expect(el.style.boxShadow).toBe("");
+  });
+
+  it("applies lift shadow when motion is allowed", () => {
+    const el = document.createElement("div");
+    applyDashboardDragLift(el, false);
+    expect(el.style.opacity).toBe("0.94");
+    expect(el.style.boxShadow).toContain("rgba");
+    expect(el.style.borderRadius).toBe("0.375rem");
   });
 });

@@ -7,7 +7,9 @@
     dragHandleZone,
     FEATURE_FLAG_NAMES,
     setFeatureFlag,
+    SOURCES,
   } from "svelte-dnd-action";
+  import type { DndEvent } from "svelte-dnd-action";
 
   setFeatureFlag(FEATURE_FLAG_NAMES.USE_COMPUTED_STYLE_INSTEAD_OF_BOUNDING_RECT, true);
 
@@ -38,6 +40,7 @@
     isDndCellGroup,
   } from "./groupDndFinalize";
   import {
+    applyDashboardDragLift,
     dashboardEditorDropTargetStyle,
     dashboardEditorNestedFlipMs,
     dashboardEditorRootFlipMs,
@@ -166,6 +169,15 @@
   const rootFlipMs = $derived(dashboardEditorRootFlipMs(reducedMotion));
   const editorDropTargetStyle = dashboardEditorDropTargetStyle();
 
+  /** True while a pointer-driven in-grid drag is in flight (consider…finalize). For tests + subtle chrome. */
+  let editorPointerDndActive = $state(false);
+
+  function dashboardEditorTransformDragged(element?: HTMLElement, _data?: unknown, _index?: number) {
+    applyDashboardDragLift(element, reducedMotion);
+  }
+
+  type DndConsiderFinalize = CustomEvent<DndEvent<DndListItem>>;
+
   /** Viewport width for an editor “strip” (Auto wrap off) — same math as `GroupReadNoWrap` widthPx. */
   let noWrapEditPortW = $state<Record<string, number>>({});
   function noWrapStripPortMeasure(el: HTMLDivElement, gid: string) {
@@ -188,11 +200,13 @@
     return [sorted];
   }
 
-  function handleRootConsider(e: CustomEvent<{ items: DndListItem[] }>) {
+  function handleRootConsider(e: DndConsiderFinalize) {
+    if (e.detail.info.source === SOURCES.POINTER) editorPointerDndActive = true;
     dndRoot = dedupeById(e.detail.items);
   }
 
-  function handleRootFinalize(e: CustomEvent<{ items: DndListItem[] }>) {
+  function handleRootFinalize(e: DndConsiderFinalize) {
+    editorPointerDndActive = false;
     dndRoot = dedupeById(e.detail.items);
     queueMicrotask(() => {
       if (!onLayoutStructureChange) return;
@@ -201,14 +215,16 @@
   }
 
   function handleGroupConsider(gid: string) {
-    return (e: CustomEvent<{ items: DndListItem[] }>) => {
+    return (e: DndConsiderFinalize) => {
+      if (e.detail.info.source === SOURCES.POINTER) editorPointerDndActive = true;
       const items = dedupeById(e.detail.items);
       dndByGroup = { ...dndByGroup, [gid]: items };
     };
   }
 
   function handleGroupFinalize(gid: string) {
-    return (e: CustomEvent<{ items: DndListItem[] }>) => {
+    return (e: DndConsiderFinalize) => {
+      editorPointerDndActive = false;
       const items = dedupeById(e.detail.items);
       dndByGroup = { ...dndByGroup, [gid]: items };
       queueMicrotask(() => {
@@ -309,6 +325,7 @@
     <div
       class="relative min-h-[120px] overflow-hidden rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600"
       data-testid="editor-grid-chrome"
+      data-editor-pointer-dnd={editorPointerDndActive ? "true" : "false"}
       role="region"
       aria-label="Drop plugins or a new container onto the grid"
       ondragover={onEditorChromeDragOver}
@@ -326,6 +343,7 @@
           autoAriaDisabled: true,
           morphDisabled: true,
           dropTargetStyle: editorDropTargetStyle,
+          transformDraggedElement: dashboardEditorTransformDragged,
         }}
         onconsider={handleRootConsider}
         onfinalize={handleRootFinalize}
@@ -403,6 +421,7 @@
                         morphDisabled: true,
                         dropAnimationDisabled: true,
                         dropTargetStyle: editorDropTargetStyle,
+                        transformDraggedElement: dashboardEditorTransformDragged,
                       }}
                       onconsider={handleGroupConsider(g.id)}
                       onfinalize={handleGroupFinalize(g.id)}
@@ -472,6 +491,7 @@
                         morphDisabled: true,
                         dropAnimationDisabled: true,
                         dropTargetStyle: editorDropTargetStyle,
+                        transformDraggedElement: dashboardEditorTransformDragged,
                       }}
                       onconsider={handleGroupConsider(g.id)}
                       onfinalize={handleGroupFinalize(g.id)}
@@ -505,6 +525,7 @@
                                 morphDisabled: true,
                                 dropAnimationDisabled: true,
                                 dropTargetStyle: editorDropTargetStyle,
+                                transformDraggedElement: dashboardEditorTransformDragged,
                               }}
                               onconsider={handleGroupConsider(sub.id)}
                               onfinalize={handleGroupFinalize(sub.id)}

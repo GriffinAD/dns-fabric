@@ -3,9 +3,9 @@
 **Branch:** `plugin`  
 **Plan:** [.cursor/plans/ui-v2-plugin-branch.plan.md](../../.cursor/plans/ui-v2-plugin-branch.plan.md) (read-only reference; do not edit as part of routine work)
 
-## Current focus — Phase 2 closed; rolling verification
+## Current focus — Phases 2 + 7 closed; rolling verification
 
-**Phase 2 (v3 nested groups)** is **done** on this branch (types, migration, host read/edit, schema, tests). **Remaining:** optional Phase 7 editor DnD polish against the v3 drop matrix; align [`dashboard-plugin-blueprint.md`](../architecture/dashboard-plugin-blueprint.md) or a short ADR only if a **new** host or persistence contract diverges from what the code already implements. Phase 0 baseline checklist: **signed off** (manual verification on `plugin`).
+**Phase 2 (v3 nested groups)** and **Phase 7 (editor DnD UX)** are **done** on this branch. **Remaining:** align [`dashboard-plugin-blueprint.md`](../architecture/dashboard-plugin-blueprint.md) or a short ADR only if a **new** host or persistence contract diverges from what the code already implements. Phase 0 baseline checklist: **signed off** (manual verification on `plugin`).
 
 ## Before (frozen @ branch cut)
 
@@ -99,7 +99,7 @@ _Update once merge to `main` is done._
 | --- | --- |
 | **Status** | done |
 | **Done** | Recursive `GroupChild` / v3 layout types + Zod + normalise; `migrateV2ToV3` + golden fixtures + `layout_validate.py` + `specs/dashboard/layout.schema.json` + OpenAPI; `layoutJsonUnsupportedVersionMessage` for v3; nested read host (`DashboardReadNestedHost`, no deprecated `<svelte:self>`); `DashboardHost` + `gridPlacement` / DnD / `layoutTree` / `groupDndFinalize` / undo paths for nested groups; Vitest coverage on enforced paths for migration, strip-legacy, placement, Zod, layout store cap; Playwright `dashboardNested.e2e.ts` (seeded v3 nested layout) + e2e fixture helpers; persisted layout version **3** in parent-move spec. |
-| **Remaining** | Optional blueprint touch-up if reviewers want prose parity with shipped behaviour. Phase 7: deeper editor DnD UX still partial (see Phase 7 row). |
+| **Remaining** | Optional blueprint touch-up if reviewers want prose parity with shipped behaviour. |
 | **Verification** | `bash scripts/check_app.sh`; `npm run check:ui-unit`; `npm run check:ui-e2e` |
 | **Notes / risks** | Plugin isolation e2e expects `VITE_E2E_THROWING=1` (Playwright `webServer` sets it). With `PW_REUSE_DEV_SERVER=1`, start the same dev command with that env or the spec **skips** after probing `globalThis.__KEA_FABRIC_E2E_THROWING`. Palette e2e accepts both legacy and `ui.palette.v2` test ids. |
 
@@ -153,10 +153,10 @@ _Update once merge to `main` is done._
 
 | Field | Content |
 | --- | --- |
-| **Status** | partial |
-| **Done** | `interactions/dragIntent.ts` + `DASHBOARD_DRAG_INTENT_KINDS` + unit test; **`interactions/dndEditorFeedback.ts`** + tests — shared **`dropTargetStyle`** (dashed primary outline) on all editor `dragHandleZone`s; root **FLIP** duration **180 ms** with **`prefers-reduced-motion: reduce` → 0 ms**; nested zones stay **0 ms** flip (perf guardrail). Matrix below. |
-| **Remaining** | Drag ghost / lift (`transformDraggedElement`), snap preview, rAF-throttled consider handlers if profiling shows jank, invalid-drop visuals, Playwright where stable. |
-| **Verification** | `npm run check:ui-unit` |
+| **Status** | done |
+| **Done** | `interactions/dragIntent.ts` + `DASHBOARD_DRAG_INTENT_KINDS` + unit test; **`interactions/dndEditorFeedback.ts`** + tests — shared **`dropTargetStyle`** (dashed primary outline) on all editor `dragHandleZone`s; root **FLIP** **180 ms** with **`prefers-reduced-motion: reduce` → 0 ms**; nested zones **0 ms** flip; **`transformDraggedElement`** lift (opacity + shadow, motion-safe); **`data-editor-pointer-dnd`** on editor chrome during pointer consider…finalize; Playwright `editor pointer drag toggles chrome DnD active flag`. **Snap preview:** svelte-dnd **shadow placeholder** item is the live reorder preview (no separate overlay). **Deferred (profiling / product):** rAF-throttled consider batches, invalid-cross-zone chrome, ARIA live slot announcements. |
+| **Remaining** | — |
+| **Verification** | `npm run check:ui-unit`; `npm run check:ui-e2e` |
 
 ### Drag intent → drop target (v3 editor)
 
@@ -167,7 +167,7 @@ _Update once merge to `main` is done._
 | `grid-tile` | Grip on tile | Any `dragHandleZone` of type `dashboard-layout` (root ↔ group ↔ nested group strip) |
 | `grid-group` | Grip on container | Same `dashboard-layout` **dragHandleZone** regions as tiles (root + per-group lists); structure updates go through `groupDndFinalize` / layout store. |
 
-Placement semantics are unchanged; this table is for UX and future ghost/snap work.
+Placement semantics are unchanged; this table is for UX and host wiring (see Phase 7 **Done** for shipped feedback layers).
 
 ---
 

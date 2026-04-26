@@ -130,6 +130,22 @@ test("layout editor lists tiles in layout order (DnD targets)", async ({ page })
   expect(ids).toEqual(expectedOrder);
 });
 
+test("editor pointer drag toggles chrome DnD active flag during reorder", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Edit layout" }).click();
+  const chrome = page.getByTestId("editor-grid-chrome");
+  await expect(chrome).toHaveAttribute("data-editor-pointer-dnd", "false");
+  const handle = page.getByTestId("editor-tile-drag-handle").first();
+  const box = await handle.boundingBox();
+  expect(box).toBeTruthy();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + box!.width / 2 + 120, box!.y + box!.height / 2 + 6);
+  await expect(chrome).toHaveAttribute("data-editor-pointer-dnd", "true", { timeout: 8000 });
+  await page.mouse.up();
+  await expect(chrome).toHaveAttribute("data-editor-pointer-dnd", "false", { timeout: 8000 });
+});
+
 test.skip("edit layout: grid tracks, --d-track ruler, tile shells, and Flowbite cards line up (no false pass)", async ({
   page,
 }) => {

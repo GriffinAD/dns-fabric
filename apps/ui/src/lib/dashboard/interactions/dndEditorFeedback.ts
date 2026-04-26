@@ -34,3 +34,19 @@ export function dashboardEditorDropTargetStyle(): Record<string, string> {
     borderRadius: "0.375rem",
   };
 }
+
+/**
+ * Visual “lift” on the floating drag clone (`#dnd-action-dragged-el`).
+ * Do **not** set `transform` here — the library uses it for pointer tracking / drop animation.
+ */
+export function applyDashboardDragLift(element: HTMLElement | undefined, reducedMotion: boolean): void {
+  if (!element) return;
+  if (reducedMotion) {
+    element.style.opacity = "0.98";
+    element.style.boxShadow = "";
+    return;
+  }
+  element.style.opacity = "0.94";
+  element.style.boxShadow = "0 14px 44px rgba(15, 23, 42, 0.22)";
+  element.style.borderRadius = "0.375rem";
+}
