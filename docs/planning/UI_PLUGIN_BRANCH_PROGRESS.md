@@ -3,11 +3,9 @@
 **Branch:** `plugin`  
 **Plan:** [.cursor/plans/ui-v2-plugin-branch.plan.md](../../.cursor/plans/ui-v2-plugin-branch.plan.md) (read-only reference; do not edit as part of routine work)
 
-## Current focus — Phase 2 (v3 nested groups)
+## Current focus — Phase 2 closed; rolling verification
 
-**Priority:** Ship **nested containers** as the next coordinated engine slice so we do not rework placement, host DnD zones, migration, undo, and server validation twice. Phases 3–10 already landed on **v2** (tiles-only inside groups); v3 adds **groups-as-children** with depth/cycle policy and a single migration path (`migrateV2ToV3` + golden fixtures). Align [`dashboard-plugin-blueprint.md`](../architecture/dashboard-plugin-blueprint.md) or a short ADR if host contracts change.
-
-**Scope reminder (from plan):** touch `types` / Zod / normalise, `migration/`, `layoutTree` / `gridPlacement`, `DashboardHost`, `layoutJsonUnsupportedVersionMessage`, `specs/dashboard/layout.schema.json`, OpenAPI, `layout_validate.py`, then Playwright + Phase 0 checklist for nested moves.
+**Phase 2 (v3 nested groups)** is **done** on this branch (types, migration, host read/edit, schema, tests). **Remaining:** manual Phase 0 checklist ticks (human sign-off); optional Phase 7 editor DnD polish against the v3 drop matrix; align [`dashboard-plugin-blueprint.md`](../architecture/dashboard-plugin-blueprint.md) or a short ADR only if a **new** host or persistence contract diverges from what the code already implements.
 
 ## Before (frozen @ branch cut)
 
@@ -48,7 +46,7 @@ Manual unless noted; all should pass on `plugin`.
 ## Target (end state)
 
 - First-class **migration** + **persistence** modules; thin shell/bootstrap.
-- **v3** recursive groups; schema + OpenAPI + Python validator aligned (**Phase 2 — in progress;** see section below).
+- **v3** recursive groups; schema + OpenAPI + Python validator aligned (**Phase 2 — done;** see Phase 2 row).
 - Unified **palette** (plugins + core) with codec + PluginPalette UI + polish.
 - **Editor** toolbar + inspector; **DnD** interaction layer; **undo/redo** with documented remote rules.
 - **dashboardTileRegistry** + lint boundaries; **adminRouteRegistry** + engine public API doc.
@@ -99,11 +97,11 @@ _Update once merge to `main` is done._
 
 | Field | Content |
 | --- | --- |
-| **Status** | in progress |
-| **Done** | _(none yet — prior nested spike was reverted; v2-only tree remains until this slice lands.)_ |
-| **Remaining** | Per plan: ADR or blueprint alignment; types `GroupChild` recursive; `specs/dashboard/layout.schema.json` + OpenAPI + `layout_validate.py`; `layoutJsonUnsupportedVersionMessage` for v3; `migrateV2ToV3` + golden fixtures; recursive `DashboardHost` + `gridPlacement` / `svelte-dnd-action` zones; max depth / cycle policy; undo + persistence round-trip on v3; Playwright nested scenario; Phase 0 checklist ticks for nested moves. |
-| **Verification** | `bash scripts/check_app.sh`; `npm run check:ui-unit`; targeted Playwright under `apps/ui/tests/e2e/` |
-| **Notes / risks** | **Raised to top priority** to avoid a second pass through host/placement/migration. Large surface—keep one linear PR series or ordered commits. Blueprint: [`docs/architecture/dashboard-plugin-blueprint.md`](../../docs/architecture/dashboard-plugin-blueprint.md). |
+| **Status** | done |
+| **Done** | Recursive `GroupChild` / v3 layout types + Zod + normalise; `migrateV2ToV3` + golden fixtures + `layout_validate.py` + `specs/dashboard/layout.schema.json` + OpenAPI; `layoutJsonUnsupportedVersionMessage` for v3; nested read host (`DashboardReadNestedHost`, no deprecated `<svelte:self>`); `DashboardHost` + `gridPlacement` / DnD / `layoutTree` / `groupDndFinalize` / undo paths for nested groups; Vitest coverage on enforced paths for migration, strip-legacy, placement, Zod, layout store cap; Playwright `dashboardNested.e2e.ts` (seeded v3 nested layout) + e2e fixture helpers; persisted layout version **3** in parent-move spec. |
+| **Remaining** | Manual Phase 0 checklist (nested moves, save/reset). Optional blueprint touch-up if reviewers want prose parity with shipped behaviour. Phase 7: deeper editor DnD UX still partial (see Phase 7 row). |
+| **Verification** | `bash scripts/check_app.sh`; `npm run check:ui-unit`; `npm run check:ui-e2e` |
+| **Notes / risks** | Plugin isolation e2e expects `VITE_E2E_THROWING=1` (Playwright `webServer` sets it). With `PW_REUSE_DEV_SERVER=1`, start the same dev command with that env or the spec **skips** after probing `globalThis.__KEA_FABRIC_E2E_THROWING`. Palette e2e accepts both legacy and `ui.palette.v2` test ids. |
 
 ---
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import DashboardReadNestedHost from "./DashboardReadNestedHost.svelte";
   import TileEditChrome from "./TileEditChrome.svelte";
   import {
     groupGridAreaStyle,
@@ -82,7 +83,7 @@
             {/each}
           </div>
         {:else}
-          <svelte:self
+          <DashboardReadNestedHost
             group={child}
             outerCols={Gc}
             {editLayout}

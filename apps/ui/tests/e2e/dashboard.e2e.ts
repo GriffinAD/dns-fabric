@@ -28,7 +28,8 @@ test("dashboard host renders tiles from mock API", async ({ page }) => {
 test("edit layout shows palette on the live dashboard", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Edit layout" }).click();
-  await expect(page.getByTestId("layout-edit-palette")).toBeVisible();
+  const palette = page.getByTestId("layout-edit-palette").or(page.getByTestId("layout-edit-palette-v2"));
+  await expect(palette).toBeVisible();
   await expect(page.getByRole("button", { name: "Add DHCP pools" })).toBeVisible();
 });
 
@@ -102,7 +103,7 @@ test("tile settings parent: move tile from container to dashboard root", async (
   const raw = await page.evaluate(() => localStorage.getItem("kea-fabric-dashboard-layout"));
   expect(raw).toBeTruthy();
   const stored = JSON.parse(raw!) as { version: number; items: { kind: string; id: string; children?: { id: string }[]; pluginId?: string }[] };
-  expect(stored.version).toBe(2);
+  expect(stored.version).toBe(3);
   expect(stored.items.some((i) => i.kind === "tile" && i.id === "tile-perf-ram")).toBe(true);
   const groupStatus = stored.items.find((i) => i.kind === "group" && i.id === "group-status");
   expect(groupStatus?.children?.some((c) => c.id === "tile-perf-ram")).toBe(false);

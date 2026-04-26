@@ -33,6 +33,7 @@ describe("appendBootFailureUi", () => {
 
 describe("mountOperatorApp", () => {
   afterEach(() => {
+    delete (globalThis as { __KEA_FABRIC_E2E_THROWING?: boolean }).__KEA_FABRIC_E2E_THROWING;
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
     cleanup();
@@ -65,6 +66,7 @@ describe("mountOperatorApp", () => {
     await mountOperatorApp(target);
 
     expect(spy).toHaveBeenCalledWith("e2e.throwing", expect.any(Function));
+    expect((globalThis as { __KEA_FABRIC_E2E_THROWING?: boolean }).__KEA_FABRIC_E2E_THROWING).toBe(true);
     const mountRes = resolvePluginTileMount({
       gateway: new DataGateway(""),
       tile: {

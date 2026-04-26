@@ -57,6 +57,8 @@ export async function mountOperatorApp(
         component: E2EThrowingTile,
         props: {},
       }));
+      (globalThis as typeof globalThis & { __KEA_FABRIC_E2E_THROWING?: boolean }).__KEA_FABRIC_E2E_THROWING =
+        true;
     }
     const { mount, App } = await deps.loadSvelteAndApp();
     target.replaceChildren();
