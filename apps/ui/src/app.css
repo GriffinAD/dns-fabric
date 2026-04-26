@@ -14,6 +14,8 @@
  * below overrides for the emerald preset.
  */
 @theme {
+  /* Between gray-300 and gray-400 (no default Tailwind step); used e.g. PluginPalette light glass. */
+  --color-gray-350: color-mix(in srgb, var(--color-gray-300) 50%, var(--color-gray-400) 50%);
   --color-primary-50: var(--color-blue-50);
   --color-primary-100: var(--color-blue-100);
   --color-primary-200: var(--color-blue-200);
