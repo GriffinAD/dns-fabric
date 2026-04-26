@@ -11,7 +11,6 @@ import {
   moveTileToParent,
   removeTileFromAnywhere,
   dedupeById,
-  compareRootItemsByPosition,
 } from "./layoutTree";
 import type { DashboardGroup, DashboardLayoutV1, DashboardLayoutV2, DashboardTile, RootLayoutItem } from "./types";
 import { isLayoutV2 } from "./types";
@@ -104,18 +103,6 @@ describe("layoutTree", () => {
       { ...baseTile("b", "perf.ram", "solo") },
     ];
     expect(migrateV1ToV2(tiles)).toEqual([]);
-  });
-
-  it("compareRootItemsByPosition sorts group without grid like 0,0", () => {
-    const g: DashboardGroup = { kind: "group", id: "g", showBorder: true, children: [] };
-    const t: RootLayoutItem = {
-      kind: "tile",
-      ...baseTile("t", "dhcp.pools"),
-      displayMode: "full",
-      grid: { col: 0, row: 1, colSpan: 6, rowSpan: 1 },
-    };
-    expect(compareRootItemsByPosition(g, t)).toBeLessThan(0);
-    expect(compareRootItemsByPosition(t, g)).toBeGreaterThan(0);
   });
 
   it("migrateV1ToV2 groups rowPanel and translates inner grids", () => {

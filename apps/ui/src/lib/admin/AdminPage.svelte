@@ -7,9 +7,13 @@
   import { DataGateway } from "../dataGateway";
   import GaugeThemeControls from "../theme/GaugeThemeControls.svelte";
 
+  import { resolveAdminRoute } from "./adminRouteRegistry";
+
   let { gateway, adminSubpath = "" }: { gateway: DataGateway; adminSubpath?: string } = $props();
 
+  const registryPage = $derived(resolveAdminRoute(adminSubpath));
   const isUiGauges = $derived(adminSubpath === "ui/gauges");
+  const isOverview = $derived(adminSubpath === "" || adminSubpath === "/");
 
   let health = $state<HealthResponse | null>(null);
   let err = $state<string | null>(null);
@@ -48,7 +52,7 @@
   >
     <a
       href="#/admin"
-      class="rounded px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 {!isUiGauges
+      class="rounded px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 {isOverview && !registryPage && !isUiGauges
         ? 'font-semibold text-gray-900 dark:text-white'
         : 'text-primary-600 hover:underline dark:text-primary-400'}"
       data-testid="admin-nav-overview"
@@ -67,9 +71,22 @@
     >
       Gauges
     </a>
+    <span class="text-gray-400" aria-hidden="true">/</span>
+    <a
+      href="#/admin/ext/sample"
+      class="rounded px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 {adminSubpath === 'ext/sample'
+        ? 'font-semibold text-gray-900 dark:text-white'
+        : 'text-primary-600 hover:underline dark:text-primary-400'}"
+      data-testid="admin-nav-registry-sample"
+    >
+      Sample (registry)
+    </a>
   </nav>
 
-  {#if isUiGauges}
+  {#if registryPage}
+    {@const AdminRegistered = registryPage}
+    <AdminRegistered {gateway} />
+  {:else if isUiGauges}
     <div data-testid="admin-ui-gauges-page">
       <p class="text-sm text-gray-600 dark:text-gray-400">
         <span class="text-gray-500 dark:text-gray-500">Administration</span>

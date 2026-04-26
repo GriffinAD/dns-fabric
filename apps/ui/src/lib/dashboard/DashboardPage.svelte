@@ -3,6 +3,9 @@
 
   import type { PluginEntry } from "../api/types";
   import type { DataGateway } from "../dataGateway";
+  import DashboardToolbar from "./editor/DashboardToolbar.svelte";
+  import InspectorPanel from "./editor/InspectorPanel.svelte";
+  import { editorSelection } from "./editor/editorState";
   import DashboardHost from "./DashboardHost.svelte";
   import GroupSettingsOverlay from "./GroupSettingsOverlay.svelte";
   import TileSettingsOverlay from "./TileSettingsOverlay.svelte";
@@ -67,6 +70,16 @@
       .filter((it): it is DashboardGroup => it.kind === "group")
       .map((g) => ({ id: g.id, innerWrap: g.innerWrap === true })),
   );
+
+  function onEditTile(tile: DashboardTile) {
+    editorSelection.set({ kind: "tile", id: tile.id, label: tile.pluginId });
+    overlay.openTileSettings(tile);
+  }
+
+  function onEditGroup(g: DashboardGroup) {
+    editorSelection.set({ kind: "group", id: g.id, label: g.id });
+    overlay.openGroupSettings(g);
+  }
 </script>
 
 {#if loadError}
@@ -104,22 +117,32 @@
       Could not save layout to the server: {persistError}
     </p>
   {/if}
-  <DashboardHost
-    {layout}
-    {gateway}
-    {plugins}
-    {editLayout}
-    onAddTile={ls.addRootTile}
-    onAddGroup={ls.addGroup}
-    onAddTileToGroup={ls.addTileToGroup}
-    onLayoutStructureChange={(next) =>
-      ls.applyStructure(next, { preserveRootPlacementIfComplete: true })}
-    onEditTile={overlay.openTileSettings}
-    onEditGroup={overlay.openGroupSettings}
-    onDeleteRootItem={overlay.deleteRootLayoutItem}
-    onDeleteGroupChildTile={overlay.deleteGroupChildTile}
-    onPerfTileGridHint={onPerfTileGridHint}
-  />
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-start">
+    <div class="shrink-0 lg:w-52">
+      <DashboardToolbar {ls} {editLayout} />
+    </div>
+    <div class="min-w-0 flex-1">
+      <DashboardHost
+        {layout}
+        {gateway}
+        {plugins}
+        {editLayout}
+        onAddTile={ls.addRootTile}
+        onAddGroup={ls.addGroup}
+        onAddTileToGroup={ls.addTileToGroup}
+        onLayoutStructureChange={(next) =>
+          ls.applyStructure(next, { preserveRootPlacementIfComplete: true })}
+        onEditTile={onEditTile}
+        onEditGroup={onEditGroup}
+        onDeleteRootItem={overlay.deleteRootLayoutItem}
+        onDeleteGroupChildTile={overlay.deleteGroupChildTile}
+        onPerfTileGridHint={onPerfTileGridHint}
+      />
+    </div>
+    <div class="shrink-0 lg:w-64">
+      <InspectorPanel {layout} />
+    </div>
+  </div>
 {/if}
 
 {#if settingsTile}

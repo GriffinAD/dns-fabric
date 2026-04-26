@@ -1,15 +1,16 @@
 import { get, writable } from "svelte/store";
 
 import { DataGateway } from "../dataGateway";
+import { cloneLayoutJson } from "./gridPlacement";
 import { normalizeLayoutStrict } from "./layoutNormalize";
 import {
   clearLayoutLocalPersistGate,
-  initialDashboardLayout,
   isLayoutLocalPersistBlocked,
   getLayoutLocalPersistBlockedReason,
   parseDashboardLayout,
   saveDashboardLayout,
 } from "./layoutStorage";
+import { initialDashboardLayout, flushLayoutToServer, postLayoutSaveFileSnapshot } from "./persistence";
 import type {
   DashboardGroup,
   DashboardLayout,
@@ -23,6 +24,8 @@ export type LayoutSource = "server" | "cache";
 export type ApplyLayoutOpts = {
   preserveRootPlacementIfComplete?: boolean;
   editModeOverride?: boolean;
+  /** When true, do not push the pre-change layout onto the undo stack (server reset / hydrate). */
+  skipHistory?: boolean;
 };
 
 export type CreateLayoutStoreOptions = {
@@ -52,6 +55,15 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
   const editorOpen = writable(false);
   const layoutSource = writable<LayoutSource>("cache");
 
+  const UNDO_CAP = 50;
+  let undoPast: DashboardLayoutV2[] = [];
+  let undoFuture: DashboardLayoutV2[] = [];
+
+  function clearUndoStacks() {
+    undoPast = [];
+    undoFuture = [];
+  }
+
   function releaseLocalPersistGate() {
     clearLayoutLocalPersistGate();
     localPersistBlocked.set(false);
@@ -71,7 +83,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
     clearDebounce();
     const current = get(layout);
     try {
-      await gateway.putDashboardLayout(dashboardId, current);
+      await flushLayoutToServer(gateway, dashboardId, current);
       persistError.set(null);
     } catch (e: unknown) {
       persistError.set(e instanceof Error ? e.message : String(e));
@@ -89,10 +101,17 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
   function applyStructure(next: DashboardLayout, opts?: ApplyLayoutOpts) {
     try {
       const editMode = opts?.editModeOverride !== undefined ? opts.editModeOverride : get(editorOpen);
+      const skipHistory = opts?.skipHistory === true;
+      const snapshotBefore = cloneLayoutJson(get(layout));
       const normalized = normalizeLayoutStrict(next, editMode, {
         preserveRootPlacementIfComplete: opts?.preserveRootPlacementIfComplete,
       });
       loadError.set(null);
+      if (editMode && !skipHistory) {
+        undoPast.push(snapshotBefore);
+        if (undoPast.length > UNDO_CAP) undoPast.shift();
+        undoFuture = [];
+      }
       layout.set(normalized);
       saveDashboardLayout(normalized);
       schedulePersist();
@@ -112,6 +131,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
 
     acceptServerLayout(next: DashboardLayoutV2) {
       releaseLocalPersistGate();
+      clearUndoStacks();
       layout.set(next);
       saveDashboardLayout(next);
       layoutSource.set("server");
@@ -123,6 +143,34 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
     },
 
     applyStructure,
+
+    canUndo() {
+      return undoPast.length > 0;
+    },
+
+    canRedo() {
+      return undoFuture.length > 0;
+    },
+
+    undo() {
+      if (undoPast.length === 0) return;
+      const cur = cloneLayoutJson(get(layout));
+      const prev = undoPast.pop()!;
+      undoFuture.unshift(cur);
+      layout.set(prev);
+      saveDashboardLayout(prev);
+      schedulePersist();
+    },
+
+    redo() {
+      if (undoFuture.length === 0) return;
+      const cur = cloneLayoutJson(get(layout));
+      const nxt = undoFuture.shift()!;
+      undoPast.push(cur);
+      layout.set(nxt);
+      saveDashboardLayout(nxt);
+      schedulePersist();
+    },
 
     openEditor() {
       editorOpen.set(true);
@@ -144,7 +192,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
       loadError.set(null);
       const current = get(layout);
       try {
-        await gateway.postDashboardLayoutSaveFile(dashboardId, current);
+        await postLayoutSaveFileSnapshot(gateway, dashboardId, current);
         persistError.set(null);
         saveDashboardLayout(current);
       } catch (e: unknown) {
@@ -203,7 +251,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
           return;
         }
         releaseLocalPersistGate();
-        applyStructure(parsed);
+        applyStructure(parsed, { skipHistory: true });
       } catch (e: unknown) {
         loadError.set(e instanceof Error ? e.message : String(e));
       }

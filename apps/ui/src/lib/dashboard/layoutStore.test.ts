@@ -379,4 +379,40 @@ describe("createLayoutStore", () => {
     await ls.saveLayoutToFile();
     expect(get(ls.persistError)).toBe("offline");
   });
+
+  it("undo and redo snapshot layout while editor is open", () => {
+    const gw = new DataGateway("");
+    const ls = createLayoutStore({ gateway: gw });
+    ls.openEditor();
+    const a = minimalLayout();
+    ls.acceptServerLayout(a);
+    ls.addRootTile("perf.cpu");
+    const afterAdd = get(ls.layout);
+    expect(afterAdd.items.length).toBeGreaterThan(a.items.length);
+    ls.undo();
+    expect(get(ls.layout)).toEqual(a);
+    ls.redo();
+    expect(get(ls.layout)).toEqual(afterAdd);
+  });
+
+  it("canUndo and canRedo reflect stack state", () => {
+    const gw = new DataGateway("");
+    const ls = createLayoutStore({ gateway: gw });
+    expect(ls.canUndo()).toBe(false);
+    expect(ls.canRedo()).toBe(false);
+    ls.openEditor();
+    ls.acceptServerLayout(minimalLayout());
+    ls.addRootTile("perf.cpu");
+    expect(ls.canUndo()).toBe(true);
+    ls.undo();
+    expect(ls.canRedo()).toBe(true);
+  });
+
+  it("undo and redo are safe when stacks are empty", () => {
+    const gw = new DataGateway("");
+    const ls = createLayoutStore({ gateway: gw });
+    ls.undo();
+    ls.redo();
+    expect(get(ls.layout)).toBeDefined();
+  });
 });

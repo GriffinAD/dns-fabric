@@ -6,6 +6,7 @@ import {
   moveTileToParent,
   PARENT_ID_DASHBOARD,
 } from "./layoutTree";
+import { editorSelection } from "./editor/editorState";
 import type { DashboardGroup, DashboardLayout, DashboardLayoutV2, DashboardTile } from "./types";
 
 export type OverlayActionsDeps = {
@@ -28,6 +29,7 @@ export function createOverlayActions(deps: OverlayActionsDeps) {
       deps.setSettingsTile(tile);
     },
     closeTileSettings() {
+      editorSelection.set(null);
       deps.setSettingsTile(null);
     },
     openGroupSettings(g: DashboardGroup) {
@@ -35,6 +37,7 @@ export function createOverlayActions(deps: OverlayActionsDeps) {
       deps.setSettingsGroup(g);
     },
     closeGroupSettings() {
+      editorSelection.set(null);
       deps.setSettingsGroup(null);
     },
     saveGroupFromOverlay(next: DashboardGroup) {

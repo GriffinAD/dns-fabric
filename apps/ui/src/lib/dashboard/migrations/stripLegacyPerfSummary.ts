@@ -1,4 +1,4 @@
-import { ensureLayoutV2 } from "../layoutTree";
+import { ensureLayoutV2 } from "../migration";
 import type { DashboardGroup, DashboardLayout, DashboardLayoutV2, RootLayoutItem, RootTileItem } from "../types";
 
 /** Legacy dashboard tiles removed on load (see `docs/planning/UI_ENGINE_PLAN.md` P3.6). */

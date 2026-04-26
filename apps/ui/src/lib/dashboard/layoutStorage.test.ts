@@ -8,15 +8,14 @@ import {
   clearStoredDashboardLayoutAndUnlock,
   dashboardLayoutExportFilename,
   downloadDashboardLayoutFile,
-  initialDashboardLayout,
   isLayoutLocalPersistBlocked,
   layoutJsonUnsupportedVersionMessage,
   loadDashboardLayout,
-  mergeMissingDefaultPlugins,
   parseDashboardLayout,
   saveDashboardLayout,
   setLocalPersistBlockedStateForTest,
 } from "./layoutStorage";
+import { initialDashboardLayout, mergeMissingDefaultPlugins } from "./persistence";
 import type { DashboardLayout, DashboardLayoutV1, DashboardLayoutV2, DashboardTile } from "./types";
 import { isLayoutV2 } from "./types";
 

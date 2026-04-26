@@ -13,6 +13,9 @@
 
   import type { PluginEntry } from "../api/types";
   import { DataGateway } from "../dataGateway";
+  import PluginPalette from "../palette/PluginPalette.svelte";
+  import { parsePaletteDrop, setPaletteAddGroupDragData, setPalettePluginDragData } from "../palette/paletteDragCodec";
+  import { getFeatureFlag } from "../platform/featureFlags";
   import {
     effectiveColSpan,
     effectiveRowSpan,
@@ -31,41 +34,6 @@
   import { dedupeById } from "./layoutTree";
   import { stripScrollportObserve } from "./stripWidth";
   import type { DashboardGroup, DashboardLayout, DashboardLayoutV2, DashboardTile, RootLayoutItem } from "./types";
-
-  const DND_PLUGIN_MIME = "application/x-kea-plugin-id";
-  const DND_LAYOUT_DND = "application/x-kea-fabric-layout-dnd";
-  const DND_ADD_GROUP = "add-group";
-  /** `text/plain` is required for reliable drop payload in Safari and some Chrome builds. */
-  const PLAIN_ADD_GROUP = "x-kea-fabric:layout-add-group";
-  const PLAIN_PLUGIN_PREFIX = "x-kea-fabric:plugin:";
-
-  type PaletteDrag = { kind: "group" } | { kind: "plugin"; id: string };
-
-  function setPalettePluginDragData(e: DragEvent, pluginId: string) {
-    const t = `${PLAIN_PLUGIN_PREFIX}${pluginId}`;
-    e.dataTransfer?.setData("text/plain", t);
-    e.dataTransfer?.setData(DND_PLUGIN_MIME, pluginId);
-    if (e.dataTransfer) e.dataTransfer.effectAllowed = "copy";
-  }
-
-  function setPaletteAddGroupDragData(e: DragEvent) {
-    e.dataTransfer?.setData("text/plain", PLAIN_ADD_GROUP);
-    e.dataTransfer?.setData(DND_LAYOUT_DND, DND_ADD_GROUP);
-    if (e.dataTransfer) e.dataTransfer.effectAllowed = "copy";
-  }
-
-  function readPaletteDragPayload(dt: DataTransfer | null): PaletteDrag | null {
-    if (!dt) return null;
-    if (dt.getData(DND_LAYOUT_DND) === DND_ADD_GROUP) return { kind: "group" };
-    const mimeP = dt.getData(DND_PLUGIN_MIME);
-    if (mimeP) return { kind: "plugin", id: mimeP };
-    const plain = dt.getData("text/plain").trim();
-    if (plain === PLAIN_ADD_GROUP) return { kind: "group" };
-    if (plain.startsWith(PLAIN_PLUGIN_PREFIX)) {
-      return { kind: "plugin", id: plain.slice(PLAIN_PLUGIN_PREFIX.length) };
-    }
-    return null;
-  }
 
   /** svelte-dnd-action zone type — one shared value so root ↔ container moves are allowed. */
   const SVELTE_DND_TYPE_DASHBOARD = "dashboard-layout";
@@ -232,17 +200,9 @@
     };
   }
 
-  function onPaletteDragStart(e: DragEvent, pluginId: string) {
-    setPalettePluginDragData(e, pluginId);
-  }
-
-  function onPaletteDragStartAddGroup(e: DragEvent) {
-    setPaletteAddGroupDragData(e);
-  }
-
   function onCanvasDrop(e: DragEvent) {
     e.preventDefault();
-    const p = readPaletteDragPayload(e.dataTransfer);
+    const p = parsePaletteDrop(e.dataTransfer);
     if (p?.kind === "group") {
       onAddGroup?.();
       return;
@@ -263,7 +223,7 @@
 
   function onGroupPluginDrop(e: DragEvent, groupId: string) {
     e.preventDefault();
-    const p = readPaletteDragPayload(e.dataTransfer);
+    const p = parsePaletteDrop(e.dataTransfer);
     if (p?.kind === "plugin") {
       e.stopPropagation();
       onAddTileToGroup?.(groupId, p.id);
@@ -284,44 +244,47 @@
 
 <div class="flex flex-col gap-4" data-testid="dashboard-host">
   {#if editLayout && (palette.length > 0 || onAddGroup)}
-    <div
-      class="rounded-lg border border-dashed border-gray-300 bg-gray-50/80 p-3 dark:border-gray-600 dark:bg-gray-800/50"
-      data-testid="layout-edit-palette"
-      aria-label="Add dashboard plugins"
-    >
-      <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">
-        <strong>Containers:</strong> use <span class="font-mono">Add container</span> or drag it onto the grid, then
-        <strong>drag the grip (⋮⋮)</strong> on the group card to move the whole container. <strong>Tiles:</strong> drag
-        a plugin chip to the grid or <strong>into a container</strong>. <strong>Reorder</strong> root tiles and tiles
-        inside a container with their grips. Use the pencil to resize and configure.
-      </p>
-      <div class="flex flex-wrap gap-2">
-        <!-- Native <button> so click + HTML5 drag work reliably; Flowbite svelte:element was dropping handlers. -->
-        {#if onAddGroup}
-          <button
-            type="button"
-            draggable="true"
-            class="cursor-grab select-none rounded-lg border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:outline-none active:cursor-grabbing dark:bg-primary-500 dark:hover:bg-primary-600"
-            data-testid="layout-add-container"
-            ondragstart={(e: DragEvent) => onPaletteDragStartAddGroup(e)}
-            onclick={() => onAddGroup?.()}
-          >
-            Add container
-          </button>
-        {/if}
-        {#each palette as p (p.id)}
-          <button
-            type="button"
-            draggable="true"
-            class="cursor-grab select-none rounded-lg border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:outline-none active:cursor-grabbing dark:bg-primary-500 dark:hover:bg-primary-600"
-            ondragstart={(e: DragEvent) => onPaletteDragStart(e, p.id)}
-            onclick={() => onAddTile?.(p.id)}
-          >
-            Add {p.name}
-          </button>
-        {/each}
+    {#if getFeatureFlag("ui.palette.v2")}
+      <PluginPalette {plugins} {onAddTile} {onAddGroup} />
+    {:else}
+      <div
+        class="rounded-lg border border-dashed border-gray-300 bg-gray-50/80 p-3 dark:border-gray-600 dark:bg-gray-800/50"
+        data-testid="layout-edit-palette"
+        aria-label="Add dashboard plugins"
+      >
+        <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">
+          <strong>Containers:</strong> use <span class="font-mono">Add container</span> or drag it onto the grid, then
+          <strong>drag the grip (⋮⋮)</strong> on the group card to move the whole container. <strong>Tiles:</strong> drag
+          a plugin chip to the grid or <strong>into a container</strong>. <strong>Reorder</strong> root tiles and tiles
+          inside a container with their grips. Use the pencil to resize and configure.
+        </p>
+        <div class="flex flex-wrap gap-2">
+          {#if onAddGroup}
+            <button
+              type="button"
+              draggable="true"
+              class="cursor-grab select-none rounded-lg border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:outline-none active:cursor-grabbing dark:bg-primary-500 dark:hover:bg-primary-600"
+              data-testid="layout-add-container"
+              ondragstart={(e: DragEvent) => setPaletteAddGroupDragData(e)}
+              onclick={() => onAddGroup?.()}
+            >
+              Add container
+            </button>
+          {/if}
+          {#each palette as p (p.id)}
+            <button
+              type="button"
+              draggable="true"
+              class="cursor-grab select-none rounded-lg border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:outline-none active:cursor-grabbing dark:bg-primary-500 dark:hover:bg-primary-600"
+              ondragstart={(e: DragEvent) => setPalettePluginDragData(e, p.id)}
+              onclick={() => onAddTile?.(p.id)}
+            >
+              Add {p.name}
+            </button>
+          {/each}
+        </div>
       </div>
-    </div>
+    {/if}
   {/if}
 
   {#if editLayout}
