@@ -1,147 +1,223 @@
 {
-  "default": {
-    "version": 2,
-    "items": [
-      {
-        "id": "tile-perf-cpu-1776890120518-i4s9j3t",
-        "pluginId": "perf.cpu",
-        "hostControl": "single-panel",
-        "displayMode": "full",
-        "region": "status-zone",
-        "grid": {
-          "col": 0,
-          "row": 0,
-          "colSpan": 6,
-          "rowSpan": 1
-        },
-        "options": {
-          "cpu_total": false,
-          "display_style": "gauge"
-        },
-        "kind": "tile"
+  "version": 3,
+  "items": [
+    {
+      "id": "tile-perf-cpu-1776890120518-i4s9j3t",
+      "pluginId": "perf.cpu",
+      "hostControl": "single-panel",
+      "displayMode": "full",
+      "region": "status-zone",
+      "kind": "tile",
+      "grid": {
+        "col": 0,
+        "row": 0,
+        "colSpan": 10,
+        "rowSpan": 1
       },
-      {
-        "id": "tile-perf-ram-1776890120518-iagrogy",
-        "pluginId": "perf.ram",
-        "hostControl": "single-panel",
-        "displayMode": "full",
-        "region": "status-zone",
-        "grid": {
-          "col": 6,
-          "row": 0,
-          "colSpan": 2,
-          "rowSpan": 1
-        },
-        "options": {
-          "display_style": "gauge"
-        },
-        "kind": "tile"
-      },
-      {
-        "id": "tile-perf-network-1776890120518-8wakmp6",
-        "pluginId": "perf.network",
-        "hostControl": "single-panel",
-        "displayMode": "compact",
-        "region": "status-zone",
-        "grid": {
-          "col": 8,
-          "row": 0,
-          "colSpan": 3,
-          "rowSpan": 1
-        },
-        "options": {
-          "network_by_adapter": true,
-          "display_style": "gauge"
-        },
-        "kind": "tile"
-      },
-      {
-        "id": "tile-perf-disk-1776890120518-l2zya54",
-        "pluginId": "perf.disk",
-        "hostControl": "single-panel",
-        "displayMode": "compact",
-        "region": "status-zone",
-        "grid": {
-          "col": 0,
-          "row": 1,
-          "colSpan": 4,
-          "rowSpan": 1
-        },
-        "options": {
-          "disk_by_volume": true,
-          "display_style": "gauge"
-        },
-        "kind": "tile"
-      },
-      {
-        "id": "tile-pools",
-        "pluginId": "dhcp.pools",
-        "hostControl": "single-panel",
-        "displayMode": "compact",
-        "region": "primary-grid",
-        "grid": {
-          "col": 0,
-          "row": 2,
-          "colSpan": 12,
-          "rowSpan": 1
-        },
-        "kind": "tile"
-      },
-      {
-        "id": "tile-discovery",
-        "pluginId": "discovery.records",
-        "hostControl": "single-panel",
-        "displayMode": "full",
-        "region": "primary-grid",
-        "grid": {
-          "col": 0,
-          "row": 3,
-          "colSpan": 6,
-          "rowSpan": 2
-        },
-        "kind": "tile"
-      },
-      {
-        "id": "tile-dhcp-clients-1776890120518-l1qjge0",
-        "pluginId": "dhcp.clients",
-        "hostControl": "single-panel",
-        "displayMode": "full",
-        "region": "primary-grid",
-        "grid": {
-          "col": 0,
-          "row": 5,
-          "colSpan": 12,
-          "rowSpan": 10
-        },
-        "kind": "tile"
-      },
-      {
-        "id": "tile-dhcp-reservations-1776890120518-kc3cfmp",
-        "pluginId": "dhcp.reservations",
-        "hostControl": "single-panel",
-        "displayMode": "full",
-        "region": "primary-grid",
-        "grid": {
-          "col": 0,
-          "row": 15,
-          "colSpan": 12,
-          "rowSpan": 10
-        },
-        "kind": "tile"
-      },
-      {
-        "kind": "tile",
-        "id": "tile-9-1777018912027",
-        "pluginId": "perf.summary",
-        "hostControl": "single-panel",
-        "displayMode": "full",
-        "grid": {
-          "col": 0,
-          "row": 25,
-          "colSpan": 12,
-          "rowSpan": 1
-        }
+      "options": {
+        "cpu_total": false,
+        "display_style": "gauge"
       }
-    ]
-  }
+    },
+    {
+      "id": "tile-perf-ram-1776890120518-iagrogy",
+      "pluginId": "perf.ram",
+      "hostControl": "single-panel",
+      "displayMode": "full",
+      "region": "status-zone",
+      "kind": "tile",
+      "grid": {
+        "col": 10,
+        "row": 0,
+        "colSpan": 2,
+        "rowSpan": 1
+      },
+      "options": {
+        "display_style": "gauge"
+      }
+    },
+    {
+      "id": "tile-perf-network-1776890120518-8wakmp6",
+      "pluginId": "perf.network",
+      "hostControl": "single-panel",
+      "displayMode": "compact",
+      "region": "status-zone",
+      "kind": "tile",
+      "grid": {
+        "col": 12,
+        "row": 0,
+        "colSpan": 4,
+        "rowSpan": 1
+      },
+      "options": {
+        "network_by_adapter": true,
+        "display_style": "gauge"
+      }
+    },
+    {
+      "id": "tile-perf-disk-1776890120518-l2zya54",
+      "pluginId": "perf.disk",
+      "hostControl": "single-panel",
+      "displayMode": "compact",
+      "region": "status-zone",
+      "kind": "tile",
+      "grid": {
+        "col": 16,
+        "row": 0,
+        "colSpan": 4,
+        "rowSpan": 1
+      },
+      "options": {
+        "disk_by_volume": true,
+        "display_style": "gauge"
+      }
+    },
+    {
+      "kind": "group",
+      "id": "group-8-1777232170542",
+      "showBorder": true,
+      "grid": {
+        "col": 0,
+        "row": 1,
+        "colSpan": 20,
+        "rowSpan": 1
+      },
+      "children": [
+        {
+          "id": "tile-in-group-8-1777232170542-1777232227345",
+          "pluginId": "perf.cpu",
+          "hostControl": "single-panel",
+          "displayMode": "full",
+          "grid": {
+            "col": 0,
+            "row": 0,
+            "colSpan": 10,
+            "rowSpan": 1
+          }
+        },
+        {
+          "id": "tile-in-group-8-1777232170542-1777232253624",
+          "pluginId": "perf.ram",
+          "hostControl": "single-panel",
+          "displayMode": "full",
+          "grid": {
+            "col": 10,
+            "row": 0,
+            "colSpan": 2,
+            "rowSpan": 1
+          }
+        },
+        {
+          "id": "tile-in-group-8-1777232170542-1777232262557",
+          "pluginId": "perf.network",
+          "hostControl": "single-panel",
+          "displayMode": "full",
+          "grid": {
+            "col": 12,
+            "row": 0,
+            "colSpan": 4,
+            "rowSpan": 1
+          },
+          "options": {
+            "network_by_adapter": true
+          }
+        },
+        {
+          "id": "tile-in-group-8-1777232170542-1777232284910",
+          "pluginId": "perf.disk",
+          "hostControl": "single-panel",
+          "displayMode": "full",
+          "grid": {
+            "col": 16,
+            "row": 0,
+            "colSpan": 4,
+            "rowSpan": 1
+          },
+          "options": {
+            "disk_by_volume": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "tile-pools",
+      "pluginId": "dhcp.pools",
+      "hostControl": "single-panel",
+      "displayMode": "compact",
+      "region": "primary-grid",
+      "kind": "tile",
+      "grid": {
+        "col": 0,
+        "row": 2,
+        "colSpan": 10,
+        "rowSpan": 1
+      }
+    },
+    {
+      "id": "tile-9-1777232625130",
+      "pluginId": "discovery.records",
+      "hostControl": "single-panel",
+      "displayMode": "full",
+      "kind": "tile",
+      "grid": {
+        "col": 10,
+        "row": 2,
+        "colSpan": 10,
+        "rowSpan": 1
+      }
+    },
+    {
+      "id": "tile-dhcp-clients-1776890120518-l1qjge0",
+      "pluginId": "dhcp.clients",
+      "hostControl": "single-panel",
+      "displayMode": "full",
+      "region": "primary-grid",
+      "kind": "tile",
+      "grid": {
+        "col": 0,
+        "row": 3,
+        "colSpan": 20,
+        "rowSpan": 10
+      }
+    },
+    {
+      "id": "tile-dhcp-reservations-1776890120518-kc3cfmp",
+      "pluginId": "dhcp.reservations",
+      "hostControl": "single-panel",
+      "displayMode": "full",
+      "region": "primary-grid",
+      "kind": "tile",
+      "grid": {
+        "col": 0,
+        "row": 13,
+        "colSpan": 20,
+        "rowSpan": 10
+      }
+    },
+    {
+      "kind": "group",
+      "id": "group-10-1777233013573",
+      "showBorder": true,
+      "grid": {
+        "col": 0,
+        "row": 23,
+        "colSpan": 20,
+        "rowSpan": 1
+      },
+      "children": [
+        {
+          "id": "tile-in-group-10-1777233013573-1777233766291",
+          "pluginId": "perf.cpu",
+          "hostControl": "single-panel",
+          "displayMode": "full",
+          "grid": {
+            "col": 0,
+            "row": 0,
+            "colSpan": 20,
+            "rowSpan": 1
+          }
+        }
+      ]
+    }
+  ]
 }

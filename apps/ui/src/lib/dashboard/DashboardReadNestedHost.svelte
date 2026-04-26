@@ -3,12 +3,18 @@
   import DashboardReadNestedHost from "./DashboardReadNestedHost.svelte";
   import TileEditChrome from "./TileEditChrome.svelte";
   import {
+    effectiveColSpan,
     groupGridAreaStyle,
     groupGridColumnSpanStyle,
     groupOuterColSpan,
     packGroupChildrenRowWrapInOrder,
   } from "./gridPlacement";
   import { dedupeById } from "./layoutTree";
+  import {
+    DASHBOARD_STRIP_GAP_2_PX,
+    flexStripDistributedWidth,
+    stripScrollportObserve,
+  } from "./stripWidth";
   import type { DashboardGroup, DashboardTile, GroupChild } from "./types";
   import { isDashboardGroupNode } from "./types";
 
@@ -17,15 +23,13 @@
     outerCols,
     editLayout = false,
     onEditTile,
-    onDeleteGroupChildTile,
     tileContent,
   }: {
     group: DashboardGroup;
     outerCols: number;
     editLayout?: boolean;
     onEditTile?: (t: DashboardTile) => void;
-    onDeleteGroupChildTile?: (groupId: string, tileId: string) => void;
-    tileContent: Snippet<[DashboardTile, boolean]>;
+    tileContent: Snippet<[DashboardTile]>;
   } = $props();
 
   const sorted = $derived(
@@ -37,19 +41,60 @@
           (isDashboardGroupNode(b) ? (b.grid?.col ?? 0) : (b as DashboardTile).grid?.col ?? 0),
     ),
   );
+
+  const rowGroups = $derived.by(() => {
+    const rows = new Map<number, GroupChild[]>();
+    for (const c of sorted) {
+      const row = isDashboardGroupNode(c) ? (c.grid?.row ?? 0) : (c.grid?.row ?? 0);
+      const list = rows.get(row);
+      if (list) list.push(c);
+      else rows.set(row, [c]);
+    }
+    return [...rows.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, list]) =>
+        [...list].sort(
+          (a, b) =>
+            (isDashboardGroupNode(a) ? (a.grid?.col ?? 0) : (a.grid?.col ?? 0)) -
+            (isDashboardGroupNode(b) ? (b.grid?.col ?? 0) : (b.grid?.col ?? 0)),
+        ),
+      );
+  });
+
+  let innerW = $state(0);
+
+  function widthPxForChild(c: GroupChild, rowItemCount: number): string {
+    const span = isDashboardGroupNode(c) ? groupOuterColSpan(c) : effectiveColSpan(c);
+    const avail = flexStripDistributedWidth(innerW, rowItemCount, DASHBOARD_STRIP_GAP_2_PX);
+    const px = (Math.max(0, avail) * span) / Math.max(1, outerCols);
+    return `${px}px`;
+  }
+
+  function noWrapReadStripMeasure(el: HTMLDivElement) {
+    return stripScrollportObserve(el, (w) => {
+      innerW = w;
+    });
+  }
 </script>
 
 <div
-  class="grid h-full w-full min-h-0 min-w-0 auto-rows-[minmax(0,auto)] content-start gap-2 [box-sizing:border-box] [min-width:0] [place-self:stretch] [align-self:stretch] [overflow:visible]"
-  style="grid-template-columns: repeat({outerCols}, minmax(0, 1fr));"
+  class="flex h-full min-h-0 w-full min-w-0 flex-col gap-2 [box-sizing:border-box] [place-self:stretch] [align-self:stretch]"
   data-dashboard-nested-read={group.id}
 >
-  {#each sorted as child (child.id)}
+  {#each rowGroups as row, rowI (rowI)}
+    <div
+      class="flex w-full min-h-0 min-w-0 max-w-full shrink-0 flex-nowrap items-stretch gap-2 overflow-x-auto overflow-y-hidden"
+      use:noWrapReadStripMeasure
+    >
+      {#each row as child (child.id)}
     {#if isDashboardGroupNode(child)}
       {@const Gc = groupOuterColSpan(child)}
+      {@const childShellBorder = child.showBorder !== false}
       <div
-        class="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-gray-200/50 bg-white/20 p-1 dark:border-gray-600/40 dark:bg-gray-900/25"
-        style={child.grid ? groupGridAreaStyle(child.grid, outerCols) : ""}
+        class="flex min-h-0 max-w-none min-w-0 shrink-0 flex-col overflow-hidden rounded-md py-1 [min-width:2.5rem] {childShellBorder
+          ? 'border border-gray-200/50 bg-white/20 dark:border-gray-600/40 dark:bg-gray-900/25'
+          : 'border-0 bg-transparent'}"
+        style:width={widthPxForChild(child, row.length)}
         data-dashboard-group={child.id}
       >
         {#if child.innerWrap === true}
@@ -66,17 +111,15 @@
                 class="flex min-h-0 min-w-0 flex-col"
                 style={tile.grid ? groupGridAreaStyle(tile.grid, Gc) : groupGridColumnSpanStyle(tile, Gc)}
                 data-tile-id={tile.id}
+                data-in-row-panel={childShellBorder ? "true" : undefined}
               >
                 <TileEditChrome
                   {tile}
                   onEdit={onEditTile}
-                  onDelete={editLayout && onDeleteGroupChildTile
-                    ? () => onDeleteGroupChildTile(child.id, tile.id)
-                    : undefined}
                   showEditButton={editLayout}
                 >
                   {#snippet children()}
-                    {@render tileContent(tile, true)}
+                    {@render tileContent(tile)}
                   {/snippet}
                 </TileEditChrome>
               </div>
@@ -88,31 +131,31 @@
             outerCols={Gc}
             {editLayout}
             {onEditTile}
-            {onDeleteGroupChildTile}
             {tileContent}
           />
         {/if}
       </div>
     {:else}
       {@const tile = child as DashboardTile}
+      {@const rowPanelChrome = group.showBorder !== false}
       <div
-        class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col place-self-stretch"
+        class="flex h-full min-h-0 max-w-none min-w-0 shrink-0 flex-col [min-width:2.5rem]"
         data-tile-id={tile.id}
-        style={tile.grid ? groupGridAreaStyle(tile.grid, outerCols) : groupGridColumnSpanStyle(tile, outerCols)}
+        data-in-row-panel={rowPanelChrome ? "true" : undefined}
+        style:width={widthPxForChild(tile, row.length)}
       >
         <TileEditChrome
           {tile}
           onEdit={onEditTile}
-          onDelete={editLayout && onDeleteGroupChildTile
-            ? () => onDeleteGroupChildTile(group.id, tile.id)
-            : undefined}
           showEditButton={editLayout}
         >
           {#snippet children()}
-            {@render tileContent(tile, true)}
+            {@render tileContent(tile)}
           {/snippet}
         </TileEditChrome>
       </div>
     {/if}
+      {/each}
+    </div>
   {/each}
 </div>

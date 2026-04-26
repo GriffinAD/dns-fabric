@@ -1,50 +1,37 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import Pencil from "lucide-svelte/icons/pencil";
-  import Trash2 from "lucide-svelte/icons/trash-2";
 
+  import { EDITOR_PLUGIN_HOVER_VISIBLE, EDITOR_PLUGIN_SURFACE_CLASS } from "./interactions/editorChrome";
   import type { DashboardTile } from "./types";
 
   let {
     tile,
     onEdit,
-    onDelete,
     showEditButton = false,
     children,
   }: {
     tile: DashboardTile;
     onEdit?: (tile: DashboardTile) => void;
-    /** Remove this tile; only in edit mode when provided. */
-    onDelete?: () => void;
     /** Pencil control; only while “Edit layout” is on. */
     showEditButton?: boolean;
     children: Snippet;
   } = $props();
 </script>
 
-<div class="relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col items-stretch">
+<div
+  class="{EDITOR_PLUGIN_SURFACE_CLASS} relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col items-stretch"
+>
   {#if onEdit && showEditButton}
     <button
       type="button"
-      class="absolute right-1 top-1 z-10 rounded-md border border-gray-200 bg-white/95 p-1.5 text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800/95 dark:text-gray-200 dark:hover:bg-gray-700"
+      class="{EDITOR_PLUGIN_HOVER_VISIBLE} editor-chrome-edit editor-chrome-top absolute right-2 z-50 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-gray-200/90 bg-white/95 text-emerald-600 shadow-sm backdrop-blur-[2px] hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-primary-500/60 dark:border-gray-600 dark:bg-gray-900/90 dark:text-emerald-300 dark:hover:bg-gray-800"
       data-testid="tile-edit-button"
       aria-label="Edit tile settings"
       onpointerdown={(e) => e.stopPropagation()}
       onclick={() => onEdit(tile)}
     >
       <Pencil class="h-4 w-4" aria-hidden="true" />
-    </button>
-  {/if}
-  {#if onDelete && showEditButton}
-    <button
-      type="button"
-      class="absolute right-10 top-1 z-10 rounded-md border border-red-200 bg-white/95 p-1.5 text-red-600 shadow-sm hover:bg-red-50 dark:border-red-800 dark:bg-gray-800/95 dark:text-red-400 dark:hover:bg-red-950/50"
-      data-testid="tile-delete-button"
-      aria-label="Remove tile from dashboard"
-      onpointerdown={(e) => e.stopPropagation()}
-      onclick={() => onDelete()}
-    >
-      <Trash2 class="h-4 w-4" aria-hidden="true" />
     </button>
   {/if}
   {@render children()}

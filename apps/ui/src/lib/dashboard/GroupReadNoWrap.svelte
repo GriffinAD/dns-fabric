@@ -2,7 +2,11 @@
   import type { Snippet } from "svelte";
   import TileEditChrome from "./TileEditChrome.svelte";
   import { effectiveColSpan } from "./gridPlacement";
-  import { stripScrollportObserve } from "./stripWidth";
+  import {
+    DASHBOARD_STRIP_GAP_2_PX,
+    flexStripDistributedWidth,
+    stripScrollportObserve,
+  } from "./stripWidth";
   import type { DashboardTile } from "./types";
 
   let {
@@ -12,7 +16,6 @@
     showPanelChrome,
     editLayout = false,
     onEditTile,
-    onDeleteGroupChildTile,
     tileContent,
   }: {
     rowGroups: DashboardTile[][];
@@ -21,16 +24,16 @@
     showPanelChrome: boolean;
     editLayout?: boolean;
     onEditTile?: (t: DashboardTile) => void;
-    onDeleteGroupChildTile?: (groupId: string, tileId: string) => void;
     tileContent: Snippet<[DashboardTile]>;
   } = $props();
 
   let innerW = $state(0);
 
   /** Root-metric colSpan `T` → width `T/G` of the group; row may exceed one root-width “pack” and scroll. */
-  function widthPx(t: DashboardTile): string {
+  function widthPx(t: DashboardTile, rowItemCount: number): string {
     const T = effectiveColSpan(t);
-    const px = (Math.max(0, innerW) * T) / gCols;
+    const avail = flexStripDistributedWidth(innerW, rowItemCount, DASHBOARD_STRIP_GAP_2_PX);
+    const px = (Math.max(0, avail) * T) / gCols;
     return `${px}px`;
   }
 
@@ -53,22 +56,19 @@
 >
   {#each rowGroups as rowTiles, rowI (rowTiles[0]?.grid?.row ?? rowI)}
     <div
-      class="flex w-full min-h-0 min-w-0 max-w-full shrink-0 flex-nowrap items-stretch gap-2 overflow-x-auto overflow-y-hidden [scrollbar-gutter:stable_both-edges]"
+      class="flex w-full min-h-0 min-w-0 max-w-full shrink-0 flex-nowrap items-stretch gap-2 overflow-x-auto overflow-y-hidden"
       use:noWrapReadStripMeasure
     >
       {#each rowTiles as tile (tile.id)}
         <div
           class="flex h-full min-h-0 max-w-none shrink-0 flex-col [min-width:2.5rem]"
-          style:width={widthPx(tile)}
+          style:width={widthPx(tile, rowTiles.length)}
           data-tile-id={tile.id}
           data-in-row-panel={showPanelChrome ? "true" : undefined}
         >
           <TileEditChrome
             {tile}
             onEdit={onEditTile}
-            onDelete={editLayout && onDeleteGroupChildTile
-              ? () => onDeleteGroupChildTile(groupId, tile.id)
-              : undefined}
             showEditButton={editLayout}
           >
             {#snippet children()}

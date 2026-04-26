@@ -46,6 +46,12 @@
   --gauge-z-rose: #e11d48;
   /* Unfilled track: slightly darker than the tile face, lighter than gray-400. */
   --gauge-track-rest: var(--color-gray-300, #d1d5db);
+  /*
+   * Dashboard edit chrome: drag (−) / edit (+) horizontal `translateX` and vertical inset from the
+   * **plugin surface** (see `editorChrome.ts`; `DashboardHost` sets on `editor-grid-chrome`).
+   */
+  --editor-chrome-button-offset: 0px;
+  --editor-chrome-top: 10px;
 }
 
 .dark {
@@ -114,6 +120,32 @@ html[data-color-preset="gray"] {
     align-self: stretch;
   }
 
+  /*
+   * svelte-dnd shadow placeholder: the library sets `visibility: hidden` on the in-list slot.
+   * Show a dashed slot preview so drop position is obvious while reordering (editor chrome only).
+   */
+  [data-testid="editor-grid-chrome"] [data-is-dnd-shadow-item-internal="true"] {
+    visibility: visible !important;
+    opacity: 0.42;
+    outline: 2px dashed var(--color-primary-500);
+    outline-offset: 2px;
+    border-radius: 0.375rem;
+    background: color-mix(in srgb, var(--color-primary-200) 55%, transparent);
+    box-sizing: border-box;
+  }
+
+  /* While a pointer drag is in flight, emphasize the in-list slot (large containers otherwise read as “no target”). */
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] [data-is-dnd-shadow-item-internal="true"] {
+    opacity: 0.58;
+    outline-width: 3px;
+    outline-offset: 3px;
+  }
+
+  .dark [data-testid="editor-grid-chrome"] [data-is-dnd-shadow-item-internal="true"] {
+    background: color-mix(in srgb, var(--color-primary-900) 45%, transparent);
+    outline-color: var(--color-primary-400);
+  }
+
   /* Read-only grid: do not `min-w-0` the shell (same shrink bug), but do not copy every
    * editor-tile rule — inner layout already uses w-full / min-w-0 where needed. */
   [data-dashboard-tile-grid] > * {
@@ -136,6 +168,123 @@ html[data-color-preset="gray"] {
     box-shadow: none !important;
     --tw-shadow: 0 0 #0000 !important;
   }
+
+  /*
+   * Container editor chrome (root + nested): reveal on shell hover, but hide while the pointer
+   * sits over an inner `.editor-plugin-surface` so per-plugin hover stays clean.
+   */
+  [data-editor-container-chrome] {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease-out;
+  }
+
+  [data-editor-container-chrome]:focus-visible {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .editor-root-container-shell:hover [data-editor-container-chrome],
+    .editor-nested-container-shell:hover [data-editor-container-chrome] {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .editor-root-container-shell:has(.editor-plugin-surface:hover) [data-editor-container-chrome],
+    .editor-nested-container-shell:has(.editor-plugin-surface:hover) [data-editor-container-chrome] {
+      opacity: 0;
+      pointer-events: none;
+    }
+  }
+
+  @media (hover: none) {
+    [data-editor-container-chrome] {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
+  .editor-root-container-shell:focus-within [data-editor-container-chrome],
+  .editor-nested-container-shell:focus-within [data-editor-container-chrome] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .editor-root-container-shell:has(.editor-plugin-surface:focus-within) [data-editor-container-chrome],
+  .editor-nested-container-shell:has(.editor-plugin-surface:focus-within) [data-editor-container-chrome] {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /*
+   * Drag / edit: only layout helpers (neutral button faces live in components).
+   * `--editor-chrome-button-offset`: edit `translateX(+)`; drag `translateX(−)`. `--editor-chrome-top`
+   * is the offset from the **plugin surface** anchor (see `DashboardHost` / `editorChrome.ts`).
+   */
+  .editor-chrome-top {
+    top: var(--editor-chrome-top, 10px);
+  }
+
+  /* Drag/edit button lateral nudge (size comes from component utility classes). */
+  .editor-chrome-drag {
+    transform: translateX(calc(-1 * var(--editor-chrome-button-offset, 5px)));
+  }
+
+  .editor-chrome-edit {
+    transform: translateX(var(--editor-chrome-button-offset, 5px));
+  }
+
+  /*
+   * Edit layout hover: plugin tiles use emerald, container shells use blue (both 40% mix).
+   * Root shell no longer uses `overflow-hidden` so box-shadow is not clipped there.
+   */
+  @media (hover: hover) and (pointer: fine) {
+    [data-testid="editor-grid-chrome"] .editor-plugin-hover-highlight:hover:not(.editor-surface-in-play) {
+      outline: 2px solid var(--editor-layout-hover-line);
+      outline-offset: -2px;
+      border-radius: 0.375rem;
+      position: relative;
+      z-index: 0;
+      box-shadow: var(--editor-layout-hover-glow);
+      transition:
+        outline-color 120ms ease,
+        box-shadow 120ms ease;
+    }
+
+    [data-testid="editor-grid-chrome"]
+      .editor-root-container-shell:hover:not(.editor-surface-in-play):not(
+        :has(.editor-plugin-hover-highlight:hover)
+      ),
+    [data-testid="editor-grid-chrome"]
+      .editor-nested-container-shell:hover:not(.editor-surface-in-play):not(
+        :has(.editor-plugin-hover-highlight:hover)
+      ) {
+      outline: 2px solid var(--editor-layout-container-hover-line);
+      outline-offset: -2px;
+      border-radius: 0.375rem;
+      position: relative;
+      z-index: 0;
+      box-shadow: var(--editor-layout-container-hover-glow);
+      transition:
+        outline-color 120ms ease,
+        box-shadow 120ms ease;
+    }
+  }
+
+  /** Matches `editorSelection` while “Edit layout” is on — which tile/container is active. */
+  .editor-surface-in-play {
+    /* Negative offset keeps the ring inside `overflow-hidden` shells (root container). */
+    outline: 2px solid var(--color-primary-600);
+    outline-offset: -3px;
+    border-radius: 0.375rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .dark .editor-surface-in-play {
+    outline-color: var(--color-primary-400);
+  }
 }
 
 /*
@@ -152,6 +301,17 @@ html[data-color-preset="gray"] {
  */
 [data-testid="editor-grid-chrome"] {
   container-type: inline-size;
+  --editor-layout-hover-line: color-mix(in srgb, var(--color-emerald-500) 40%, transparent);
+  --editor-layout-hover-glow: 0 0 16px color-mix(in srgb, var(--color-emerald-500) 40%, transparent);
+  --editor-layout-container-hover-line: color-mix(in srgb, var(--color-blue-500) 40%, transparent);
+  --editor-layout-container-hover-glow: 0 0 16px color-mix(in srgb, var(--color-blue-500) 40%, transparent);
+}
+
+.dark [data-testid="editor-grid-chrome"] {
+  --editor-layout-hover-line: color-mix(in srgb, var(--color-emerald-400) 40%, transparent);
+  --editor-layout-hover-glow: 0 0 16px color-mix(in srgb, var(--color-emerald-400) 40%, transparent);
+  --editor-layout-container-hover-line: color-mix(in srgb, var(--color-blue-400) 40%, transparent);
+  --editor-layout-container-hover-glow: 0 0 16px color-mix(in srgb, var(--color-blue-400) 40%, transparent);
 }
 
 /*
@@ -165,7 +325,6 @@ html[data-color-preset="gray"] {
  * neighbors. Inline-only on the editor zone to preserve the huge `pb-[min(50vh,40rem)]`
  * drop-target area at the bottom.
  */
-[data-testid="editor-drop-zone"],
 [data-dashboard-tile-grid] {
   gap: var(--dashboard-gap, 0px);
 }
@@ -174,9 +333,25 @@ html[data-color-preset="gray"] {
   padding: var(--dashboard-gap, 0px);
 }
 
+/*
+ * Editor root: padding + **minimum row gap** (see block below with `--d-gap` for column guides).
+ * Row gap gives svelte-dnd-action’s centre-based hit test room between full-width root rows when
+ * `--dashboard-gap` is 0.
+ */
 [data-testid="editor-drop-zone"] {
   padding-block-start: var(--dashboard-gap, 0px);
   padding-inline: var(--dashboard-gap, 0px);
+  column-gap: var(--dashboard-gap, 0px);
+  row-gap: max(0.75rem, var(--dashboard-gap, 0px));
+}
+
+/* Kea palette HTML5 root insert preview — only applied when drag `types` match palette MIME. */
+.editor-palette-root-insert-preview-before {
+  box-shadow: inset 0 3px 0 0 var(--color-primary-500);
+}
+
+.editor-palette-root-insert-preview-after {
+  box-shadow: inset 0 -3px 0 0 var(--color-primary-500);
 }
 
 [data-testid="editor-drop-zone"] {

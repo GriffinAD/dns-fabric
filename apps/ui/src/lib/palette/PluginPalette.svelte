@@ -32,8 +32,8 @@
     onAddGroup,
   }: {
     plugins?: PluginEntry[];
-    onAddTile?: (pluginId: string) => void;
-    onAddGroup?: () => void;
+    onAddTile?: (pluginId: string, insertBeforeIndex?: number) => void;
+    onAddGroup?: (insertBeforeIndex?: number) => void;
   } = $props();
 
   let q = $state("");

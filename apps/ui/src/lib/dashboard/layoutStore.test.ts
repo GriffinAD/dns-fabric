@@ -5,7 +5,7 @@ import { DataGateway } from "../dataGateway";
 import * as layoutNormalize from "./layoutNormalize";
 import * as layoutStorage from "./layoutStorage";
 import { createLayoutStore } from "./layoutStore";
-import type { DashboardLayoutV3 } from "./types";
+import type { DashboardGroup, DashboardLayoutV3 } from "./types";
 
 function minimalLayout(): DashboardLayoutV3 {
   return {
@@ -230,6 +230,98 @@ describe("createLayoutStore", () => {
     ls.addGroup();
     expect(get(ls.layout).items.length).toBe(1);
     expect(get(ls.layout).items[0]).toMatchObject({ kind: "group", children: [] });
+  });
+
+  it("addRootTile inserts before index when provided", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout(minimalLayout());
+    ls.addRootTile("perf.ram", 0);
+    expect(get(ls.layout).items.length).toBe(2);
+    expect(get(ls.layout).items[0]).toMatchObject({ kind: "tile", pluginId: "perf.ram" });
+    expect(get(ls.layout).items[1]).toMatchObject({ id: "t1" });
+  });
+
+  it("addGroup inserts before index when provided", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout(minimalLayout());
+    ls.addGroup(0);
+    expect(get(ls.layout).items.length).toBe(2);
+    expect(get(ls.layout).items[0]).toMatchObject({ kind: "group" });
+    expect(get(ls.layout).items[1]).toMatchObject({ id: "t1" });
+  });
+
+  it("addGroupToParent appends nested group when parent allows nesting", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout({
+      version: 3,
+      items: [{ kind: "group", id: "g1", showBorder: true, children: [] }],
+    });
+    ls.addGroupToParent("g1");
+    const g = get(ls.layout).items[0];
+    expect(g?.kind).toBe("group");
+    if (g?.kind === "group") {
+      expect(g.children.length).toBe(1);
+      expect(g.children[0]).toMatchObject({
+        kind: "group",
+        grid: { col: 0, row: 0, colSpan: 10, rowSpan: 1 },
+      });
+    }
+  });
+
+  it("addGroupToParent rejects innerWrap parent with loadError", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout({
+      version: 3,
+      items: [{ kind: "group", id: "g1", showBorder: true, innerWrap: true, children: [] }],
+    });
+    ls.addGroupToParent("g1");
+    expect(get(ls.loadError)).toMatch(/Auto wrap/i);
+    const g = get(ls.layout).items[0];
+    if (g?.kind === "group") expect(g.children.length).toBe(0);
+  });
+
+  it("addGroupToParent sets loadError when parent id is missing", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout(minimalLayout());
+    ls.addGroupToParent("no-such-group");
+    expect(get(ls.loadError)).toMatch(/not found/i);
+  });
+
+  function groupChain(depth: number, base: string): DashboardGroup {
+    if (depth < 1) throw new Error("depth");
+    if (depth === 1) {
+      return { kind: "group", id: `${base}-1`, showBorder: true, children: [] };
+    }
+    return { kind: "group", id: `${base}-${depth}`, showBorder: true, children: [groupChain(depth - 1, base)] };
+  }
+
+  function deepestEmptyGroupId(g: DashboardGroup): string {
+    const only = g.children[0];
+    if (only && only.kind === "group" && only.children.length > 0) {
+      return deepestEmptyGroupId(only);
+    }
+    if (only && only.kind === "group") return only.id;
+    return g.id;
+  }
+
+  it("addGroupToParent rejects when nesting would exceed max depth", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    const top = groupChain(8, "d");
+    ls.acceptServerLayout({ version: 3, items: [top] });
+    ls.addGroupToParent(deepestEmptyGroupId(top));
+    expect(get(ls.loadError)).toMatch(/depth/i);
   });
 
   it("addTileToGroup does not add children when group id is missing", () => {

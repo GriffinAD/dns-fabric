@@ -470,6 +470,42 @@ export function groupOuterColSpan(g: DashboardGroup): number {
   return GRID_COLUMNS;
 }
 
+function stripChildPlacementOrNull(c: GroupChild): GridPlacement | null {
+  if (isDashboardGroupNode(c)) {
+    const gr = c.grid;
+    return gr != null && isCompleteGroupChildGrid(gr, false) ? gr : null;
+  }
+  const gr = c.grid;
+  return gr != null && isCompleteGroupChildGrid(gr, false) ? gr : null;
+}
+
+/**
+ * Default `grid` for an empty nested container appended into a **nowrap** parent (`innerWrap` not
+ * true). Width = ⌊{@link groupOuterColSpan}(parent) / 2⌋ (at least 1 dashboard column). Horizontally
+ * after siblings’ right edge when that still fits the root 0…`GRID_COLUMNS` contract for nested
+ * `group.grid` (see `layoutZod`); otherwise a new row at `col` 0.
+ */
+export function placementForNewEmptyNestedGroup(parent: DashboardGroup): GridPlacement {
+  const parentG = groupOuterColSpan(parent);
+  const colSpan = Math.max(1, Math.floor(parentG / 2));
+  let nextCol = 0;
+  for (const c of parent.children) {
+    const gr = stripChildPlacementOrNull(c);
+    if (gr) nextCol = Math.max(nextCol, gr.col + gr.colSpan);
+  }
+  const rowSpan = 1;
+  if (nextCol + colSpan <= GRID_COLUMNS) {
+    const col = Math.max(0, Math.min(GRID_COLUMNS - colSpan, nextCol));
+    return { col, row: 0, colSpan, rowSpan };
+  }
+  let maxRowEnd = 0;
+  for (const c of parent.children) {
+    const gr = stripChildPlacementOrNull(c);
+    if (gr) maxRowEnd = Math.max(maxRowEnd, gr.row + gr.rowSpan);
+  }
+  return { col: 0, row: maxRowEnd, colSpan, rowSpan };
+}
+
 /**
  * Number of 1fr columns for the **layout editor** group inner. Auto wrap: G tracks only. No wrap:
  * at least G and the rightmost stored child extent so a wide strip can be placed without clipping.
@@ -659,20 +695,92 @@ export function reorderRootLayoutItemsPreservingSlotOrigins(
 }
 
 /**
+ * **Auto wrap off (strip):** place every tile in **one horizontal scroller row** (`row` = 0) in
+ * array order. `col` advances by each tile’s width in the parent’s physical tracks
+ * (`groupInnerWidthInPhysicalTracks`), not by the root 20-col “next row at full width” rule —
+ * that incorrectly gave palette drops a `row` of 1 to the right of an existing first-row tile.
+ */
+export function packGroupChildrenNoWrapStripInOrder(
+  tiles: DashboardTile[],
+  innerColumns: number,
+): DashboardTile[] {
+  if (tiles.length === 0) return tiles;
+  const G = Math.max(1, Math.min(GRID_COLUMNS, Math.floor(Number(innerColumns)) || 1));
+  let c = 0;
+  const row = 0;
+  return tiles.map((t) => {
+    const cs = effectiveColSpan(t);
+    const rs = effectiveRowSpan(t);
+    const w = groupInnerWidthInPhysicalTracks(cs, G);
+    const out: DashboardTile = { ...t, grid: { col: c, row, colSpan: cs, rowSpan: rs } };
+    c += w;
+    return out;
+  });
+}
+
+function noWrapGroupChildIsCompleteInStrip(c: GroupChild): boolean {
+  if (isDashboardGroupNode(c)) {
+    const g = c.grid;
+    return g != null && isCompleteGroupChildGrid(g, false);
+  }
+  return c.grid != null && isCompleteGroupChildGrid(c.grid, false);
+}
+
+/**
+ * Re-pack **this** list’s outer `grid.col` in strip order (row 0) when any child is missing
+ * a valid strip placement (e.g. a palette-dropped plugin beside a nested container). Does not
+ * recurse: nested `children` were already passed through `packOneGroupInLayout`.
+ */
+function packMixedNoWrapChildrenInStripArrayOrder(
+  parentG: number,
+  children: GroupChild[],
+): GroupChild[] {
+  if (children.length === 0) return children;
+  const Gp = Math.max(1, Math.min(GRID_COLUMNS, Math.floor(Number(parentG)) || 1));
+  let c = 0;
+  const row = 0;
+  return children.map((child) => {
+    if (isDashboardGroupNode(child)) {
+      const g = child;
+      const colSpan = groupOuterColSpan(g);
+      const innerH = maxRowEndFromPlacedGroupChildren(g.children, g.innerWrap === true);
+      const rowSpan = groupOuterRowSpan(g, innerH);
+      const w = groupInnerWidthInPhysicalTracks(colSpan, Gp);
+      const next: DashboardGroup = {
+        ...g,
+        grid: { col: c, row, colSpan, rowSpan },
+      };
+      c += w;
+      return next;
+    }
+    const t = child as DashboardTile;
+    const cs = effectiveColSpan(t);
+    const rs = effectiveRowSpan(t);
+    const w = groupInnerWidthInPhysicalTracks(cs, Gp);
+    const out: DashboardTile = { ...t, grid: { col: c, row, colSpan: cs, rowSpan: rs } };
+    c += w;
+    return out;
+  });
+}
+
+/**
  * For inner lists **inside a group only**: if every child already has a full grid, clamp
  * in-bounds; do not run `defragmentGapsInSingleRowTiles` (that shifts col origins to remove
  * “holes” and would reslot children when the user only changes the **container** span). If
- * any child is incomplete, use full `normalizeDashboardTiles` (incl. defrag) as before; if
- * clamped placements overlap, fall back to full normalize.
+ * any child is incomplete, re-pack the strip in array order; if clamped placements overlap, fall
+ * back to strip re-pack.
  */
-function normalizeGroupChildrenPreservingColOrigins(tiles: DashboardTile[]): DashboardTile[] {
+function normalizeGroupChildrenPreservingColOrigins(
+  tiles: DashboardTile[],
+  groupInnerWidth: number,
+): DashboardTile[] {
   if (tiles.length === 0) return tiles;
   if (!tiles.every((t) => t.grid && isCompleteGroupChildGrid(t.grid, false))) {
-    return normalizeDashboardTiles(tiles);
+    return packGroupChildrenNoWrapStripInOrder(tiles, groupInnerWidth);
   }
   const next = tiles.map((t) => ({ ...t, grid: clampGroupChildGridPlacement(t, false) }));
   if (placementsOverlap(next.map((t) => t.grid!))) {
-    return normalizeDashboardTiles(tiles);
+    return packGroupChildrenNoWrapStripInOrder(tiles, groupInnerWidth);
   }
   return next;
 }
@@ -730,17 +838,27 @@ export function commitGroupInnerRowWraps(items: RootLayoutItem[]): RootLayoutIte
   return items.map((it) => (it.kind === "group" ? commitInnerWrapOnGroup(it) : it));
 }
 
-/** Strip-mode group children: recurse into nested groups; tile-only lists use legacy normalize. */
+/** Strip-mode group children: recurse into nested groups; then strip-pack any incomplete placements. */
 function packGroupChildrenNoWrapMixed(
-  children: GroupChild[],
+  parent: DashboardGroup,
   options?: { editMode?: boolean },
 ): GroupChild[] {
+  const G = groupOuterColSpan(parent);
+  const { children } = parent;
   const nested = children.some(isDashboardGroupNode);
   const withRecurse = children.map((c) =>
     isDashboardGroupNode(c) ? packOneGroupInLayout(c, options) : c,
   );
-  if (nested) return withRecurse;
-  return normalizeGroupChildrenPreservingColOrigins([...(withRecurse as DashboardTile[])]);
+  if (nested) {
+    if (withRecurse.every(noWrapGroupChildIsCompleteInStrip)) {
+      return withRecurse;
+    }
+    return packMixedNoWrapChildrenInStripArrayOrder(G, withRecurse);
+  }
+  return normalizeGroupChildrenPreservingColOrigins(
+    withRecurse as DashboardTile[],
+    G,
+  );
 }
 
 function packOneGroupInLayout(it: DashboardGroup, options?: { editMode?: boolean }): DashboardGroup {
@@ -752,7 +870,7 @@ function packOneGroupInLayout(it: DashboardGroup, options?: { editMode?: boolean
     const tiles = it.children.filter((c): c is DashboardTile => !isDashboardGroupNode(c));
     return { ...it, showBorder: it.showBorder !== false, children: packGroupChildrenRowWrapInOrder(tiles, G) };
   }
-  const children = packGroupChildrenNoWrapMixed(it.children, options);
+  const children = packGroupChildrenNoWrapMixed(it, options);
   return { ...it, showBorder: it.showBorder !== false, children };
 }
 

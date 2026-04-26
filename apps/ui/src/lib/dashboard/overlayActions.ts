@@ -1,10 +1,11 @@
 import { commitGroupInnerRowWraps, reorderRootLayoutItemsPreservingSlotOrigins } from "./gridPlacement";
 import {
   findTileInLayout,
-  mapRootItemsReplaceGroup,
+  mapLayoutReplaceGroupById,
   mapTileInLayout,
   moveTileToParent,
   PARENT_ID_DASHBOARD,
+  removeLayoutGroupById,
   removeTileFromAnywhere,
 } from "./layoutTree";
 import { editorSelection } from "./editor/editorState";
@@ -43,7 +44,7 @@ export function createOverlayActions(deps: OverlayActionsDeps) {
     },
     saveGroupFromOverlay(next: DashboardGroup) {
       const layout = deps.getLayout();
-      const replaced = mapRootItemsReplaceGroup(layout.items, next.id, next);
+      const replaced = mapLayoutReplaceGroupById(layout.items, next.id, next);
       const reordered = reorderRootLayoutItemsPreservingSlotOrigins(layout.items, replaced);
       const withCommit = commitGroupInnerRowWraps(reordered);
       deps.applyLayoutStructure({ version: 3, items: withCommit }, { preserveRootPlacementIfComplete: true });
@@ -95,6 +96,20 @@ export function createOverlayActions(deps: OverlayActionsDeps) {
     deleteGroupChildTile(_groupId: string, tileId: string) {
       const layout = deps.getLayout();
       const next = removeTileFromAnywhere(layout.items, tileId);
+      if (deps.getSettingsTile() && !findTileInLayout(next, deps.getSettingsTile()!.id)) {
+        deps.setSettingsTile(null);
+      }
+      deps.applyLayoutStructure(
+        { version: 3, items: next },
+        { preserveRootPlacementIfComplete: true },
+      );
+    },
+    deleteLayoutGroupById(groupId: string) {
+      const layout = deps.getLayout();
+      const next = removeLayoutGroupById(layout.items, groupId);
+      if (deps.getSettingsGroup()?.id === groupId) {
+        deps.setSettingsGroup(null);
+      }
       if (deps.getSettingsTile() && !findTileInLayout(next, deps.getSettingsTile()!.id)) {
         deps.setSettingsTile(null);
       }

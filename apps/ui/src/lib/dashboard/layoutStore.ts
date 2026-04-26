@@ -1,7 +1,7 @@
 import { get, writable } from "svelte/store";
 
 import { DataGateway } from "../dataGateway";
-import { cloneLayoutJson } from "./gridPlacement";
+import { cloneLayoutJson, placementForNewEmptyNestedGroup } from "./gridPlacement";
 import { normalizeLayoutStrict } from "./layoutNormalize";
 import {
   clearLayoutLocalPersistGate,
@@ -10,8 +10,12 @@ import {
   parseDashboardLayout,
   saveDashboardLayout,
 } from "./layoutStorage";
-import { appendTileToGroupInItems } from "./layoutTree";
-import { ensureLayoutV3 } from "./migration";
+import {
+  appendGroupToGroupInItems,
+  appendTileToGroupInItems,
+  findGroupByIdInItems,
+} from "./layoutTree";
+import { ensureLayoutV3, layoutNestedGroupDepthExceeded } from "./migration";
 import { initialDashboardLayout, flushLayoutToServer, postLayoutSaveFileSnapshot } from "./persistence";
 import type {
   DashboardGroup,
@@ -20,6 +24,7 @@ import type {
   DashboardTile,
   RootLayoutItem,
 } from "./types";
+import { MAX_DASHBOARD_GROUP_DEPTH } from "./types";
 
 export type LayoutSource = "server" | "cache";
 
@@ -203,7 +208,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
       }
     },
 
-    addRootTile(pluginId: string) {
+    addRootTile(pluginId: string, insertBeforeIndex?: number) {
       const L = get(layout);
       const n = L.items.length;
       const id = `tile-${n + 1}-${Date.now()}`;
@@ -214,15 +219,52 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
         hostControl: "single-panel",
         displayMode: "full",
       };
-      applyStructure({ version: 3, items: [...L.items, next] });
+      const items = [...L.items];
+      const at =
+        insertBeforeIndex === undefined || insertBeforeIndex < 0 || insertBeforeIndex > items.length
+          ? items.length
+          : insertBeforeIndex;
+      items.splice(at, 0, next);
+      applyStructure({ version: 3, items });
     },
 
-    addGroup() {
+    addGroup(insertBeforeIndex?: number) {
       const L = get(layout);
       const n = L.items.length;
       const id = `group-${n + 1}-${Date.now()}`;
       const g: DashboardGroup = { kind: "group", id, showBorder: true, children: [] };
-      applyStructure({ version: 3, items: [...L.items, g] });
+      const items = [...L.items];
+      const at =
+        insertBeforeIndex === undefined || insertBeforeIndex < 0 || insertBeforeIndex > items.length
+          ? items.length
+          : insertBeforeIndex;
+      items.splice(at, 0, g);
+      applyStructure({ version: 3, items });
+    },
+
+    addGroupToParent(parentGroupId: string) {
+      const L = get(layout);
+      const parent = findGroupByIdInItems(L.items, parentGroupId);
+      if (!parent) {
+        loadError.set("Container not found.");
+        return;
+      }
+      if (parent.innerWrap === true) {
+        loadError.set(
+          "Nested containers are not allowed when Auto wrap is on for the parent. Turn off Auto wrap in container settings, then try again.",
+        );
+        return;
+      }
+      const m = L.items.length;
+      const id = `group-${m + 1}-${Date.now()}`;
+      const grid = placementForNewEmptyNestedGroup(parent);
+      const g: DashboardGroup = { kind: "group", id, showBorder: true, children: [], grid };
+      const nextItems = appendGroupToGroupInItems(L.items, parentGroupId, g);
+      if (layoutNestedGroupDepthExceeded(nextItems)) {
+        loadError.set(`Nested containers cannot exceed depth ${MAX_DASHBOARD_GROUP_DEPTH}.`);
+        return;
+      }
+      applyStructure({ version: 3, items: nextItems });
     },
 
     addTileToGroup(groupId: string, pluginId: string) {

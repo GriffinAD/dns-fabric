@@ -6,6 +6,7 @@ import {
   DND_PLUGIN_MIME,
   PLAIN_ADD_GROUP,
   PLAIN_PLUGIN_PREFIX,
+  isPaletteFabricHtml5Drag,
   parsePaletteDrop,
   setPaletteAddGroupDragData,
   setPalettePluginDragData,
@@ -18,6 +19,26 @@ function mockTransfer(data: Record<string, string>): DataTransfer {
 }
 
 describe("paletteDragCodec", () => {
+  it("isPaletteFabricHtml5Drag is true when plugin MIME is listed in types", () => {
+    const dt = { types: [DND_PLUGIN_MIME] } as unknown as DataTransfer;
+    expect(isPaletteFabricHtml5Drag(dt)).toBe(true);
+  });
+
+  it("isPaletteFabricHtml5Drag is true when layout MIME is listed in types", () => {
+    const dt = { types: [DND_LAYOUT_DND] } as unknown as DataTransfer;
+    expect(isPaletteFabricHtml5Drag(dt)).toBe(true);
+  });
+
+  it("isPaletteFabricHtml5Drag is false for text/plain only", () => {
+    const dt = { types: ["text/plain"] } as unknown as DataTransfer;
+    expect(isPaletteFabricHtml5Drag(dt)).toBe(false);
+  });
+
+  it("isPaletteFabricHtml5Drag is false for null or missing types", () => {
+    expect(isPaletteFabricHtml5Drag(null)).toBe(false);
+    expect(isPaletteFabricHtml5Drag({} as DataTransfer)).toBe(false);
+  });
+
   it("parsePaletteDrop reads add-group from layout MIME", () => {
     expect(parsePaletteDrop(mockTransfer({ [DND_LAYOUT_DND]: DND_ADD_GROUP }))).toEqual({ kind: "group" });
   });

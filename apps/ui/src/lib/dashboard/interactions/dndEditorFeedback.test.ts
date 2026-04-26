@@ -2,9 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   applyDashboardDragLift,
+  createDashboardEditorTransformDragged,
   dashboardEditorDropTargetStyle,
   dashboardEditorNestedFlipMs,
   dashboardEditorRootFlipMs,
+  preferSlotVisibilityForDndListItem,
   readPrefersReducedMotion,
 } from "./dndEditorFeedback";
 
@@ -64,6 +66,47 @@ describe("dashboardEditorDropTargetStyle", () => {
   });
 });
 
+describe("preferSlotVisibilityForDndListItem", () => {
+  it("is true for a DnD row whose item is a group", () => {
+    expect(
+      preferSlotVisibilityForDndListItem({
+        id: "g1",
+        item: { kind: "group", id: "g1", showBorder: true, innerWrap: false, children: [] },
+      }),
+    ).toBe(true);
+  });
+
+  it("is false for a plugin tile row", () => {
+    expect(
+      preferSlotVisibilityForDndListItem({
+        id: "t1",
+        item: {
+          id: "t1",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "full",
+        },
+      }),
+    ).toBe(false);
+  });
+
+  it("is false for non-row payloads", () => {
+    expect(preferSlotVisibilityForDndListItem(undefined)).toBe(false);
+    expect(preferSlotVisibilityForDndListItem({ id: "x" })).toBe(false);
+  });
+});
+
+describe("createDashboardEditorTransformDragged", () => {
+  it("delegates to applyDashboardDragLift with slot visibility for groups", () => {
+    const el = document.createElement("div");
+    createDashboardEditorTransformDragged(false)(el, {
+      id: "g1",
+      item: { kind: "group", id: "g1", showBorder: true, innerWrap: false, children: [] },
+    });
+    expect(el.style.opacity).toBe("0.86");
+  });
+});
+
 describe("applyDashboardDragLift", () => {
   it("no-ops when element is undefined", () => {
     expect(() => applyDashboardDragLift(undefined, false)).not.toThrow();
@@ -82,5 +125,17 @@ describe("applyDashboardDragLift", () => {
     expect(el.style.opacity).toBe("0.94");
     expect(el.style.boxShadow).toContain("rgba");
     expect(el.style.borderRadius).toBe("0.375rem");
+  });
+
+  it("uses a slightly more transparent ghost when preferSlotVisibility is set", () => {
+    const el = document.createElement("div");
+    applyDashboardDragLift(el, false, { preferSlotVisibility: true });
+    expect(el.style.opacity).toBe("0.86");
+  });
+
+  it("still respects reduced motion when preferSlotVisibility is set", () => {
+    const el = document.createElement("div");
+    applyDashboardDragLift(el, true, { preferSlotVisibility: true });
+    expect(el.style.opacity).toBe("0.96");
   });
 });

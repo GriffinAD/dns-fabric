@@ -57,6 +57,21 @@ function findTileInGroupChildren(
   return null;
 }
 
+/** Every `kind: "group"` in the layout tree (root and nested), depth-first. */
+export function collectAllGroupsInLayout(items: RootLayoutItem[]): DashboardGroup[] {
+  const out: DashboardGroup[] = [];
+  function walkGroup(g: DashboardGroup) {
+    out.push(g);
+    for (const c of dedupeById(g.children)) {
+      if (isDashboardGroupNode(c)) walkGroup(c);
+    }
+  }
+  for (const it of items) {
+    if (it.kind === "group") walkGroup(it);
+  }
+  return out;
+}
+
 export function findTileInLayout(
   items: RootLayoutItem[],
   tileId: string,
@@ -108,6 +123,56 @@ export function mapRootItemsReplaceGroup(
   next: DashboardGroup,
 ): RootLayoutItem[] {
   return items.map((it) => (it.kind === "group" && it.id === groupId ? next : it));
+}
+
+function mapReplaceGroupInGroupChildren(
+  children: GroupChild[],
+  groupId: string,
+  next: DashboardGroup,
+): GroupChild[] {
+  return children.map((c) => {
+    if (isDashboardGroupNode(c)) {
+      if (c.id === groupId) return next;
+      return { ...c, children: mapReplaceGroupInGroupChildren(c.children, groupId, next) };
+    }
+    return c;
+  });
+}
+
+/** Replace a dashboard group at the root or any nesting depth (by stable group id). */
+export function mapLayoutReplaceGroupById(
+  items: RootLayoutItem[],
+  groupId: string,
+  next: DashboardGroup,
+): RootLayoutItem[] {
+  return items.map((it) => {
+    if (it.kind === "group" && it.id === groupId) return next;
+    if (it.kind === "group") {
+      return { ...it, children: mapReplaceGroupInGroupChildren(it.children, groupId, next) };
+    }
+    return it;
+  });
+}
+
+function removeGroupFromGroupChildren(children: GroupChild[], groupId: string): GroupChild[] {
+  const out: GroupChild[] = [];
+  for (const c of children) {
+    if (isDashboardGroupNode(c)) {
+      if (c.id === groupId) continue;
+      out.push({ ...c, children: removeGroupFromGroupChildren(c.children, groupId) });
+    } else {
+      out.push(c);
+    }
+  }
+  return out;
+}
+
+/** Remove a group (root or nested) and its subtree; tiles and other groups are unchanged. */
+export function removeLayoutGroupById(items: RootLayoutItem[], groupId: string): RootLayoutItem[] {
+  const filtered = items.filter((it) => !(it.kind === "group" && it.id === groupId));
+  return filtered.map((it) =>
+    it.kind === "group" ? { ...it, children: removeGroupFromGroupChildren(it.children, groupId) } : it,
+  );
 }
 
 function removeTileFromGroupChildren(children: GroupChild[], tileId: string): GroupChild[] {
@@ -172,6 +237,39 @@ export function appendTileToGroupInItems(
   tile: DashboardTile,
 ): RootLayoutItem[] {
   return insertTileIntoGroup(items, groupId, tile);
+}
+
+function insertGroupIntoGroupChildren(
+  children: GroupChild[],
+  parentGroupId: string,
+  newGroup: DashboardGroup,
+): GroupChild[] {
+  return children.map((c) => {
+    if (isDashboardGroupNode(c)) {
+      if (c.id === parentGroupId) {
+        return { ...c, children: [...c.children, newGroup] };
+      }
+      return { ...c, children: insertGroupIntoGroupChildren(c.children, parentGroupId, newGroup) };
+    }
+    return c;
+  });
+}
+
+/** Append an empty nested container to the group with `groupId` (searched recursively). */
+export function appendGroupToGroupInItems(
+  items: RootLayoutItem[],
+  parentGroupId: string,
+  newGroup: DashboardGroup,
+): RootLayoutItem[] {
+  return items.map((it) => {
+    if (it.kind === "group" && it.id === parentGroupId) {
+      return { ...it, children: [...it.children, newGroup] };
+    }
+    if (it.kind === "group") {
+      return { ...it, children: insertGroupIntoGroupChildren(it.children, parentGroupId, newGroup) };
+    }
+    return it;
+  });
 }
 
 function findGroupByIdInChildren(children: GroupChild[], groupId: string): DashboardGroup | null {

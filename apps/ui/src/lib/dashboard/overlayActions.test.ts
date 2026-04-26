@@ -174,6 +174,115 @@ describe("createOverlayActions", () => {
     expect(layout.items[0]?.kind === "group" && layout.items[0].showBorder).toBe(false);
   });
 
+  it("saveGroupFromOverlay replaces a nested group", () => {
+    const inner: DashboardGroup = { kind: "group", id: "inner", showBorder: true, children: [] };
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      children: [inner],
+      grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 },
+    };
+    let layout: DashboardLayoutV3 = { version: 3, items: [outer] };
+    let group: DashboardGroup | null = inner;
+    let applied = 0;
+    const o = createOverlayActions({
+      getLayout: () => layout,
+      getEditorOpen: () => false,
+      getSettingsTile: () => null,
+      getSettingsGroup: () => group,
+      setSettingsTile: () => {},
+      setSettingsGroup: (gr) => {
+        group = gr;
+      },
+      applyLayoutStructure: (next) => {
+        applied += 1;
+        if (next.version === 2 || next.version === 3) layout = next as DashboardLayoutV3;
+      },
+    });
+    const nextInner: DashboardGroup = { ...inner, showBorder: false };
+    o.saveGroupFromOverlay(nextInner);
+    expect(applied).toBe(1);
+    expect(group).toBeNull();
+    const og = layout.items[0];
+    expect(og?.kind).toBe("group");
+    if (og?.kind === "group") {
+      expect(og.children[0]).toMatchObject({ kind: "group", showBorder: false });
+    }
+  });
+
+  it("deleteLayoutGroupById removes nested group and clears group settings", () => {
+    const inner: DashboardGroup = { kind: "group", id: "inner", showBorder: true, children: [] };
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      children: [inner],
+      grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 },
+    };
+    let layout: DashboardLayoutV3 = { version: 3, items: [outer] };
+    let group: DashboardGroup | null = inner;
+    let applied = 0;
+    const o = createOverlayActions({
+      getLayout: () => layout,
+      getEditorOpen: () => false,
+      getSettingsTile: () => null,
+      getSettingsGroup: () => group,
+      setSettingsTile: () => {},
+      setSettingsGroup: (gr) => {
+        group = gr;
+      },
+      applyLayoutStructure: (next) => {
+        applied += 1;
+        if (next.version === 2 || next.version === 3) layout = next as DashboardLayoutV3;
+      },
+    });
+    o.deleteLayoutGroupById("inner");
+    expect(applied).toBe(1);
+    expect(group).toBeNull();
+    const og = layout.items[0];
+    expect(og?.kind).toBe("group");
+    if (og?.kind === "group") expect(og.children.length).toBe(0);
+  });
+
+  it("deleteLayoutGroupById clears tile settings when tile was inside removed group", () => {
+    const innerTile: DashboardTile = {
+      id: "gone",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "full",
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+    };
+    const inner: DashboardGroup = { kind: "group", id: "inner", showBorder: true, children: [innerTile] };
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      children: [inner],
+      grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 },
+    };
+    let layout: DashboardLayoutV3 = { version: 3, items: [outer] };
+    let tile: DashboardTile | null = innerTile;
+    let applied = 0;
+    const o = createOverlayActions({
+      getLayout: () => layout,
+      getEditorOpen: () => false,
+      getSettingsTile: () => tile,
+      getSettingsGroup: () => null,
+      setSettingsTile: (t) => {
+        tile = t;
+      },
+      setSettingsGroup: () => {},
+      applyLayoutStructure: (next) => {
+        applied += 1;
+        if (next.version === 2 || next.version === 3) layout = next as DashboardLayoutV3;
+      },
+    });
+    o.deleteLayoutGroupById("inner");
+    expect(applied).toBe(1);
+    expect(tile).toBeNull();
+  });
+
   it("openTileSettings clears group and sets tile", () => {
     let tile: DashboardTile | null = null;
     let group: DashboardGroup | null = {

@@ -8,10 +8,13 @@
     group,
     onClose,
     onSave,
+    onDelete,
   }: {
     group: DashboardGroup;
     onClose: () => void;
     onSave: (next: DashboardGroup) => void;
+    /** Remove this container (and nested content) from the layout. */
+    onDelete?: () => void;
   } = $props();
 
   function cloneDraft(g: DashboardGroup): DashboardGroup {
@@ -202,17 +205,31 @@
       </div>
 
       <div
-        class="flex shrink-0 justify-end gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-600 dark:bg-gray-900"
+        class="flex shrink-0 flex-wrap items-center gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-600 dark:bg-gray-900 {onDelete
+          ? 'justify-between'
+          : 'justify-end'}"
       >
-        <Button type="button" color="alternative" onclick={onClose}>Cancel</Button>
-        <button
-          type="button"
-          class="rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-          data-testid="group-settings-save"
-          onclick={save}
-        >
-          Save
-        </button>
+        {#if onDelete}
+          <button
+            type="button"
+            data-testid="group-settings-delete"
+            class="rounded-lg border border-red-200 px-4 py-2.5 text-center text-sm font-medium text-red-600 hover:bg-red-50 focus:ring-4 focus:ring-red-200 focus:outline-none dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40 dark:focus:ring-red-900"
+            onclick={onDelete}
+          >
+            Remove container
+          </button>
+        {/if}
+        <div class="flex shrink-0 gap-2">
+          <Button type="button" color="alternative" onclick={onClose}>Cancel</Button>
+          <button
+            type="button"
+            class="rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            data-testid="group-settings-save"
+            onclick={save}
+          >
+            Save
+          </button>
+        </div>
       </div>
     </div>
   </div>

@@ -69,14 +69,25 @@ test("layout editor drop zone reserves bottom padding for drag hit-testing past 
   expect(paddingBottomPx).toBeGreaterThan(120);
 });
 
+test("layout editor root grid enforces minimum row gap for between-row DnD hit testing", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Edit layout" }).click();
+  const rowGapPx = await page.getByTestId("editor-drop-zone").evaluate((el) => {
+    return parseFloat(window.getComputedStyle(el).rowGap);
+  });
+  /* At least 0.75rem so the dragged ghost’s centre can sit between full-width root rows when
+   * `--dashboard-gap` is 0 (svelte-dnd-action uses centre-based index resolution). */
+  expect(rowGapPx).toBeGreaterThanOrEqual(11);
+});
+
 test("layout editor persists perf display style after leaving edit mode", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Edit layout" }).click();
-  await page
+  const ramTile = page
     .getByTestId("editor-drop-zone")
-    .locator('[data-testid="editor-tile"][data-tile-id="tile-perf-ram"]')
-    .getByTestId("tile-edit-button")
-    .click();
+    .locator('[data-testid="editor-tile"][data-tile-id="tile-perf-ram"]');
+  await ramTile.hover();
+  await ramTile.getByTestId("tile-edit-button").click();
   await expect(page.getByTestId("tile-settings-overlay")).toBeVisible();
   await page.getByTestId("tile-settings-perf-display").selectOption("percent_only");
   await page.getByTestId("tile-settings-overlay").getByRole("button", { name: "Save" }).click();
@@ -89,10 +100,9 @@ test("tile settings parent: move tile from container to dashboard root", async (
   await expect(page.getByTestId("dashboard-host")).toBeVisible();
   await page.getByRole("button", { name: "Edit layout", exact: true }).click();
   await expect(page.getByTestId("editor-drop-zone")).toBeVisible();
-  await page
-    .locator('[data-testid="editor-tile"][data-tile-id="tile-perf-ram"]')
-    .getByTestId("tile-edit-button")
-    .click();
+  const ramTile = page.locator('[data-testid="editor-tile"][data-tile-id="tile-perf-ram"]');
+  await ramTile.hover();
+  await ramTile.getByTestId("tile-edit-button").click();
   await expect(page.getByTestId("tile-settings-overlay")).toBeVisible();
   const parent = page.getByTestId("tile-settings-parent");
   await expect(parent).toBeVisible();
@@ -135,7 +145,12 @@ test("editor pointer drag toggles chrome DnD active flag during reorder", async 
   await page.getByRole("button", { name: "Edit layout" }).click();
   const chrome = page.getByTestId("editor-grid-chrome");
   await expect(chrome).toHaveAttribute("data-editor-pointer-dnd", "false");
-  const handle = page.getByTestId("editor-tile-drag-handle").first();
+  const zone = page.getByTestId("editor-drop-zone");
+  const firstTile = zone.getByTestId("editor-tile").first();
+  /* First item is often a container: hover near its top-left padding so inner plugins do not
+   * suppress container chrome (see `app.css` :has(.editor-plugin-surface:hover)). */
+  await firstTile.hover({ position: { x: 14, y: 14 } });
+  const handle = firstTile.getByTestId("editor-tile-drag-handle");
   const box = await handle.boundingBox();
   expect(box).toBeTruthy();
   await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);

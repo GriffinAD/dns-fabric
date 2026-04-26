@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  collectAllGroupsInLayout,
   migrateV1ToV2,
   ensureLayoutV2,
   dedupeLayoutV2ItemIds,
@@ -8,10 +9,13 @@ import {
   findTileInLayout,
   findGroupByIdInItems,
   mapTileInLayout,
+  mapLayoutReplaceGroupById,
   mapRootItemsReplaceGroup,
   moveTileToParent,
+  removeLayoutGroupById,
   removeTileFromAnywhere,
   dedupeById,
+  appendGroupToGroupInItems,
   appendTileToGroupInItems,
 } from "./layoutTree";
 import type { DashboardGroup, DashboardLayoutV1, DashboardLayoutV2, DashboardTile, RootLayoutItem } from "./types";
@@ -26,6 +30,19 @@ const baseTile = (id: string, plugin: string, rowPanel?: string): DashboardTile 
 });
 
 describe("layoutTree", () => {
+  it("collectAllGroupsInLayout returns root and nested groups in depth-first order", () => {
+    const gOuter: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      children: [
+        { kind: "group", id: "inner", showBorder: true, children: [] },
+        baseTile("t1", "dhcp.pools"),
+      ],
+    };
+    expect(collectAllGroupsInLayout([gOuter]).map((g) => g.id)).toEqual(["outer", "inner"]);
+  });
+
   it("dedupeById keeps first occurrence of duplicate ids", () => {
     const a = { id: "x", a: 1 } as { id: string; a: number };
     const a2 = { id: "x", a: 2 } as { id: string; a: number };
@@ -278,6 +295,57 @@ describe("layoutTree", () => {
     expect((items[0] as DashboardGroup).showBorder).toBe(false);
   });
 
+  it("mapLayoutReplaceGroupById updates a nested group", () => {
+    const inner: DashboardGroup = { kind: "group", id: "inner", showBorder: true, children: [] };
+    const outer: DashboardGroup = { kind: "group", id: "outer", showBorder: true, children: [inner] };
+    const nextInner: DashboardGroup = { ...inner, showBorder: false };
+    const out = mapLayoutReplaceGroupById([outer], "inner", nextInner);
+    const o = out[0] as DashboardGroup;
+    const i = o.children[0] as DashboardGroup;
+    expect(i.showBorder).toBe(false);
+  });
+
+  it("mapLayoutReplaceGroupById leaves root tiles unchanged and recurses past tile siblings", () => {
+    const rt: RootLayoutItem = { kind: "tile", ...baseTile("root-t", "dhcp.pools") };
+    const deep: DashboardGroup = { kind: "group", id: "deep", showBorder: true, children: [] };
+    const mid: DashboardGroup = { kind: "group", id: "mid", showBorder: true, children: [deep] };
+    const side: DashboardTile = { ...baseTile("side", "perf.cpu"), displayMode: "full" };
+    const root: DashboardGroup = { kind: "group", id: "root", showBorder: true, children: [side, mid] };
+    const nextDeep: DashboardGroup = { ...deep, showBorder: false };
+    const out = mapLayoutReplaceGroupById([rt, root], "deep", nextDeep);
+    expect(out[0]).toBe(rt);
+    const r = out[1] as DashboardGroup;
+    expect((r.children[0] as DashboardTile).id).toBe("side");
+    const m = r.children[1] as DashboardGroup;
+    expect((m.children[0] as DashboardGroup).showBorder).toBe(false);
+  });
+
+  it("removeLayoutGroupById removes a root group", () => {
+    const g: DashboardGroup = { kind: "group", id: "g", showBorder: true, children: [] };
+    const t: RootLayoutItem = { kind: "tile", ...baseTile("t", "dhcp.pools") };
+    expect(removeLayoutGroupById([t, g], "g")).toEqual([t]);
+  });
+
+  it("removeLayoutGroupById removes a nested group and keeps siblings", () => {
+    const inner: DashboardGroup = { kind: "group", id: "inner", showBorder: true, children: [] };
+    const side: DashboardTile = { ...baseTile("side", "perf.cpu"), displayMode: "full" };
+    const outer: DashboardGroup = { kind: "group", id: "outer", showBorder: true, children: [inner, side] };
+    const out = removeLayoutGroupById([outer], "inner");
+    const o = out[0] as DashboardGroup;
+    expect(o.children.length).toBe(1);
+    expect(o.children[0]?.id).toBe("side");
+  });
+
+  it("removeLayoutGroupById prunes a deep nested group and keeps ancestor chain", () => {
+    const leaf: DashboardGroup = { kind: "group", id: "leaf", showBorder: true, children: [] };
+    const mid: DashboardGroup = { kind: "group", id: "mid", showBorder: true, children: [leaf] };
+    const outer: DashboardGroup = { kind: "group", id: "outer", showBorder: true, children: [mid] };
+    const out = removeLayoutGroupById([outer], "leaf");
+    const o = out[0] as DashboardGroup;
+    const m = o.children[0] as DashboardGroup;
+    expect(m.children.length).toBe(0);
+  });
+
   it("removeTileFromAnywhere recurses into nested groups", () => {
     const innerTile = { ...baseTile("x", "perf.cpu"), grid: { col: 0, row: 0, colSpan: 2, rowSpan: 1 } };
     const inner: DashboardGroup = {
@@ -487,6 +555,59 @@ describe("layoutTree", () => {
     const o = out[0] as DashboardGroup;
     const i = o.children[0] as DashboardGroup;
     expect(i.children.some((c) => c.id === "new")).toBe(true);
+  });
+
+  it("appendGroupToGroupInItems appends a nested container", () => {
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      children: [],
+    };
+    const nested: DashboardGroup = { kind: "group", id: "nested", showBorder: true, children: [] };
+    const out = appendGroupToGroupInItems([outer], "outer", nested);
+    const o = out[0] as DashboardGroup;
+    expect(o.children.length).toBe(1);
+    expect(o.children[0]).toMatchObject({ kind: "group", id: "nested" });
+  });
+
+  it("appendGroupToGroupInItems finds parent below root", () => {
+    const inner: DashboardGroup = { kind: "group", id: "inner", showBorder: true, children: [] };
+    const outer: DashboardGroup = { kind: "group", id: "outer", showBorder: true, children: [inner] };
+    const nest: DashboardGroup = { kind: "group", id: "nest", showBorder: true, children: [] };
+    const out = appendGroupToGroupInItems([outer], "inner", nest);
+    const o = out[0] as DashboardGroup;
+    const i = o.children[0] as DashboardGroup;
+    expect(i.children[0]).toMatchObject({ kind: "group", id: "nest" });
+  });
+
+  it("appendGroupToGroupInItems leaves root tiles unchanged when parent id is absent", () => {
+    const tile: RootLayoutItem = {
+      kind: "tile",
+      id: "t1",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "full",
+    };
+    const nest: DashboardGroup = { kind: "group", id: "nest", showBorder: true, children: [] };
+    expect(appendGroupToGroupInItems([tile], "missing", nest)).toEqual([tile]);
+  });
+
+  it("appendGroupToGroupInItems preserves tile siblings while recursing to a nested group", () => {
+    const inner: DashboardGroup = { kind: "group", id: "inner", showBorder: true, children: [] };
+    const siblingTile: DashboardTile = { ...baseTile("t0", "perf.cpu"), displayMode: "full" };
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      children: [siblingTile, inner],
+    };
+    const nest: DashboardGroup = { kind: "group", id: "nest", showBorder: true, children: [] };
+    const out = appendGroupToGroupInItems([outer], "inner", nest);
+    const o = out[0] as DashboardGroup;
+    expect(o.children[0]).toEqual(siblingTile);
+    const i = o.children[1] as DashboardGroup;
+    expect(i.children[0]).toMatchObject({ kind: "group", id: "nest" });
   });
 
   it("moveTileToParent leaves other groups unchanged when reparenting into a group", () => {
