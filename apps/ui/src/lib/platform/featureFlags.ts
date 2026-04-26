@@ -12,9 +12,10 @@ const DEFAULTS: Record<UiFeatureFlagName, boolean> = {
 };
 
 function readEnvFlag(name: UiFeatureFlagName): boolean | undefined {
-  if (typeof import.meta === "undefined" || !import.meta.env) return undefined;
+  const env = import.meta.env;
+  if (env == null) return undefined;
   const key = `VITE_${name.replace(/\./g, "_").toUpperCase()}`;
-  const raw = (import.meta.env as Record<string, string | boolean | undefined>)[key];
+  const raw = (env as Record<string, string | boolean | undefined>)[key];
   if (raw === "true" || raw === true) return true;
   if (raw === "false" || raw === false) return false;
   return undefined;

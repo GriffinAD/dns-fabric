@@ -44,8 +44,8 @@
   --gauge-z-amber: #f59e0b;
   --gauge-z-orange: #f97316;
   --gauge-z-rose: #e11d48;
-  /* Unfilled track: slightly darker than the tile face, lighter than gray-400. */
-  --gauge-track-rest: var(--color-gray-300, #d1d5db);
+  /* Unfilled track: cool slate so gauges read cleanly on white tiles (light). */
+  --gauge-track-rest: rgb(203 213 225); /* slate-300 */
   /*
    * Dashboard edit chrome: drag (−) / edit (+) horizontal `translateX` and vertical inset from the
    * **plugin surface** (see `editorChrome.ts`; `DashboardHost` sets on `editor-grid-chrome`).
@@ -580,6 +580,13 @@ html[data-color-preset="gray"] {
     );
 }
 
+/* Edit canvas: faint slate wash + softer column guides so light mode matches dark polish. */
+:root:not(.dark) [data-dashboard-editor="drop-zone"],
+:root:not(.dark) [data-testid="editor-drop-zone"] {
+  background-color: rgb(248 250 252);
+  --d-ruler: rgba(15, 23, 42, 0.072);
+}
+
 .dark [data-dashboard-editor="drop-zone"],
 .dark [data-testid="editor-drop-zone"] {
   --d-ruler: rgba(255, 255, 255, 0.14);
@@ -608,25 +615,28 @@ html[data-color-preset="gray"] {
    * - nested cards inside those containers stay flat/chromeless
    * - standalone dashboard cards keep subtle card chrome
    */
+  /* Cool slate canvas — reads more “product” than warm gray-100 next to white tiles. */
   :root:not(.dark) body {
-    background-color: var(--color-gray-100, #f3f4f6) !important;
+    background-color: rgb(241 245 249) !important; /* slate-100 */
   }
 
   :root:not(.dark) [data-dashboard-tile-grid] [data-row-panel],
   :root:not(.dark) [data-dashboard-tile-grid] [data-dashboard-group] {
     background-color: #fff !important;
-    border: 1px solid rgb(203 213 225) !important; /* slate-200 — softer than gray-400 */
+    border: 1px solid rgb(203 213 225) !important; /* slate-300 */
     box-shadow:
-      0 2px 6px rgb(15 23 42 / 0.13),
-      0 12px 26px rgb(15 23 42 / 0.15) !important;
+      0 1px 2px rgb(15 23 42 / 0.05),
+      0 6px 16px rgb(15 23 42 / 0.08),
+      0 18px 44px rgb(15 23 42 / 0.1) !important;
   }
 
   :root:not(.dark) [data-scope="card"] {
     background-color: #fff !important;
-    border-color: rgb(203 213 225) !important; /* slate-200 */
+    border: 1px solid rgb(203 213 225) !important; /* slate-300 */
     box-shadow:
-      0 2px 5px rgb(15 23 42 / 0.11),
-      0 10px 22px rgb(15 23 42 / 0.13) !important;
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 4px 12px rgb(15 23 42 / 0.07),
+      0 14px 36px rgb(15 23 42 / 0.09) !important;
   }
 
   /*
@@ -713,8 +723,8 @@ html[data-color-preset="gray"] {
   :root:not(.dark) input,
   :root:not(.dark) select,
   :root:not(.dark) textarea {
-    background-color: var(--color-gray-200, #e5e7eb) !important;
-    border-color: var(--color-gray-400, #9ca3af) !important;
+    background-color: rgb(248 250 252) !important; /* slate-50 */
+    border-color: rgb(203 213 225) !important; /* slate-300 */
   }
 
   :root:not(.dark) [data-dashboard-tile-grid] [data-in-row-panel="true"] [data-scope="card"] {

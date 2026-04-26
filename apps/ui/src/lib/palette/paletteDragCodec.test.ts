@@ -63,6 +63,10 @@ describe("paletteDragCodec", () => {
     expect(parsePaletteDrop(mockTransfer({ "text/plain": "not-a-palette-payload" }))).toBeNull();
   });
 
+  it("parsePaletteDrop returns null when dataTransfer is null", () => {
+    expect(parsePaletteDrop(null)).toBeNull();
+  });
+
   it("parsePaletteDrop rejects oversized plugin id", () => {
     const id = "x".repeat(300);
     expect(parsePaletteDrop(mockTransfer({ [DND_PLUGIN_MIME]: id }))).toBeNull();

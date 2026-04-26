@@ -6,6 +6,7 @@ import * as layoutNormalize from "./layoutNormalize";
 import * as layoutStorage from "./layoutStorage";
 import { createLayoutStore } from "./layoutStore";
 import type { DashboardGroup, DashboardLayoutV3 } from "./types";
+import { isDashboardGroupNode } from "./types";
 
 function minimalLayout(): DashboardLayoutV3 {
   return {
@@ -307,10 +308,10 @@ describe("createLayoutStore", () => {
 
   function deepestEmptyGroupId(g: DashboardGroup): string {
     const only = g.children[0];
-    if (only && only.kind === "group" && only.children.length > 0) {
+    if (only && isDashboardGroupNode(only) && only.children.length > 0) {
       return deepestEmptyGroupId(only);
     }
-    if (only && only.kind === "group") return only.id;
+    if (only && isDashboardGroupNode(only)) return only.id;
     return g.id;
   }
 
@@ -351,7 +352,8 @@ describe("createLayoutStore", () => {
     expect(g?.kind).toBe("group");
     if (g?.kind === "group") {
       expect(g.children.length).toBe(1);
-      expect(g.children[0]?.pluginId).toBe("dhcp.clients");
+      const child = g.children[0];
+      expect(child && "pluginId" in child ? child.pluginId : undefined).toBe("dhcp.clients");
     }
   });
 

@@ -9,6 +9,12 @@ describe("buildPaletteCatalog", () => {
     expect(plug && plug.kind === "plugin" ? plug.category : "").toBe("Plugins");
   });
 
+  it("uses Plugins category when dot is at position zero", () => {
+    const items = buildPaletteCatalog([{ id: ".hidden", name: "H", enabled: true }]);
+    const plug = items.find((i) => i.kind === "plugin");
+    expect(plug && plug.kind === "plugin" ? plug.category : "").toBe("Plugins");
+  });
+
   it("derives category from plugin id prefix", () => {
     const items = buildPaletteCatalog([{ id: "dhcp.leases", name: "Leases", enabled: true }]);
     const plug = items.find((i) => i.kind === "plugin");

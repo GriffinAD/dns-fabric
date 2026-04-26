@@ -32,6 +32,11 @@ export const GRID_ROW_SPAN_MAX = 12;
  */
 export const GROUP_CHILD_INNER_STRIP_MAX_EXTENT = 10_000;
 
+/** Physical track count G for nowrap strip math (bounded by {@link GRID_COLUMNS}, at least 1). */
+export function stripInnerPhysicalTrackCount(innerOrParentG: number): number {
+  return Math.max(1, Math.min(GRID_COLUMNS, Math.floor(Number(innerOrParentG)) || 1));
+}
+
 /** Default width in columns when the tile has no custom `grid.colSpan`. */
 export function tileColSpan(tile: DashboardTile): number {
   return tileColSpanForPlugin(tile);
@@ -705,7 +710,7 @@ export function packGroupChildrenNoWrapStripInOrder(
   innerColumns: number,
 ): DashboardTile[] {
   if (tiles.length === 0) return tiles;
-  const G = Math.max(1, Math.min(GRID_COLUMNS, Math.floor(Number(innerColumns)) || 1));
+  const G = stripInnerPhysicalTrackCount(innerColumns);
   let c = 0;
   const row = 0;
   return tiles.map((t) => {
@@ -735,8 +740,7 @@ function packMixedNoWrapChildrenInStripArrayOrder(
   parentG: number,
   children: GroupChild[],
 ): GroupChild[] {
-  if (children.length === 0) return children;
-  const Gp = Math.max(1, Math.min(GRID_COLUMNS, Math.floor(Number(parentG)) || 1));
+  const Gp = stripInnerPhysicalTrackCount(parentG);
   let c = 0;
   const row = 0;
   return children.map((child) => {

@@ -51,6 +51,25 @@ describe("createPaletteRootDropController", () => {
     expect(onAddTile).toHaveBeenCalledWith("p1", undefined);
   });
 
+  it("onCanvasDrop does nothing when palette payload is unrecognised", () => {
+    const onAddTile = vi.fn();
+    const onAddGroup = vi.fn();
+    const c = createPaletteRootDropController({
+      getRootDndIds: () => [],
+      getPreview: () => null,
+      setPreview: () => {},
+      getOnAddTile: () => onAddTile,
+      getOnAddGroup: () => onAddGroup,
+      getOnAddTileToGroup: () => undefined,
+      getOnAddGroupToGroup: () => undefined,
+    });
+    const dt = { getData: () => "" } as unknown as DataTransfer;
+    const ev = { preventDefault: vi.fn(), clientX: 0, clientY: 0, dataTransfer: dt } as unknown as DragEvent;
+    c.onCanvasDrop(ev);
+    expect(onAddTile).not.toHaveBeenCalled();
+    expect(onAddGroup).not.toHaveBeenCalled();
+  });
+
   it("onCanvasDrop calls onAddGroup for add-group payload", () => {
     let preview: PaletteRootInsertPreview = null;
     const onAddGroup = vi.fn();
@@ -111,6 +130,24 @@ describe("createPaletteRootDropController", () => {
     const ev = { preventDefault: vi.fn(), dataTransfer: null } as unknown as DragEvent;
     c.onEditorChromeDragOver(ev);
     expect(preview).toEqual({ kind: "append" });
+    expect(ev.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it("onGroupPluginDragOver ignores non-palette drags without clearing unrelated state", () => {
+    const c = createPaletteRootDropController({
+      getRootDndIds: () => [],
+      getPreview: () => null,
+      setPreview: () => {},
+      getOnAddTile: () => undefined,
+      getOnAddGroup: () => undefined,
+      getOnAddTileToGroup: () => undefined,
+      getOnAddGroupToGroup: () => undefined,
+    });
+    const ev = {
+      preventDefault: vi.fn(),
+      dataTransfer: { types: ["text/plain", "Files"] },
+    } as unknown as DragEvent;
+    c.onGroupPluginDragOver(ev);
     expect(ev.preventDefault).not.toHaveBeenCalled();
   });
 
@@ -258,6 +295,68 @@ describe("createPaletteRootDropController", () => {
     c.onGroupPluginDragOver(ev);
     expect(ev.preventDefault).toHaveBeenCalled();
     expect(preview).toBe(null);
+  });
+
+  it("onEditorChromeDragOver sets before preview when geometry resolves an index", () => {
+    let preview: PaletteRootInsertPreview = null;
+    const zone = document.createElement("div");
+    zone.setAttribute(DASHBOARD_EDITOR_ATTR, "drop-zone");
+    const tile0 = document.createElement("div");
+    tile0.setAttribute(DASHBOARD_EDITOR_ATTR, "tile-row");
+    tile0.setAttribute("data-tile-id", "x");
+    const tile1 = document.createElement("div");
+    tile1.setAttribute(DASHBOARD_EDITOR_ATTR, "tile-row");
+    tile1.setAttribute("data-tile-id", "y");
+    zone.appendChild(tile0);
+    zone.appendChild(tile1);
+    document.body.appendChild(zone);
+    vi.spyOn(tile0, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 400,
+      height: 80,
+      top: 0,
+      left: 0,
+      right: 400,
+      bottom: 80,
+      toJSON: () => "",
+    } as DOMRect);
+    vi.spyOn(tile1, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 100,
+      width: 400,
+      height: 80,
+      top: 100,
+      left: 0,
+      right: 400,
+      bottom: 180,
+      toJSON: () => "",
+    } as DOMRect);
+    const c = createPaletteRootDropController(
+      {
+        getRootDndIds: () => ["x", "y"],
+        getPreview: () => preview,
+        setPreview: (p) => {
+          preview = p;
+        },
+        getOnAddTile: () => undefined,
+        getOnAddGroup: () => undefined,
+        getOnAddTileToGroup: () => undefined,
+        getOnAddGroupToGroup: () => undefined,
+      },
+      () => [tile1],
+    );
+    const ev = {
+      preventDefault: vi.fn(),
+      clientX: 50,
+      clientY: 90,
+      dataTransfer: {
+        types: ["application/x-kea-plugin-id"],
+        dropEffect: "none",
+      },
+    } as unknown as DragEvent;
+    c.onEditorChromeDragOver(ev);
+    expect(preview).toEqual({ kind: "before", index: 1 });
   });
 
   it("onEditorChromeDragOver sets append preview when geometry says append", () => {

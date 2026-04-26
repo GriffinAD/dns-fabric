@@ -43,6 +43,12 @@ describe("paletteDisplaySettings", () => {
     expect(getPaletteDisplaySettings()).toEqual({ transparency: true, dropShadow: true });
   });
 
+  it("treats empty string stored value like missing (defaults)", () => {
+    mem["kea-fabric-palette-display"] = "";
+    reloadPaletteDisplaySettingsFromStorage();
+    expect(getPaletteDisplaySettings()).toEqual({ transparency: true, dropShadow: true });
+  });
+
   it("persists transparency and dropShadow to localStorage", () => {
     setPaletteTransparency(false);
     setPaletteDropShadow(false);

@@ -22,11 +22,17 @@ describe("paletteStorage", () => {
 
   it("capDedupeIds preserves order and caps", () => {
     expect(capDedupeIds(["a", "b", "a", "c"], 2)).toEqual(["a", "b"]);
+    expect(capDedupeIds(["a", "b", "c"], 1)).toEqual(["a"]);
+  });
+
+  it("capDedupeIds skips duplicate ids without counting them toward the cap", () => {
+    expect(capDedupeIds(["a", "a", "b"], 2)).toEqual(["a", "b"]);
   });
 
   it("normalizePaletteDockMode falls back to float", () => {
     expect(normalizePaletteDockMode("inline")).toBe("inline");
     expect(normalizePaletteDockMode(" sticky ")).toBe("sticky");
+    expect(normalizePaletteDockMode("  unknown  ")).toBe("float");
     expect(normalizePaletteDockMode(null)).toBe("float");
   });
 
@@ -88,6 +94,26 @@ describe("paletteStorage", () => {
     expect(loadPaletteFloatPosition()).toBeNull();
   });
 
+  it("loadPaletteFloatPosition returns null when parsed JSON is not an object", () => {
+    const mem: Record<string, string> = {
+      "kea-fabric-palette-float-pos": "4",
+    };
+    vi.stubGlobal(
+      "localStorage",
+      {
+        getItem: (k: string) => (k in mem ? mem[k]! : null),
+        setItem: () => {},
+        removeItem: () => {},
+        clear: () => {},
+        key: () => null,
+        get length() {
+          return 1;
+        },
+      } as Storage,
+    );
+    expect(loadPaletteFloatPosition()).toBeNull();
+  });
+
   it("loadPaletteFloatPosition returns null when left/top are not finite", () => {
     const mem: Record<string, string> = {
       "kea-fabric-palette-float-pos": JSON.stringify({ left: "x", top: 1 }),
@@ -106,6 +132,12 @@ describe("paletteStorage", () => {
       } as Storage,
     );
     expect(loadPaletteFloatPosition()).toBeNull();
+  });
+
+  it("savePaletteFloatPosition no-ops when localStorage is undefined", () => {
+    vi.stubGlobal("localStorage", undefined as unknown as Storage);
+    expect(() => savePaletteFloatPosition({ left: 1, top: 2 })).not.toThrow();
+    expect(() => savePaletteFloatPosition(null)).not.toThrow();
   });
 
   it("savePaletteFloatPosition ignores setItem errors", () => {
@@ -257,5 +289,102 @@ describe("paletteStorage", () => {
     recordRecentPaletteId("b");
     recordRecentPaletteId("a");
     expect(loadRecentPaletteIds()[0]).toBe("a");
+  });
+
+  it("returns empty pinned/recent when localStorage is undefined", () => {
+    vi.stubGlobal("localStorage", undefined as unknown as Storage);
+    expect(loadPinnedPaletteIds()).toEqual([]);
+    expect(loadRecentPaletteIds()).toEqual([]);
+    expect(loadPaletteFloatPosition()).toBeNull();
+    expect(loadPaletteDockMode()).toBe("float");
+  });
+
+  it("filters pinned JSON to non-empty strings under 300 chars", () => {
+    const mem: Record<string, string> = {
+      "kea-fabric-palette-pinned": JSON.stringify(["ok", "", 1, "x".repeat(400), null]),
+    };
+    vi.stubGlobal(
+      "localStorage",
+      {
+        getItem: (k: string) => (k in mem ? mem[k]! : null),
+        setItem: () => {},
+        removeItem: () => {},
+        clear: () => {},
+        key: () => null,
+        get length() {
+          return 1;
+        },
+      } as Storage,
+    );
+    expect(loadPinnedPaletteIds()).toEqual(["ok"]);
+  });
+
+  it("returns empty pinned list when stored JSON is not an array", () => {
+    const mem: Record<string, string> = {
+      "kea-fabric-palette-pinned": "{}",
+    };
+    vi.stubGlobal(
+      "localStorage",
+      {
+        getItem: (k: string) => (k in mem ? mem[k]! : null),
+        setItem: () => {},
+        removeItem: () => {},
+        clear: () => {},
+        key: () => null,
+        get length() {
+          return 1;
+        },
+      } as Storage,
+    );
+    expect(loadPinnedPaletteIds()).toEqual([]);
+  });
+
+  it("savePaletteDockMode no-ops when localStorage is undefined", () => {
+    vi.stubGlobal("localStorage", undefined as unknown as Storage);
+    expect(() => savePaletteDockMode("sticky")).not.toThrow();
+  });
+
+  it("recordRecentPaletteId no-ops writes when localStorage is undefined", () => {
+    vi.stubGlobal("localStorage", undefined as unknown as Storage);
+    expect(() => recordRecentPaletteId("p1")).not.toThrow();
+  });
+
+  it("returns empty pinned list when stored JSON is invalid", () => {
+    const mem: Record<string, string> = {
+      "kea-fabric-palette-pinned": "not-json[",
+    };
+    vi.stubGlobal(
+      "localStorage",
+      {
+        getItem: (k: string) => (k in mem ? mem[k]! : null),
+        setItem: () => {},
+        removeItem: () => {},
+        clear: () => {},
+        key: () => null,
+        get length() {
+          return 1;
+        },
+      } as Storage,
+    );
+    expect(loadPinnedPaletteIds()).toEqual([]);
+  });
+
+  it("returns empty pinned list when getItem throws", () => {
+    vi.stubGlobal(
+      "localStorage",
+      {
+        getItem: () => {
+          throw new Error("denied");
+        },
+        setItem: () => {},
+        removeItem: () => {},
+        clear: () => {},
+        key: () => null,
+        get length() {
+          return 0;
+        },
+      } as Storage,
+    );
+    expect(loadPinnedPaletteIds()).toEqual([]);
   });
 });

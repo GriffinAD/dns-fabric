@@ -25,7 +25,7 @@ function allTilesIn(layout: DashboardLayout | null | undefined): DashboardTile[]
   return layout.tiles;
 }
 
-function countAllTilesV2(d: DashboardLayoutV2): number {
+function countAllTilesV2(d: DashboardLayoutV2 | DashboardLayoutV3): number {
   return allTilesIn(d).length;
 }
 

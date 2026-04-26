@@ -22,6 +22,7 @@ import {
   packGroupChildrenNoWrapStripInOrder,
   packGroupChildrenRowWrapInOrder,
   packRootLayoutItems,
+  stripInnerPhysicalTrackCount,
   packTilesToGrid,
   packTilesWithFixedAndFloating,
   placementForNewEmptyNestedGroup,
@@ -303,6 +304,17 @@ describe("groupGridAreaStyle and groupGridColumnSpanStyle", () => {
   });
 });
 
+describe("stripInnerPhysicalTrackCount", () => {
+  it("uses at least one track for fractional or NaN inputs", () => {
+    expect(stripInnerPhysicalTrackCount(0.4)).toBe(1);
+    expect(stripInnerPhysicalTrackCount(Number.NaN)).toBe(1);
+  });
+
+  it("caps at GRID_COLUMNS", () => {
+    expect(stripInnerPhysicalTrackCount(10_000)).toBe(GRID_COLUMNS);
+  });
+});
+
 describe("groupInnerWidthInPhysicalTracks", () => {
   it("maps contract colSpan to min(T, G) tracks (one track = one main-dashboard column width)", () => {
     expect(groupInnerWidthInPhysicalTracks(4, 6)).toBe(4);
@@ -342,6 +354,16 @@ describe("packGroupChildrenRowWrapInOrder", () => {
 });
 
 describe("packGroupChildrenNoWrapStripInOrder", () => {
+  it("returns an empty list unchanged", () => {
+    expect(packGroupChildrenNoWrapStripInOrder([], 10)).toEqual([]);
+  });
+
+  it("treats non-finite innerColumns as G=1 after floor", () => {
+    const t = wrapTile("a", 2);
+    const out = packGroupChildrenNoWrapStripInOrder([t], Number.NaN);
+    expect(out[0]!.grid).toMatchObject({ col: 0, row: 0, colSpan: 2, rowSpan: 1 });
+  });
+
   it("keeps every tile on strip row 0 (no root 20-col row wrap) so a second plugin is not row=1", () => {
     const t1 = wrapTile("a", 12);
     const t2: DashboardTile = {
@@ -550,6 +572,35 @@ describe("reorderRootLayoutItemsPreservingSlotOrigins", () => {
     expect(out[0]!.grid!.colSpan).toBe(6);
   });
 
+  it("in sameSequence uses previous effective spans when reordered tile has a non-root-complete grid", () => {
+    const prev: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "a",
+        pluginId: "dhcp.pools",
+        hostControl: "single-panel",
+        displayMode: "full",
+        grid: { col: 0, row: 0, colSpan: 10, rowSpan: 1 },
+      },
+    ];
+    const reo: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "a",
+        pluginId: "dhcp.pools",
+        hostControl: "single-panel",
+        displayMode: "full",
+        grid: { col: 0, row: 0, colSpan: 25, rowSpan: 1 },
+      },
+    ];
+    const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, reo);
+    expect(out[0]!.kind).toBe("tile");
+    if (out[0]!.kind === "tile") {
+      expect(out[0].grid?.colSpan).toBe(10);
+      expect(out[0].grid?.rowSpan).toBe(1);
+    }
+  });
+
   it("in sameSequence keeps previous col/row span when reordered item has no grid yet (stale dnd after tile save)", () => {
     const prev: RootLayoutItem[] = [
       {
@@ -674,6 +725,69 @@ describe("packRootLayoutItems", () => {
     expect(out[0]?.kind).toBe("group");
     if (out[0]?.kind === "group") {
       expect(out[0].children[0]?.grid).toBeDefined();
+    }
+  });
+
+  it("strip-mixed nowrap repacks when a nested group has an invalid strip outer grid beside a tile", () => {
+    const innerBad: DashboardGroup = {
+      kind: "group",
+      id: "inner",
+      showBorder: true,
+      grid: { col: 0, row: 0, colSpan: 25, rowSpan: 1 },
+      children: [],
+    };
+    const tileOk: DashboardTile = {
+      id: "t1",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 0, row: 0, colSpan: 2, rowSpan: 1 },
+    };
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 20, rowSpan: 1 },
+      children: [innerBad, tileOk],
+    };
+    const out = packRootLayoutItems([outer]);
+    expect(out[0]?.kind).toBe("group");
+    if (out[0]?.kind === "group") {
+      expect(out[0].children).toHaveLength(2);
+    }
+  });
+
+  it("strip-mixed nowrap repacks when a tile has a non-null but invalid inner strip grid beside a nested group", () => {
+    const inner: DashboardGroup = {
+      kind: "group",
+      id: "inner",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+      children: [],
+    };
+    const badTile: DashboardTile = {
+      id: "bad",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 0, row: 0, colSpan: 25, rowSpan: 1 },
+    };
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 20, rowSpan: 1 },
+      children: [inner, badTile],
+    };
+    const out = packRootLayoutItems([outer]);
+    expect(out[0]?.kind).toBe("group");
+    if (out[0]?.kind === "group") {
+      expect(out[0].children).toHaveLength(2);
+      expect(out[0].children[0]?.grid?.col).toBe(0);
+      expect(out[0].children[1]?.grid?.col).toBeGreaterThanOrEqual(0);
     }
   });
 });
@@ -1487,8 +1601,8 @@ describe("grid placement edge cases", () => {
     const loose = {
       id: "t2",
       pluginId: "perf.ram",
-      hostControl: "single-panel",
-      displayMode: "compact",
+      hostControl: "single-panel" as const,
+      displayMode: "compact" as const,
     };
     const outer: DashboardGroup = {
       kind: "group",
@@ -1762,6 +1876,54 @@ describe("grid placement edge cases", () => {
         col: 6,
         row: 0,
         colSpan: 7,
+        rowSpan: 1,
+      });
+    });
+
+    it("ignores sibling nested group without a complete strip placement", () => {
+      const innerIncomplete: DashboardGroup = {
+        kind: "group",
+        id: "inner",
+        showBorder: true,
+        grid: { col: 0, row: 0, colSpan: 25, rowSpan: 1 },
+        children: [],
+      };
+      const parent: DashboardGroup = {
+        kind: "group",
+        id: "p",
+        showBorder: true,
+        innerWrap: false,
+        grid: { col: 0, row: 0, colSpan: 20, rowSpan: 1 },
+        children: [innerIncomplete],
+      };
+      expect(placementForNewEmptyNestedGroup(parent)).toEqual({
+        col: 0,
+        row: 0,
+        colSpan: 10,
+        rowSpan: 1,
+      });
+    });
+
+    it("ignores sibling tile without a complete strip placement", () => {
+      const tileBad: DashboardTile = {
+        id: "t",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "compact",
+        grid: { col: 0, row: 0, colSpan: 99, rowSpan: 1 },
+      };
+      const parent: DashboardGroup = {
+        kind: "group",
+        id: "p",
+        showBorder: true,
+        innerWrap: false,
+        grid: { col: 0, row: 0, colSpan: 20, rowSpan: 1 },
+        children: [tileBad],
+      };
+      expect(placementForNewEmptyNestedGroup(parent)).toEqual({
+        col: 0,
+        row: 0,
+        colSpan: 10,
         rowSpan: 1,
       });
     });

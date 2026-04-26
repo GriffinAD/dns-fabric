@@ -7,6 +7,7 @@ import { dedupeById } from "../layoutDedupe";
 import type {
   DashboardGroup,
   DashboardLayout,
+  DashboardLayoutV1,
   DashboardLayoutV2,
   DashboardLayoutV3,
   DashboardTile,
@@ -163,7 +164,10 @@ export function ensureLayoutV2(layout: DashboardLayout): DashboardLayoutV2 {
     if (!layoutGraphHasDuplicateIds(layout.items)) return layout;
     return dedupeLayoutV2ItemIds(layout);
   }
-  const v2: DashboardLayoutV2 = { version: 2, items: migrateV1ToV2(layout.tiles) };
+  if (isLayoutV3(layout)) {
+    return { version: 2, items: layout.items };
+  }
+  const v2: DashboardLayoutV2 = { version: 2, items: migrateV1ToV2((layout as DashboardLayoutV1).tiles) };
   if (!layoutGraphHasDuplicateIds(v2.items)) return v2;
   return dedupeLayoutV2ItemIds(v2);
 }

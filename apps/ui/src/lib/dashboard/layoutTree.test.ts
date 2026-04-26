@@ -18,7 +18,14 @@ import {
   appendGroupToGroupInItems,
   appendTileToGroupInItems,
 } from "./layoutTree";
-import type { DashboardGroup, DashboardLayoutV1, DashboardLayoutV2, DashboardTile, RootLayoutItem } from "./types";
+import type {
+  DashboardGroup,
+  DashboardLayoutV1,
+  DashboardLayoutV2,
+  DashboardLayoutV3,
+  DashboardTile,
+  RootLayoutItem,
+} from "./types";
 import { isLayoutV2 } from "./types";
 
 const baseTile = (id: string, plugin: string, rowPanel?: string): DashboardTile => ({
@@ -53,6 +60,14 @@ describe("layoutTree", () => {
   it("ensureLayoutV2 passes through v2", () => {
     const v2: DashboardLayoutV2 = { version: 2, items: [{ kind: "tile", ...baseTile("a", "dhcp.pools") }] };
     expect(ensureLayoutV2(v2)).toBe(v2);
+  });
+
+  it("ensureLayoutV2 maps v3 layouts to a v2 document with the same items graph", () => {
+    const v3: DashboardLayoutV3 = {
+      version: 3,
+      items: [{ kind: "tile", ...baseTile("a", "perf.cpu") }],
+    };
+    expect(ensureLayoutV2(v3)).toEqual({ version: 2, items: v3.items });
   });
 
   it("ensureLayoutV2 dedupes duplicate group child ids (first wins)", () => {
@@ -238,8 +253,8 @@ describe("layoutTree", () => {
     };
     expect(findTileInLayout(v2.items, "inner")?.inGroup?.id).toBe("g1");
     const next = mapTileInLayout(v2.items, "inner", (t) => ({ ...t, region: "z" }));
-    const inner = (next[0] as DashboardGroup).children[0];
-    expect(inner?.region).toBe("z");
+    const inner = (next[0] as DashboardGroup).children[0] as DashboardTile;
+    expect(inner.region).toBe("z");
   });
 
   it("findTileInLayout returns null when the id is missing", () => {
@@ -270,7 +285,7 @@ describe("layoutTree", () => {
     const c2 = { ...baseTile("c2", "perf.ram"), grid: { col: 2, row: 0, colSpan: 2, rowSpan: 1 } };
     const g: DashboardGroup = { kind: "group", id: "g", showBorder: true, children: [c1, c2] };
     const next = mapTileInLayout([g], "c1", (t) => ({ ...t, region: "hit" }));
-    const ch = (next[0] as DashboardGroup).children;
+    const ch = (next[0] as DashboardGroup).children as DashboardTile[];
     expect(ch[0]?.region).toBe("hit");
     expect(ch[1]?.region).toBeUndefined();
   });

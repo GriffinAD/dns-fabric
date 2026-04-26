@@ -14,6 +14,7 @@ import type {
   DashboardLayoutV2,
   DashboardLayoutV3,
   DashboardTile,
+  GridPlacement,
   GroupChild,
   RootLayoutItem,
   RootTileItem,
@@ -124,7 +125,7 @@ const groupJsonSchemaV3: z.ZodTypeAny = z.lazy(() =>
       g.children.forEach((c, i) => {
         if (c && typeof c === "object" && "kind" in c && (c as { kind?: string }).kind === "group") {
           const cg = c as { grid?: unknown };
-          if (cg.grid != null && !isCompleteGroupChildGrid(cg.grid, parentAutoWrap)) {
+          if (cg.grid != null && !isCompleteGroupChildGrid(cg.grid as GridPlacement, parentAutoWrap)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ["children", i, "grid"],
@@ -134,7 +135,7 @@ const groupJsonSchemaV3: z.ZodTypeAny = z.lazy(() =>
           return;
         }
         const t = c as { grid?: unknown };
-        if (t.grid != null && !isCompleteGroupChildGrid(t.grid, parentAutoWrap)) {
+        if (t.grid != null && !isCompleteGroupChildGrid(t.grid as GridPlacement, parentAutoWrap)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["children", i, "grid"],

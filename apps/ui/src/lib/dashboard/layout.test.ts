@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { DEFAULT_DASHBOARD_LAYOUT } from "./defaultLayout";
 import { iterateTilesInLayout } from "./layoutTree";
-import { isLayoutV3, type RootTileItem } from "./types";
+import { isLayoutV3, type DashboardTile, type RootTileItem } from "./types";
 
 describe("DEFAULT_DASHBOARD_LAYOUT", () => {
   it("is v3 with a status group and root tiles", () => {
@@ -17,7 +17,10 @@ describe("DEFAULT_DASHBOARD_LAYOUT", () => {
       expect(t.hostControl).toBeTruthy();
       expect(t.displayMode).toMatch(/compact|full/);
     }
-    const ram = g && g.kind === "group" ? g.children.find((t) => t.pluginId === "perf.ram") : undefined;
+    const ram =
+      g && g.kind === "group"
+        ? g.children.find((t): t is DashboardTile => "pluginId" in t && t.pluginId === "perf.ram")
+        : undefined;
     expect(ram?.rowPanel).toBeUndefined();
     expect(ram?.options?.display_style).toBe("gauge");
     expect(ram?.grid?.colSpan).toBe(4);

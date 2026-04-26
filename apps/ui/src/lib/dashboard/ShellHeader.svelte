@@ -52,11 +52,11 @@
 
 <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
   <div class="min-w-0">
-    <h1 class="flex items-center gap-2 text-2xl font-semibold text-gray-900 dark:text-white">
+    <h1 class="flex items-center gap-2 text-2xl font-semibold text-slate-900 dark:text-white">
       <House class="h-8 w-8 shrink-0" aria-hidden="true" />
       Kea Fabric
     </h1>
-    <p class="text-gray-600 dark:text-gray-400">
+    <p class="text-slate-600 dark:text-gray-400">
       Operator shell ({UI_VERSION}). Flowbite Svelte v2 + mocked <code class="font-mono text-sm">/api/v1</code>.
     </p>
     {#if layoutSource === "cache"}

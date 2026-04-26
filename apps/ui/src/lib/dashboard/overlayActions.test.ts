@@ -110,7 +110,8 @@ describe("createOverlayActions", () => {
     const g = layout.items[0];
     expect(g?.kind).toBe("group");
     if (g?.kind === "group") {
-      expect(g.children[0]?.displayMode).toBe("compact");
+      const child = g.children[0];
+      expect(child && "displayMode" in child ? child.displayMode : undefined).toBe("compact");
     }
   });
 

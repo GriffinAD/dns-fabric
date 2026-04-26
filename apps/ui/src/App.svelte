@@ -93,7 +93,7 @@
   });
 </script>
 
-<main class="min-h-screen bg-gray-50 p-8 dark:bg-gray-900">
+<main class="min-h-screen bg-slate-100 p-8 dark:bg-gray-900">
   <div class="mx-auto flex max-w-6xl flex-col gap-6">
     <ShellHeader
       {route}

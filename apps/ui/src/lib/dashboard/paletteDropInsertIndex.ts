@@ -56,7 +56,7 @@ export type RootTileRectForPalette = { layoutIndex: number; rect: DOMRect };
  * palette drops are handled by the group's HTML5 `ondrop`, not the root canvas — suppress the
  * root insert line so we do not imply a root reorder slot.
  */
-export function shouldSuppressPaletteRootInsertPreview(stack: readonly Element[]): boolean {
+export function shouldSuppressPaletteRootInsertPreview(stack: readonly Node[]): boolean {
   for (const node of stack) {
     if (!(node instanceof Element)) continue;
     if (paletteHitLayer(node)) continue;
@@ -70,7 +70,7 @@ export function shouldSuppressPaletteRootInsertPreview(stack: readonly Element[]
   return false;
 }
 
-function findEditorDropZoneFromHitStack(stack: readonly Element[]): HTMLElement | null {
+function findEditorDropZoneFromHitStack(stack: readonly Node[]): HTMLElement | null {
   for (const node of stack) {
     if (!(node instanceof Element)) continue;
     if (paletteHitLayer(node)) continue;
@@ -200,7 +200,7 @@ export function findRootInsertIndexFromElementsFromPoint(
   clientX: number,
   clientY: number,
   rootOrderIds: readonly string[],
-  elementsFromPointImpl: (x: number, y: number) => readonly Element[],
+  elementsFromPointImpl: (x: number, y: number) => readonly Node[],
 ): number | undefined {
   const stack = [...elementsFromPointImpl(clientX, clientY)];
   const zone = findEditorDropZoneFromHitStack(stack);

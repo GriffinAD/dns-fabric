@@ -53,10 +53,9 @@ export default defineConfig({
       thresholds: {
         lines: 100,
         functions: 100,
-        /* Svelte 5 + v8: some template/$derived branch edges are infeasible to hit (e.g. a $derived
-         * never read in banded mode) or duplicate compiled ternaries. BaseDataTable + SemicircleGauge
-         * keep aggregate branches below 99%; keep lines/statements/functions at 100%. */
-        branches: 98,
+        /* Svelte 5 + v8: excluded Svelte files above; `env == null` in featureFlags.ts duplicates a
+         * branch target (null vs undefined) so aggregate branches stay just under 100%. */
+        branches: 99,
         statements: 100,
       },
     },

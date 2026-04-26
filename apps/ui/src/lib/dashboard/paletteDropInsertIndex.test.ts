@@ -99,6 +99,19 @@ describe("paletteRootInsertIndexFromRects", () => {
 });
 
 describe("collectRootTileRectsForPaletteDrop", () => {
+  it("skips non-HTMLElement element children when collecting rects (e.g. SVG)", () => {
+    const zone = document.createElement("div");
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const rootA = document.createElement("div");
+    setEditorSurface(rootA, "tile-row");
+    rootA.setAttribute("data-tile-id", "root-a");
+    zone.appendChild(svg);
+    zone.appendChild(rootA);
+    vi.spyOn(rootA, "getBoundingClientRect").mockReturnValue(rect(0, 0, 10, 10));
+    const list = collectRootTileRectsForPaletteDrop(zone, ["root-a"]);
+    expect(list).toHaveLength(1);
+  });
+
   it("only includes direct-child editor tiles matching root order ids", () => {
     const zone = document.createElement("div");
     const rootA = document.createElement("div");
@@ -116,9 +129,40 @@ describe("collectRootTileRectsForPaletteDrop", () => {
     expect(list).toHaveLength(1);
     expect(list[0]!.layoutIndex).toBe(0);
   });
+
+  it("skips direct child tile rows marked as dnd shadow when collecting rects", () => {
+    const zone = document.createElement("div");
+    const rootA = document.createElement("div");
+    setEditorSurface(rootA, "tile-row");
+    rootA.setAttribute("data-tile-id", "root-a");
+    rootA.setAttribute("data-is-dnd-shadow-item-internal", "");
+    const rootB = document.createElement("div");
+    setEditorSurface(rootB, "tile-row");
+    rootB.setAttribute("data-tile-id", "root-b");
+    zone.appendChild(rootA);
+    zone.appendChild(rootB);
+    vi.spyOn(rootB, "getBoundingClientRect").mockReturnValue(rect(0, 0, 10, 10));
+    const list = collectRootTileRectsForPaletteDrop(zone, ["root-a", "root-b"]);
+    expect(list).toHaveLength(1);
+    expect(list[0]!.layoutIndex).toBe(1);
+  });
 });
 
 describe("shouldSuppressPaletteRootInsertPreview", () => {
+  it("skips palette shell nodes before resolving a root-level group tile", () => {
+    const shell = document.createElement("div");
+    setEditorSurface(shell, "palette");
+    const zone = document.createElement("div");
+    setEditorSurface(zone, "drop-zone");
+    const group = document.createElement("div");
+    setEditorSurface(group, "tile-row");
+    group.setAttribute("data-editor-group", "true");
+    const inner = document.createElement("span");
+    group.appendChild(inner);
+    zone.appendChild(group);
+    expect(shouldSuppressPaletteRootInsertPreview([shell, inner])).toBe(true);
+  });
+
   it("is true when the pointer stack hits a root-level group tile", () => {
     const zone = document.createElement("div");
     setEditorSurface(zone, "drop-zone");
@@ -140,6 +184,47 @@ describe("shouldSuppressPaletteRootInsertPreview", () => {
     tile.appendChild(inner);
     zone.appendChild(tile);
     expect(shouldSuppressPaletteRootInsertPreview([inner])).toBe(false);
+  });
+
+  it("skips non-Element nodes before resolving a group tile row", () => {
+    const zone = document.createElement("div");
+    setEditorSurface(zone, "drop-zone");
+    const group = document.createElement("div");
+    setEditorSurface(group, "tile-row");
+    group.setAttribute("data-editor-group", "true");
+    const inner = document.createElement("span");
+    group.appendChild(inner);
+    zone.appendChild(group);
+    expect(shouldSuppressPaletteRootInsertPreview([document.createComment(""), inner])).toBe(true);
+  });
+
+  it("continues when the resolved root drop zone is not an HTMLElement", () => {
+    const svgZone = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svgZone.setAttribute(DASHBOARD_EDITOR_ATTR, "drop-zone");
+    const fo = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+    const wrap = document.createElement("div");
+    const row = document.createElement("div");
+    setEditorSurface(row, "tile-row");
+    row.setAttribute("data-editor-group", "true");
+    wrap.appendChild(row);
+    fo.appendChild(wrap);
+    svgZone.appendChild(fo);
+    document.body.appendChild(svgZone);
+    try {
+      expect(shouldSuppressPaletteRootInsertPreview([row])).toBe(false);
+    } finally {
+      svgZone.remove();
+    }
+  });
+
+  it("ignores tile-row hit that is not an HTMLElement (e.g. SVG element)", () => {
+    const zone = document.createElement("div");
+    setEditorSurface(zone, "drop-zone");
+    const gEl = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    gEl.setAttribute(DASHBOARD_EDITOR_ATTR, "tile-row");
+    gEl.setAttribute("data-editor-group", "true");
+    zone.appendChild(gEl);
+    expect(shouldSuppressPaletteRootInsertPreview([gEl])).toBe(false);
   });
 
   it("is false for nested tile-row whose parent is not the root zone", () => {
@@ -183,6 +268,23 @@ describe("resolveEditorDropZoneFromElement", () => {
   it("returns null when grid chrome has no inner drop zone", () => {
     const chrome = document.createElement("div");
     setEditorSurface(chrome, "grid-chrome");
+    expect(resolveEditorDropZoneFromElement(chrome)).toBeNull();
+  });
+
+  it("returns null when closest drop zone match is not an HTMLElement (e.g. SVG)", () => {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    r.setAttribute(DASHBOARD_EDITOR_ATTR, "drop-zone");
+    svg.appendChild(r);
+    expect(resolveEditorDropZoneFromElement(r)).toBeNull();
+  });
+
+  it("returns null when grid chrome querySelector finds a non-HTMLElement drop zone", () => {
+    const chrome = document.createElement("div");
+    setEditorSurface(chrome, "grid-chrome");
+    const bogus = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bogus.setAttribute(DASHBOARD_EDITOR_ATTR, "drop-zone");
+    chrome.appendChild(bogus);
     expect(resolveEditorDropZoneFromElement(chrome)).toBeNull();
   });
 });
@@ -307,5 +409,49 @@ describe("findRootInsertIndexFromElementsFromPoint", () => {
     zone.appendChild(tile);
     document.body.appendChild(zone);
     expect(findRootInsertIndexFromElementsFromPoint(1, 1, ["other-id"], () => [inner])).toBeUndefined();
+  });
+
+  it("ignores non-Element entries in the hit stack", () => {
+    const zone = document.createElement("div");
+    setEditorSurface(zone, "drop-zone");
+    document.body.appendChild(zone);
+    const text = document.createTextNode("x");
+    try {
+      expect(findRootInsertIndexFromElementsFromPoint(1, 1, ["a"], () => [text, zone])).toBeUndefined();
+    } finally {
+      zone.remove();
+    }
+  });
+
+  it("skips palette shell nodes in empty-rect stack walk", () => {
+    const shell = document.createElement("div");
+    setEditorSurface(shell, "palette");
+    const zone = document.createElement("div");
+    setEditorSurface(zone, "drop-zone");
+    const inner = document.createElement("span");
+    zone.appendChild(inner);
+    document.body.appendChild(zone);
+    try {
+      expect(findRootInsertIndexFromElementsFromPoint(1, 1, ["x"], () => [shell, inner])).toBeUndefined();
+    } finally {
+      zone.remove();
+    }
+  });
+
+  it("continues stack walk when a node resolves to a different drop zone than the first", () => {
+    const zoneA = document.createElement("div");
+    setEditorSurface(zoneA, "drop-zone");
+    const span = document.createElement("span");
+    zoneA.appendChild(span);
+    const zoneB = document.createElement("div");
+    setEditorSurface(zoneB, "drop-zone");
+    document.body.appendChild(zoneA);
+    document.body.appendChild(zoneB);
+    try {
+      expect(findRootInsertIndexFromElementsFromPoint(1, 1, ["missing"], () => [span, zoneB])).toBeUndefined();
+    } finally {
+      zoneA.remove();
+      zoneB.remove();
+    }
   });
 });
