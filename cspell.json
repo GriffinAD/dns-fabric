@@ -65,6 +65,7 @@
     "dataclass",
     "devcontainers",
     "dockerhub",
+    "dragover",
     "falsified",
     "finishable",
     "fastapi",
