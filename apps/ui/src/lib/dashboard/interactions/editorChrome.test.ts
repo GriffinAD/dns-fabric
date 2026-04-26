@@ -5,6 +5,7 @@ import {
   EDITOR_CHROME_TOP_OFFSET_PX,
   EDITOR_PLUGIN_HOVER_HIGHLIGHT_CLASS,
   EDITOR_PLUGIN_HOVER_PARENT,
+  EDITOR_PLUGIN_CAPTION_BAR_CLASS,
   EDITOR_PLUGIN_HOVER_SHELL,
   EDITOR_PLUGIN_HOVER_VISIBLE,
   EDITOR_PLUGIN_SURFACE_CLASS,
@@ -38,5 +39,11 @@ describe("editorChrome", () => {
 
   it("surface class is stable for app.css :has() rules", () => {
     expect(EDITOR_PLUGIN_SURFACE_CLASS).toBe("editor-plugin-surface");
+  });
+
+  it("EDITOR_PLUGIN_CAPTION_BAR_CLASS is always-visible (no hover opacity) with a light-mode gray strip", () => {
+    expect(EDITOR_PLUGIN_CAPTION_BAR_CLASS).not.toContain("opacity-0");
+    expect(EDITOR_PLUGIN_CAPTION_BAR_CLASS).toContain("bg-slate-100");
+    expect(EDITOR_PLUGIN_CAPTION_BAR_CLASS).toContain("dark:bg-gray-800");
   });
 });

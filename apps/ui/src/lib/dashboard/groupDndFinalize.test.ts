@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { buildRootLayoutFromDnd, finalizeGroupChildrenFromDnd, isDndCellGroup } from "./groupDndFinalize";
+import {
+  buildRootLayoutFromDnd,
+  dndListItemToDashboardTile,
+  finalizeGroupChildrenFromDnd,
+  isDndCellGroup,
+} from "./groupDndFinalize";
 import type { DashboardGroup, DashboardTile, RootLayoutItem } from "./types";
 
 function baseTile(
@@ -37,6 +42,19 @@ describe("groupDndFinalize", () => {
     const g = baseGroup("g", []);
     expect(isDndCellGroup(g)).toBe(true);
     expect(isDndCellGroup(baseTile("t", { col: 0, row: 0, colSpan: 1, rowSpan: 1 }))).toBe(false);
+  });
+
+  it("dndListItemToDashboardTile returns the tile and strips optional kind", () => {
+    const inner = baseTile("t", { col: 0, row: 0, colSpan: 4, rowSpan: 1 });
+    const row = { id: inner.id, item: { ...inner, kind: "tile" as const } };
+    const out = dndListItemToDashboardTile(row);
+    expect(out.id).toBe("t");
+    expect((out as unknown as Record<string, unknown>).kind).toBeUndefined();
+  });
+
+  it("dndListItemToDashboardTile throws when the row is a group", () => {
+    const g = baseGroup("g", []);
+    expect(() => dndListItemToDashboardTile({ id: g.id, item: g })).toThrow(/expected a tile/);
   });
 
   it("finalizeGroupChildrenFromDnd reorders nowrap tiles using slot origins", () => {

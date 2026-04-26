@@ -209,6 +209,7 @@
 <div
   class={shellRootClass}
   style={shellStyle}
+  data-dashboard-editor="palette"
   data-testid="layout-edit-palette-v2"
   aria-label="Add tiles to the dashboard"
 >

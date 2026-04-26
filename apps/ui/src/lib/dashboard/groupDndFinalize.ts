@@ -18,6 +18,15 @@ export function isDndCellGroup(cell: DashboardDndCell): cell is DashboardGroup {
   return isDashboardGroupNode(cell as GroupChild);
 }
 
+/** Narrow a group DnD row to `DashboardTile` for tile-only editor zones (throws if the row is a group). */
+export function dndListItemToDashboardTile(c: DashboardDndListItem): DashboardTile {
+  if (isDndCellGroup(c.item)) {
+    throw new Error("expected a tile in group DnD list");
+  }
+  const { kind: _k, ...tile } = c.item as DashboardTile & { kind?: "tile" };
+  return tile as DashboardTile;
+}
+
 function applyGroupTileReorder(prev: DashboardGroup, reorderedTiles: DashboardTile[]): DashboardTile[] {
   if (prev.innerWrap === true) {
     return packGroupChildrenRowWrapInOrder(reorderedTiles, groupOuterColSpan(prev));

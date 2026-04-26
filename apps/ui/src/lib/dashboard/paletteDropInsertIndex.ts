@@ -6,33 +6,38 @@
  * Geometry-based resolution matches multi-row / gap hit testing closer to in-grid DnD than the
  * legacy “first `elementsFromPoint` hit” rule (which often picked nested tiles or ignored row gaps).
  *
- * Hit stack handling: resolve the root zone from `editor-grid-chrome` when the pointer hits the
- * outer shell (border) where `closest(editor-drop-zone)` fails, and skip palette DOM layers so a
- * floating palette (`layout-edit-palette-v2`) does not mask the grid under the cursor.
+ * Hit stack handling: resolve the root zone from `grid-chrome` when the pointer hits the outer shell
+ * where `closest(drop-zone)` fails, and skip palette DOM layers so a floating palette does not mask
+ * the grid under the cursor.
+ *
+ * DOM resolution uses {@link ../interactions/editorDomContract} (`data-dashboard-editor`), not
+ * `data-testid` alone.
  */
 
-const EDITOR_ZONE_SEL = '[data-testid="editor-drop-zone"]';
-const EDITOR_GRID_CHROME_SEL = '[data-testid="editor-grid-chrome"]';
+import {
+  EDITOR_DROP_ZONE_SEL,
+  EDITOR_GRID_CHROME_SEL,
+  EDITOR_PALETTE_SHELL_SEL,
+  EDITOR_TILE_ROW_SEL,
+  isDashboardEditorTileRow,
+} from "./interactions/editorDomContract";
 
 /** True when `el` is inside the palette shell so we walk past it to grid layers below. */
 function paletteHitLayer(el: Element): boolean {
-  return (
-    el.closest('[data-testid="layout-edit-palette-v2"]') != null ||
-    el.closest('[data-testid="layout-edit-palette"]') != null
-  );
+  return el.closest(EDITOR_PALETTE_SHELL_SEL) != null;
 }
 
 /**
  * Resolve the root grid drop zone from a hit element.
- * Hits on `editor-grid-chrome` (e.g. its border box outside the inner grid) do not have the inner
- * zone as an ancestor, so `closest(editor-drop-zone)` alone misses.
+ * Hits on grid chrome (e.g. its border box outside the inner grid) do not have the inner zone as an
+ * ancestor, so `closest(drop-zone)` alone misses.
  */
 export function resolveEditorDropZoneFromElement(el: Element): HTMLElement | null {
-  const direct = el.closest(EDITOR_ZONE_SEL);
+  const direct = el.closest(EDITOR_DROP_ZONE_SEL);
   if (direct instanceof HTMLElement) return direct;
   const chrome = el.closest(EDITOR_GRID_CHROME_SEL);
   if (chrome instanceof HTMLElement) {
-    const inner = chrome.querySelector(EDITOR_ZONE_SEL);
+    const inner = chrome.querySelector(EDITOR_DROP_ZONE_SEL);
     return inner instanceof HTMLElement ? inner : null;
   }
   return null;
@@ -55,9 +60,9 @@ export function shouldSuppressPaletteRootInsertPreview(stack: readonly Element[]
   for (const node of stack) {
     if (!(node instanceof Element)) continue;
     if (paletteHitLayer(node)) continue;
-    const row = node.closest('[data-testid="editor-tile"]');
+    const row = node.closest(EDITOR_TILE_ROW_SEL);
     if (!(row instanceof HTMLElement)) continue;
-    const zone = row.closest(EDITOR_ZONE_SEL);
+    const zone = row.closest(EDITOR_DROP_ZONE_SEL);
     if (!(zone instanceof HTMLElement)) continue;
     if (row.parentElement !== zone) continue;
     if (row.getAttribute("data-editor-group") === "true") return true;
@@ -78,7 +83,7 @@ function findEditorDropZoneFromHitStack(stack: readonly Element[]): HTMLElement 
 function directChildRootTileRect(zone: HTMLElement, id: string): DOMRect | null {
   for (const child of zone.children) {
     if (!(child instanceof HTMLElement)) continue;
-    if (child.getAttribute("data-testid") !== "editor-tile") continue;
+    if (!isDashboardEditorTileRow(child)) continue;
     if (child.getAttribute("data-tile-id") !== id) continue;
     if (child.hasAttribute("data-is-dnd-shadow-item-internal")) continue;
     return child.getBoundingClientRect();
@@ -88,7 +93,7 @@ function directChildRootTileRect(zone: HTMLElement, id: string): DOMRect | null 
 
 /**
  * Collect `getBoundingClientRect()` for each root list id in **layout order**, using only
- * `editor-tile` nodes that are **direct children** of the root drop zone (skips nested tiles).
+ * tile-row nodes that are **direct children** of the root drop zone (skips nested tiles).
  */
 export function collectRootTileRectsForPaletteDrop(
   zone: HTMLElement,
@@ -211,7 +216,7 @@ export function findRootInsertIndexFromElementsFromPoint(
     if (paletteHitLayer(node)) continue;
     const nz = resolveEditorDropZoneFromElement(node);
     if (!nz || nz !== zone) continue;
-    const row = node.closest('[data-testid="editor-tile"]');
+    const row = node.closest(EDITOR_TILE_ROW_SEL);
     const id = row?.getAttribute("data-tile-id") ?? undefined;
     if (!id || !(row instanceof HTMLElement) || row.parentElement !== zone) continue;
     const i = rootOrderIds.indexOf(id);

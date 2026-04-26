@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { DASHBOARD_EDITOR_ATTR } from "./interactions/editorDomContract";
 import {
   collectRootTileRectsForPaletteDrop,
   findRootInsertIndexFromElementsFromPoint,
@@ -22,6 +23,10 @@ function rect(x: number, y: number, w: number, h: number): DOMRect {
       return "";
     },
   } as DOMRect;
+}
+
+function setEditorSurface(el: HTMLElement, surface: string) {
+  el.setAttribute(DASHBOARD_EDITOR_ATTR, surface);
 }
 
 describe("paletteRootInsertIndexFromRects", () => {
@@ -97,11 +102,11 @@ describe("collectRootTileRectsForPaletteDrop", () => {
   it("only includes direct-child editor tiles matching root order ids", () => {
     const zone = document.createElement("div");
     const rootA = document.createElement("div");
-    rootA.setAttribute("data-testid", "editor-tile");
+    setEditorSurface(rootA, "tile-row");
     rootA.setAttribute("data-tile-id", "root-a");
     const nestedWrap = document.createElement("div");
     const nestedTile = document.createElement("div");
-    nestedTile.setAttribute("data-testid", "editor-tile");
+    setEditorSurface(nestedTile, "tile-row");
     nestedTile.setAttribute("data-tile-id", "nested-x");
     nestedWrap.appendChild(nestedTile);
     zone.appendChild(rootA);
@@ -116,9 +121,9 @@ describe("collectRootTileRectsForPaletteDrop", () => {
 describe("shouldSuppressPaletteRootInsertPreview", () => {
   it("is true when the pointer stack hits a root-level group tile", () => {
     const zone = document.createElement("div");
-    zone.setAttribute("data-testid", "editor-drop-zone");
+    setEditorSurface(zone, "drop-zone");
     const group = document.createElement("div");
-    group.setAttribute("data-testid", "editor-tile");
+    setEditorSurface(group, "tile-row");
     group.setAttribute("data-editor-group", "true");
     const inner = document.createElement("span");
     group.appendChild(inner);
@@ -128,21 +133,21 @@ describe("shouldSuppressPaletteRootInsertPreview", () => {
 
   it("is false for a root plugin tile (no data-editor-group)", () => {
     const zone = document.createElement("div");
-    zone.setAttribute("data-testid", "editor-drop-zone");
+    setEditorSurface(zone, "drop-zone");
     const tile = document.createElement("div");
-    tile.setAttribute("data-testid", "editor-tile");
+    setEditorSurface(tile, "tile-row");
     const inner = document.createElement("span");
     tile.appendChild(inner);
     zone.appendChild(tile);
     expect(shouldSuppressPaletteRootInsertPreview([inner])).toBe(false);
   });
 
-  it("is false for nested editor-tile whose parent is not the root zone", () => {
+  it("is false for nested tile-row whose parent is not the root zone", () => {
     const zone = document.createElement("div");
-    zone.setAttribute("data-testid", "editor-drop-zone");
+    setEditorSurface(zone, "drop-zone");
     const wrap = document.createElement("div");
     const nested = document.createElement("div");
-    nested.setAttribute("data-testid", "editor-tile");
+    setEditorSurface(nested, "tile-row");
     nested.setAttribute("data-editor-group", "true");
     const inner = document.createElement("span");
     nested.appendChild(inner);
@@ -153,18 +158,18 @@ describe("shouldSuppressPaletteRootInsertPreview", () => {
 });
 
 describe("resolveEditorDropZoneFromElement", () => {
-  it("returns the inner drop zone when the hit element is editor-grid-chrome", () => {
+  it("returns the inner drop zone when the hit element is grid chrome", () => {
     const chrome = document.createElement("div");
-    chrome.setAttribute("data-testid", "editor-grid-chrome");
+    setEditorSurface(chrome, "grid-chrome");
     const zone = document.createElement("div");
-    zone.setAttribute("data-testid", "editor-drop-zone");
+    setEditorSurface(zone, "drop-zone");
     chrome.appendChild(zone);
     expect(resolveEditorDropZoneFromElement(chrome)).toBe(zone);
   });
 
   it("returns the zone when the hit element is inside it", () => {
     const zone = document.createElement("div");
-    zone.setAttribute("data-testid", "editor-drop-zone");
+    setEditorSurface(zone, "drop-zone");
     const span = document.createElement("span");
     zone.appendChild(span);
     expect(resolveEditorDropZoneFromElement(span)).toBe(zone);
@@ -175,9 +180,9 @@ describe("resolveEditorDropZoneFromElement", () => {
     expect(resolveEditorDropZoneFromElement(orphan)).toBeNull();
   });
 
-  it("returns null when editor-grid-chrome has no inner drop zone", () => {
+  it("returns null when grid chrome has no inner drop zone", () => {
     const chrome = document.createElement("div");
-    chrome.setAttribute("data-testid", "editor-grid-chrome");
+    setEditorSurface(chrome, "grid-chrome");
     expect(resolveEditorDropZoneFromElement(chrome)).toBeNull();
   });
 });
@@ -188,16 +193,16 @@ describe("findRootInsertIndexFromElementsFromPoint", () => {
     document.body.replaceChildren();
   });
 
-  it("uses geometry when the hit stack starts on editor-grid-chrome", () => {
+  it("uses geometry when the hit stack starts on grid chrome", () => {
     const chrome = document.createElement("div");
-    chrome.setAttribute("data-testid", "editor-grid-chrome");
+    setEditorSurface(chrome, "grid-chrome");
     const zone = document.createElement("div");
-    zone.setAttribute("data-testid", "editor-drop-zone");
+    setEditorSurface(zone, "drop-zone");
     const tile0 = document.createElement("div");
-    tile0.setAttribute("data-testid", "editor-tile");
+    setEditorSurface(tile0, "tile-row");
     tile0.setAttribute("data-tile-id", "a");
     const tile1 = document.createElement("div");
-    tile1.setAttribute("data-testid", "editor-tile");
+    setEditorSurface(tile1, "tile-row");
     tile1.setAttribute("data-tile-id", "b");
     zone.appendChild(tile0);
     zone.appendChild(tile1);
@@ -208,13 +213,13 @@ describe("findRootInsertIndexFromElementsFromPoint", () => {
     expect(findRootInsertIndexFromElementsFromPoint(50, 90, ["a", "b"], () => [chrome])).toBe(1);
   });
 
-  it("skips legacy layout-edit-palette in the hit stack", () => {
+  it("skips palette shell in the hit stack", () => {
     const shell = document.createElement("div");
-    shell.setAttribute("data-testid", "layout-edit-palette");
+    setEditorSurface(shell, "palette");
     const zone = document.createElement("div");
-    zone.setAttribute("data-testid", "editor-drop-zone");
+    setEditorSurface(zone, "drop-zone");
     const tile0 = document.createElement("div");
-    tile0.setAttribute("data-testid", "editor-tile");
+    setEditorSurface(tile0, "tile-row");
     tile0.setAttribute("data-tile-id", "a");
     zone.appendChild(tile0);
     document.body.appendChild(zone);
@@ -226,13 +231,13 @@ describe("findRootInsertIndexFromElementsFromPoint", () => {
 
   it("skips palette shells in the hit stack so the grid beneath still resolves", () => {
     const shell = document.createElement("div");
-    shell.setAttribute("data-testid", "layout-edit-palette-v2");
+    setEditorSurface(shell, "palette");
     const chrome = document.createElement("div");
-    chrome.setAttribute("data-testid", "editor-grid-chrome");
+    setEditorSurface(chrome, "grid-chrome");
     const zone = document.createElement("div");
-    zone.setAttribute("data-testid", "editor-drop-zone");
+    setEditorSurface(zone, "drop-zone");
     const tile0 = document.createElement("div");
-    tile0.setAttribute("data-testid", "editor-tile");
+    setEditorSurface(tile0, "tile-row");
     tile0.setAttribute("data-tile-id", "a");
     zone.appendChild(tile0);
     chrome.appendChild(zone);
@@ -246,12 +251,12 @@ describe("findRootInsertIndexFromElementsFromPoint", () => {
 
   it("uses geometry when the drop zone is found from the hit stack", () => {
     const zone = document.createElement("div");
-    zone.setAttribute("data-testid", "editor-drop-zone");
+    setEditorSurface(zone, "drop-zone");
     const tile0 = document.createElement("div");
-    tile0.setAttribute("data-testid", "editor-tile");
+    setEditorSurface(tile0, "tile-row");
     tile0.setAttribute("data-tile-id", "a");
     const tile1 = document.createElement("div");
-    tile1.setAttribute("data-testid", "editor-tile");
+    setEditorSurface(tile1, "tile-row");
     tile1.setAttribute("data-tile-id", "b");
     zone.appendChild(tile0);
     zone.appendChild(tile1);
@@ -269,7 +274,7 @@ describe("findRootInsertIndexFromElementsFromPoint", () => {
 
   it("uses stack walk when no direct root tiles expose rects (e.g. ids not yet mounted)", () => {
     const zone = document.createElement("div");
-    zone.setAttribute("data-testid", "editor-drop-zone");
+    setEditorSurface(zone, "drop-zone");
     const inner = document.createElement("span");
     zone.appendChild(inner);
     document.body.appendChild(zone);
@@ -278,9 +283,9 @@ describe("findRootInsertIndexFromElementsFromPoint", () => {
 
   it("falls back to stack hit-testing when rects are skipped (e.g. DnD shadow root tile only)", () => {
     const zone = document.createElement("div");
-    zone.setAttribute("data-testid", "editor-drop-zone");
+    setEditorSurface(zone, "drop-zone");
     const tile = document.createElement("div");
-    tile.setAttribute("data-testid", "editor-tile");
+    setEditorSurface(tile, "tile-row");
     tile.setAttribute("data-tile-id", "root-a");
     tile.setAttribute("data-is-dnd-shadow-item-internal", "");
     const inner = document.createElement("span");
@@ -292,9 +297,9 @@ describe("findRootInsertIndexFromElementsFromPoint", () => {
 
   it("returns undefined when rects are empty and hit tile id is not in root order", () => {
     const zone = document.createElement("div");
-    zone.setAttribute("data-testid", "editor-drop-zone");
+    setEditorSurface(zone, "drop-zone");
     const tile = document.createElement("div");
-    tile.setAttribute("data-testid", "editor-tile");
+    setEditorSurface(tile, "tile-row");
     tile.setAttribute("data-tile-id", "root-a");
     tile.setAttribute("data-is-dnd-shadow-item-internal", "");
     const inner = document.createElement("span");

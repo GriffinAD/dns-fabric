@@ -107,10 +107,12 @@ html[data-color-preset="gray"] {
   /* svelte-dnd non-tile direct children of the drop zone only. Never apply min-width:0 to the
    * tile grid items themselves (editor-tile or read-only wrappers) or they flex-shrink below
    * their `grid-column` area and look "narrow" vs the column guides. */
+  [data-dashboard-editor="drop-zone"] > *:not([data-dashboard-editor="tile-row"]),
   [data-testid="editor-drop-zone"] > *:not([data-testid="editor-tile"]) {
     min-width: 0;
   }
 
+  [data-dashboard-editor="tile-row"],
   [data-testid="editor-tile"] {
     box-sizing: border-box;
     min-width: auto;
@@ -124,6 +126,7 @@ html[data-color-preset="gray"] {
    * svelte-dnd shadow placeholder: the library sets `visibility: hidden` on the in-list slot.
    * Show a dashed slot preview so drop position is obvious while reordering (editor chrome only).
    */
+  [data-dashboard-editor="grid-chrome"] [data-is-dnd-shadow-item-internal="true"],
   [data-testid="editor-grid-chrome"] [data-is-dnd-shadow-item-internal="true"] {
     visibility: visible !important;
     opacity: 0.42;
@@ -135,12 +138,14 @@ html[data-color-preset="gray"] {
   }
 
   /* While a pointer drag is in flight, emphasize the in-list slot (large containers otherwise read as “no target”). */
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] [data-is-dnd-shadow-item-internal="true"],
   [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] [data-is-dnd-shadow-item-internal="true"] {
     opacity: 0.58;
     outline-width: 3px;
     outline-offset: 3px;
   }
 
+  .dark [data-dashboard-editor="grid-chrome"] [data-is-dnd-shadow-item-internal="true"],
   .dark [data-testid="editor-grid-chrome"] [data-is-dnd-shadow-item-internal="true"] {
     background: color-mix(in srgb, var(--color-primary-900) 45%, transparent);
     outline-color: var(--color-primary-400);
@@ -240,6 +245,7 @@ html[data-color-preset="gray"] {
    * Root shell no longer uses `overflow-hidden` so box-shadow is not clipped there.
    */
   @media (hover: hover) and (pointer: fine) {
+    [data-dashboard-editor="grid-chrome"] .editor-plugin-hover-highlight:hover:not(.editor-surface-in-play),
     [data-testid="editor-grid-chrome"] .editor-plugin-hover-highlight:hover:not(.editor-surface-in-play) {
       outline: 2px solid var(--editor-layout-hover-line);
       outline-offset: -2px;
@@ -252,8 +258,16 @@ html[data-color-preset="gray"] {
         box-shadow 120ms ease;
     }
 
+    [data-dashboard-editor="grid-chrome"]
+      .editor-root-container-shell:hover:not(.editor-surface-in-play):not(
+        :has(.editor-plugin-hover-highlight:hover)
+      ),
     [data-testid="editor-grid-chrome"]
       .editor-root-container-shell:hover:not(.editor-surface-in-play):not(
+        :has(.editor-plugin-hover-highlight:hover)
+      ),
+    [data-dashboard-editor="grid-chrome"]
+      .editor-nested-container-shell:hover:not(.editor-surface-in-play):not(
         :has(.editor-plugin-hover-highlight:hover)
       ),
     [data-testid="editor-grid-chrome"]
@@ -289,7 +303,7 @@ html[data-color-preset="gray"] {
 
 /*
  * Edit layout: column guides on the same box as the 20-column `repeat(20, …)` grid (gap + padding driven
- * by `--dashboard-gap`; see `[data-testid="editor-drop-zone"]` and `DashboardControls`).
+ * by `--dashboard-gap`; see `[data-dashboard-editor="drop-zone"]` / `[data-testid="editor-drop-zone"]` and `DashboardControls`).
  * Draw at each *track start* (and the far right), not at track *ends*:
  * left edge of col k (0-based) = k * (d-track + d-gap) — matches
  * `grid-column: (k+1) / …`. Old guides used n·d + (n−1)·g (end of col n), which
@@ -297,8 +311,9 @@ html[data-color-preset="gray"] {
  *
  * Use `100cqi` (query container) so `--d-track` matches the same width the 20 `fr` columns
  * split, not a possibly different `100%` resolution used only for this background in some cases.
- * Parent [data-testid="editor-grid-chrome"] sets `container-type: inline-size`.
+ * Parent grid chrome sets `container-type: inline-size`.
  */
+[data-dashboard-editor="grid-chrome"],
 [data-testid="editor-grid-chrome"] {
   container-type: inline-size;
   --editor-layout-hover-line: color-mix(in srgb, var(--color-emerald-500) 40%, transparent);
@@ -307,6 +322,7 @@ html[data-color-preset="gray"] {
   --editor-layout-container-hover-glow: 0 0 16px color-mix(in srgb, var(--color-blue-500) 40%, transparent);
 }
 
+.dark [data-dashboard-editor="grid-chrome"],
 .dark [data-testid="editor-grid-chrome"] {
   --editor-layout-hover-line: color-mix(in srgb, var(--color-emerald-400) 40%, transparent);
   --editor-layout-hover-glow: 0 0 16px color-mix(in srgb, var(--color-emerald-400) 40%, transparent);
@@ -338,6 +354,7 @@ html[data-color-preset="gray"] {
  * Row gap gives svelte-dnd-action’s centre-based hit test room between full-width root rows when
  * `--dashboard-gap` is 0.
  */
+[data-dashboard-editor="drop-zone"],
 [data-testid="editor-drop-zone"] {
   padding-block-start: var(--dashboard-gap, 0px);
   padding-inline: var(--dashboard-gap, 0px);
@@ -354,6 +371,7 @@ html[data-color-preset="gray"] {
   box-shadow: inset 0 -3px 0 0 var(--color-primary-500);
 }
 
+[data-dashboard-editor="drop-zone"],
 [data-testid="editor-drop-zone"] {
   /* Column-guide ruler math follows the same gap as the grid tracks so guides land at
    * track boundaries regardless of the user's chosen padding. Drop-zone itself now has
@@ -562,6 +580,7 @@ html[data-color-preset="gray"] {
     );
 }
 
+.dark [data-dashboard-editor="drop-zone"],
 .dark [data-testid="editor-drop-zone"] {
   --d-ruler: rgba(255, 255, 255, 0.14);
 }
@@ -596,7 +615,7 @@ html[data-color-preset="gray"] {
   :root:not(.dark) [data-dashboard-tile-grid] [data-row-panel],
   :root:not(.dark) [data-dashboard-tile-grid] [data-dashboard-group] {
     background-color: #fff !important;
-    border: 1px solid var(--color-gray-400, #9ca3af) !important;
+    border: 1px solid rgb(203 213 225) !important; /* slate-200 — softer than gray-400 */
     box-shadow:
       0 2px 6px rgb(15 23 42 / 0.13),
       0 12px 26px rgb(15 23 42 / 0.15) !important;
@@ -604,7 +623,7 @@ html[data-color-preset="gray"] {
 
   :root:not(.dark) [data-scope="card"] {
     background-color: #fff !important;
-    border-color: var(--color-gray-400, #9ca3af) !important;
+    border-color: rgb(203 213 225) !important; /* slate-200 */
     box-shadow:
       0 2px 5px rgb(15 23 42 / 0.11),
       0 10px 22px rgb(15 23 42 / 0.13) !important;
@@ -671,12 +690,15 @@ html[data-color-preset="gray"] {
   }
 
   /* Exclude bare icon toggles (no Flowbite data-scope); `class*="border"` would match e.g. `border-0`. */
-  :root:not(.dark) button[class*="border"]:not([data-ghost-icon-toggle]),
-  :root:not(.dark) [role="button"][class*="border"],
+  /* Exclude layout-editor chrome (grip / pencil) — those set their own Tailwind border tokens. */
+  :root:not(.dark) button[class*="border"]:not([data-ghost-icon-toggle]):not(.editor-chrome-drag):not(
+      .editor-chrome-edit
+    ),
+  :root:not(.dark) [role="button"][class*="border"]:not(.editor-chrome-drag):not(.editor-chrome-edit),
   :root:not(.dark) input[class*="border"],
   :root:not(.dark) select[class*="border"],
   :root:not(.dark) textarea[class*="border"] {
-    border-color: var(--color-gray-400, #9ca3af) !important;
+    border-color: rgb(203 213 225) !important; /* slate-200 */
   }
 
   /* Keep disabled pagination nav borders visually distinct in both themes. */
@@ -701,10 +723,10 @@ html[data-color-preset="gray"] {
     --tw-shadow: 0 0 #0000 !important;
   }
 
-  /* Internal component divider lines (e.g. under titles) in light mode. */
+  /* Internal component divider lines (e.g. under titles) in light mode — keep softer than card edge. */
   :root:not(.dark) [data-scope="card"] .border-gray-100,
   :root:not(.dark) [data-scope="card"] .border-gray-200 {
-    border-color: var(--color-gray-400, #9ca3af) !important;
+    border-color: rgb(226 232 240) !important; /* slate-200 */
   }
 
   /*

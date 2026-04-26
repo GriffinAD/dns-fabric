@@ -98,8 +98,8 @@
   /** Slightly looser in default/compact; perf `mini` tiles share vertical space in one grid row. */
   const divider = $derived(
     mini
-      ? "border-b border-gray-200 pb-0.5 mb-0.5 dark:border-gray-600"
-      : "border-b border-gray-200 pb-1.5 mb-1.5 dark:border-gray-600",
+      ? "border-b border-slate-200/90 pb-0.5 mb-0.5 dark:border-gray-600"
+      : "border-b border-slate-200/90 pb-1.5 mb-1.5 dark:border-gray-600",
   );
   const labelRowClass = $derived(`w-full shrink-0 text-center ${divider}`);
   const readoutRowClass = $derived(`w-full shrink-0 text-center ${divider}`);

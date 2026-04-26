@@ -2,6 +2,7 @@
  * Edit-mode **plugin** chrome: hover/focus on a tile reveals drag + edit (delete lives in settings).
  *
  * Tile shell: {@link EDITOR_PLUGIN_HOVER_SHELL} (group + hover ring class). Controls: {@link EDITOR_PLUGIN_HOVER_VISIBLE}.
+ * Caption strip above the plugin body: {@link EDITOR_PLUGIN_CAPTION_BAR_CLASS}.
  *
  * **Container** (root or nested group) grip/edit uses `data-editor-container-chrome` and rules in
  * `app.css` (`.editor-root-container-shell` / `.editor-nested-container-shell`) so hovering an inner
@@ -42,6 +43,17 @@ export const EDITOR_PLUGIN_HOVER_VISIBLE = [
   "group-hover/editor-plugin:pointer-events-auto group-hover/editor-plugin:opacity-100",
   "group-focus-within/editor-plugin:pointer-events-auto group-focus-within/editor-plugin:opacity-100",
   "[@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100",
+].join(" ");
+
+/**
+ * Caption strip above the plugin body in edit mode (placement hint or container label).
+ * Always visible (not {@link EDITOR_PLUGIN_HOVER_VISIBLE} — that hid the strip at opacity 0 until hover).
+ * Light mode: clearly tinted bar so it does not read as white against the white tile shell.
+ */
+export const EDITOR_PLUGIN_CAPTION_BAR_CLASS = [
+  "min-h-0 truncate border-b py-0.5 text-[10px]",
+  "border-slate-200/90 bg-slate-100 text-slate-600",
+  "dark:border-gray-600/60 dark:bg-gray-800 dark:text-gray-400",
 ].join(" ");
 
 /** Marks the plugin body for `:has()` rules on container shells (see `app.css`). */
