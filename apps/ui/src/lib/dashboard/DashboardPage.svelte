@@ -14,7 +14,7 @@
   import { findTileInLayout, PARENT_ID_DASHBOARD } from "./layoutTree";
   import { clearStoredDashboardLayoutAndUnlock } from "./layoutStorage";
   import type { OverlayActions } from "./overlayActions";
-  import type { DashboardGroup, DashboardLayoutV2, DashboardTile } from "./types";
+  import type { DashboardGroup, DashboardLayoutV3, DashboardTile } from "./types";
 
   let {
     gateway,
@@ -33,7 +33,7 @@
   }: {
     gateway: DataGateway;
     plugins: PluginEntry[];
-    layout: DashboardLayoutV2;
+    layout: DashboardLayoutV3;
     editLayout: boolean;
     loadError: string | null;
     persistError: string | null;

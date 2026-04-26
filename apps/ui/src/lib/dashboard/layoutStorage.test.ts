@@ -16,12 +16,12 @@ import {
   setLocalPersistBlockedStateForTest,
 } from "./layoutStorage";
 import { initialDashboardLayout, mergeMissingDefaultPlugins } from "./persistence";
-import type { DashboardLayout, DashboardLayoutV1, DashboardLayoutV2, DashboardTile } from "./types";
-import { isLayoutV2 } from "./types";
+import type { DashboardLayout, DashboardLayoutV1, DashboardLayoutV2, DashboardLayoutV3, DashboardTile } from "./types";
+import { isLayoutV2, isLayoutV3 } from "./types";
 
 function allTilesIn(layout: DashboardLayout | null | undefined): DashboardTile[] {
   if (!layout) return [];
-  if (isLayoutV2(layout)) return [...iterateTilesInLayout(layout.items)];
+  if (isLayoutV3(layout) || isLayoutV2(layout)) return [...iterateTilesInLayout(layout.items)];
   return layout.tiles;
 }
 
@@ -30,8 +30,9 @@ function countAllTilesV2(d: DashboardLayoutV2): number {
 }
 
 describe("layoutJsonUnsupportedVersionMessage", () => {
-  it("returns message for layout version > 2", () => {
-    expect(layoutJsonUnsupportedVersionMessage({ version: 3, items: [] })).toContain("version 3");
+  it("returns message for layout version > 3", () => {
+    expect(layoutJsonUnsupportedVersionMessage({ version: 4, items: [] })).toContain("version 4");
+    expect(layoutJsonUnsupportedVersionMessage({ version: 3, items: [] })).toBeNull();
     expect(layoutJsonUnsupportedVersionMessage({ version: 2, items: [] })).toBeNull();
   });
 
@@ -42,7 +43,7 @@ describe("layoutJsonUnsupportedVersionMessage", () => {
 });
 
 describe("parseDashboardLayout", () => {
-  it("rejects layout version > 2", () => {
+  it("rejects layout version > 3", () => {
     expect(parseDashboardLayout({ version: 4, items: [] })).toBeNull();
   });
 
@@ -58,8 +59,8 @@ describe("parseDashboardLayout", () => {
   it("accepts a valid layout", () => {
     const parsed = parseDashboardLayout(structuredClone(DEFAULT_DASHBOARD_LAYOUT));
     expect(parsed).not.toBeNull();
-    expect(isLayoutV2(parsed!)).toBe(true);
-    expect((parsed as DashboardLayoutV2).items.length).toBe(DEFAULT_DASHBOARD_LAYOUT.items.length);
+    expect(isLayoutV3(parsed!)).toBe(true);
+    expect((parsed as DashboardLayoutV3).items.length).toBe(DEFAULT_DASHBOARD_LAYOUT.items.length);
   });
 
   it("rejects invalid tiles", () => {
@@ -357,8 +358,8 @@ describe("localStorage persistence", () => {
     saveDashboardLayout(DEFAULT_DASHBOARD_LAYOUT);
     const loaded = loadDashboardLayout();
     expect(loaded?.version).toBe(DEFAULT_DASHBOARD_LAYOUT.version);
-    expect(isLayoutV2(loaded!)).toBe(true);
-    expect((loaded as DashboardLayoutV2).items.length).toBe(DEFAULT_DASHBOARD_LAYOUT.items.length);
+    expect(isLayoutV3(loaded!)).toBe(true);
+    expect((loaded as DashboardLayoutV3).items.length).toBe(DEFAULT_DASHBOARD_LAYOUT.items.length);
   });
 
   it("loadDashboardLayout returns null on invalid JSON", () => {

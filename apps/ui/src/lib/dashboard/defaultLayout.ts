@@ -1,8 +1,8 @@
-import type { DashboardLayoutV2, RootTileItem } from "./types";
+import type { DashboardLayoutV3, RootTileItem } from "./types";
 
 /** Initial layout: one `group` (status row) with four perf tiles on an inner 20-col grid; DHCP plugin tiles on the root grid. */
-export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutV2 = {
-  version: 2,
+export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutV3 = {
+  version: 3,
   items: [
     {
       kind: "group",

@@ -10,11 +10,13 @@ import {
   parseDashboardLayout,
   saveDashboardLayout,
 } from "./layoutStorage";
+import { appendTileToGroupInItems } from "./layoutTree";
+import { ensureLayoutV3 } from "./migration";
 import { initialDashboardLayout, flushLayoutToServer, postLayoutSaveFileSnapshot } from "./persistence";
 import type {
   DashboardGroup,
   DashboardLayout,
-  DashboardLayoutV2,
+  DashboardLayoutV3,
   DashboardTile,
   RootLayoutItem,
 } from "./types";
@@ -44,7 +46,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
   const gateway = options.gateway;
   const dashboardId = options.dashboardId ?? "default";
 
-  const layout = writable<DashboardLayoutV2>(initialDashboardLayout());
+  const layout = writable<DashboardLayoutV3>(initialDashboardLayout());
   /** Validation failures, reset errors, and other blocking issues (not PUT failures). */
   const loadError = writable<string | null>(null);
   /** Last dashboard layout PUT failure; dashboard may still be usable from cache. */
@@ -56,8 +58,8 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
   const layoutSource = writable<LayoutSource>("cache");
 
   const UNDO_CAP = 50;
-  let undoPast: DashboardLayoutV2[] = [];
-  let undoFuture: DashboardLayoutV2[] = [];
+  let undoPast: DashboardLayoutV3[] = [];
+  let undoFuture: DashboardLayoutV3[] = [];
 
   function clearUndoStacks() {
     undoPast = [];
@@ -129,11 +131,12 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
     editorOpen,
     layoutSource,
 
-    acceptServerLayout(next: DashboardLayoutV2) {
+    acceptServerLayout(next: DashboardLayout) {
       releaseLocalPersistGate();
       clearUndoStacks();
-      layout.set(next);
-      saveDashboardLayout(next);
+      const v3 = ensureLayoutV3(next);
+      layout.set(v3);
+      saveDashboardLayout(v3);
       layoutSource.set("server");
       loadError.set(null);
     },
@@ -211,7 +214,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
         hostControl: "single-panel",
         displayMode: "full",
       };
-      applyStructure({ version: 2, items: [...L.items, next] });
+      applyStructure({ version: 3, items: [...L.items, next] });
     },
 
     addGroup() {
@@ -219,7 +222,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
       const n = L.items.length;
       const id = `group-${n + 1}-${Date.now()}`;
       const g: DashboardGroup = { kind: "group", id, showBorder: true, children: [] };
-      applyStructure({ version: 2, items: [...L.items, g] });
+      applyStructure({ version: 3, items: [...L.items, g] });
     },
 
     addTileToGroup(groupId: string, pluginId: string) {
@@ -231,13 +234,10 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
         hostControl: "single-panel",
         displayMode: "full",
       };
-      const items = L.items.map((it) => {
-        if (it.kind === "group" && it.id === groupId) {
-          return { ...it, children: [...it.children, newTile] } satisfies DashboardGroup;
-        }
-        return it;
+      applyStructure({
+        version: 3,
+        items: appendTileToGroupInItems(L.items, groupId, newTile),
       });
-      applyStructure({ version: 2, items });
     },
 
     async resetToBaseline() {

@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { createOverlayActions } from "./overlayActions";
 import { PARENT_ID_DASHBOARD } from "./layoutTree";
-import type { DashboardGroup, DashboardLayoutV2, DashboardTile } from "./types";
+import type { DashboardGroup, DashboardLayoutV3, DashboardTile } from "./types";
 
-function emptyLayout(): DashboardLayoutV2 {
-  return { version: 2, items: [] };
+function emptyLayout(): DashboardLayoutV3 {
+  return { version: 3, items: [] };
 }
 
 describe("createOverlayActions", () => {
@@ -88,8 +88,8 @@ describe("createOverlayActions", () => {
       displayMode: "full",
       grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
     };
-    let layout: DashboardLayoutV2 = {
-      version: 2,
+    let layout: DashboardLayoutV3 = {
+      version: 3,
       items: [{ kind: "group", id: "g1", showBorder: true, children: [tile], grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 } }],
     };
     let applied = 0;
@@ -102,7 +102,7 @@ describe("createOverlayActions", () => {
       setSettingsGroup: () => {},
       applyLayoutStructure: (next) => {
         applied += 1;
-        if (next.version === 2) layout = next;
+        if (next.version === 2 || next.version === 3) layout = next as DashboardLayoutV3;
       },
     });
     o.saveTileFromOverlay({ ...tile, displayMode: "compact" }, "g1");
@@ -122,7 +122,7 @@ describe("createOverlayActions", () => {
       displayMode: "full",
       grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
     };
-    let layout: DashboardLayoutV2 = { version: 2, items: [{ kind: "tile", ...tile }] };
+    let layout: DashboardLayoutV3 = { version: 3, items: [{ kind: "tile", ...tile }] };
     let applied = 0;
     const o = createOverlayActions({
       getLayout: () => layout,
@@ -133,7 +133,7 @@ describe("createOverlayActions", () => {
       setSettingsGroup: () => {},
       applyLayoutStructure: (next) => {
         applied += 1;
-        if (next.version === 2) layout = next;
+        if (next.version === 2 || next.version === 3) layout = next as DashboardLayoutV3;
       },
     });
     o.saveTileFromOverlay({ ...tile, displayMode: "compact" }, PARENT_ID_DASHBOARD);
@@ -150,7 +150,7 @@ describe("createOverlayActions", () => {
       children: [],
       grid: { col: 0, row: 0, colSpan: 20, rowSpan: 1 },
     };
-    let layout: DashboardLayoutV2 = { version: 2, items: [g0] };
+    let layout: DashboardLayoutV3 = { version: 3, items: [g0] };
     let group: DashboardGroup | null = g0;
     let applied = 0;
     const o = createOverlayActions({
@@ -164,7 +164,7 @@ describe("createOverlayActions", () => {
       },
       applyLayoutStructure: (next) => {
         applied += 1;
-        if (next.version === 2) layout = next;
+        if (next.version === 2 || next.version === 3) layout = next as DashboardLayoutV3;
       },
     });
     const nextG: DashboardGroup = { ...g0, showBorder: false };
@@ -208,8 +208,8 @@ describe("createOverlayActions", () => {
 
   it("selectDashboardView commits when editor open", () => {
     let editor = true;
-    let layout: DashboardLayoutV2 = {
-      version: 2,
+    let layout: DashboardLayoutV3 = {
+      version: 3,
       items: [
         {
           kind: "group",
@@ -270,14 +270,14 @@ describe("createOverlayActions", () => {
       displayMode: "full",
       grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
     };
-    let layout: DashboardLayoutV2 = {
-      version: 2,
+    let layout: DashboardLayoutV3 = {
+      version: 3,
       items: [
         { kind: "group", id: "g1", showBorder: true, children: [tile], grid: { col: 0, row: 0, colSpan: 6, rowSpan: 2 } },
         { kind: "group", id: "g2", showBorder: true, children: [], grid: { col: 6, row: 0, colSpan: 6, rowSpan: 2 } },
       ],
     };
-    let saved: DashboardLayoutV2 | null = null;
+    let saved: DashboardLayoutV3 | null = null;
     const o = createOverlayActions({
       getLayout: () => layout,
       getEditorOpen: () => false,
@@ -286,7 +286,7 @@ describe("createOverlayActions", () => {
       setSettingsTile: () => {},
       setSettingsGroup: () => {},
       applyLayoutStructure: (next) => {
-        if (next.version === 2) saved = next;
+        if (next.version === 2 || next.version === 3) saved = next as DashboardLayoutV3;
       },
     });
     o.saveTileFromOverlay(tile, "g2");
@@ -303,13 +303,13 @@ describe("createOverlayActions", () => {
       displayMode: "full",
       grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
     };
-    let layout: DashboardLayoutV2 = {
-      version: 2,
+    let layout: DashboardLayoutV3 = {
+      version: 3,
       items: [
         { kind: "group", id: "g", showBorder: true, children: [tile], grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 } },
       ],
     };
-    let saved: DashboardLayoutV2 | null = null;
+    let saved: DashboardLayoutV3 | null = null;
     const o = createOverlayActions({
       getLayout: () => layout,
       getEditorOpen: () => false,
@@ -318,7 +318,7 @@ describe("createOverlayActions", () => {
       setSettingsTile: () => {},
       setSettingsGroup: () => {},
       applyLayoutStructure: (next) => {
-        if (next.version === 2) saved = next;
+        if (next.version === 2 || next.version === 3) saved = next as DashboardLayoutV3;
       },
     });
     o.saveTileFromOverlay(tile, PARENT_ID_DASHBOARD);
@@ -333,7 +333,7 @@ describe("createOverlayActions", () => {
       hostControl: "single-panel",
       displayMode: "full",
     };
-    let layout: DashboardLayoutV2 = { version: 2, items: [{ kind: "tile", ...tile }] };
+    let layout: DashboardLayoutV3 = { version: 3, items: [{ kind: "tile", ...tile }] };
     let settingsTile: DashboardTile | null = tile;
     const o = createOverlayActions({
       getLayout: () => layout,
@@ -345,7 +345,7 @@ describe("createOverlayActions", () => {
       },
       setSettingsGroup: () => {},
       applyLayoutStructure: (next) => {
-        if (next.version === 2) layout = next;
+        if (next.version === 2 || next.version === 3) layout = next as DashboardLayoutV3;
       },
     });
     o.deleteRootLayoutItem("t1");
@@ -366,8 +366,8 @@ describe("createOverlayActions", () => {
       hostControl: "single-panel",
       displayMode: "full",
     };
-    let layout: DashboardLayoutV2 = {
-      version: 2,
+    let layout: DashboardLayoutV3 = {
+      version: 3,
       items: [
         { kind: "tile", ...root },
         { kind: "group", id: "g", showBorder: true, children: [child] },
@@ -381,7 +381,7 @@ describe("createOverlayActions", () => {
       setSettingsTile: () => {},
       setSettingsGroup: () => {},
       applyLayoutStructure: (next) => {
-        if (next.version === 2) layout = next;
+        if (next.version === 2 || next.version === 3) layout = next as DashboardLayoutV3;
       },
     });
     o.deleteGroupChildTile("g", "c1");
@@ -402,8 +402,8 @@ describe("createOverlayActions", () => {
       hostControl: "single-panel",
       displayMode: "full",
     };
-    let layout: DashboardLayoutV2 = {
-      version: 2,
+    let layout: DashboardLayoutV3 = {
+      version: 3,
       items: [{ kind: "group", id: "g", showBorder: true, children: [remove, keep] }],
     };
     let settingsTile: DashboardTile | null = keep;
@@ -417,7 +417,7 @@ describe("createOverlayActions", () => {
       },
       setSettingsGroup: () => {},
       applyLayoutStructure: (next) => {
-        if (next.version === 2) layout = next;
+        if (next.version === 2 || next.version === 3) layout = next as DashboardLayoutV3;
       },
     });
     o.deleteGroupChildTile("g", "c1");
@@ -425,8 +425,8 @@ describe("createOverlayActions", () => {
   });
 
   it("deleteRootLayoutItem removes group and closes overlay", () => {
-    let layout: DashboardLayoutV2 = {
-      version: 2,
+    let layout: DashboardLayoutV3 = {
+      version: 3,
       items: [{ kind: "group", id: "g", showBorder: true, children: [] }],
     };
     let group: DashboardGroup | null = layout.items[0] as DashboardGroup;
@@ -440,7 +440,7 @@ describe("createOverlayActions", () => {
         group = g;
       },
       applyLayoutStructure: (next) => {
-        if (next.version === 2) layout = next;
+        if (next.version === 2 || next.version === 3) layout = next as DashboardLayoutV3;
       },
     });
     o.deleteRootLayoutItem("g");
@@ -455,8 +455,8 @@ describe("createOverlayActions", () => {
       hostControl: "single-panel",
       displayMode: "full",
     };
-    let layout: DashboardLayoutV2 = {
-      version: 2,
+    let layout: DashboardLayoutV3 = {
+      version: 3,
       items: [{ kind: "group", id: "g", showBorder: true, children: [child] }],
     };
     let settingsTile: DashboardTile | null = child;
@@ -470,7 +470,7 @@ describe("createOverlayActions", () => {
       },
       setSettingsGroup: () => {},
       applyLayoutStructure: (next) => {
-        if (next.version === 2) layout = next;
+        if (next.version === 2 || next.version === 3) layout = next as DashboardLayoutV3;
       },
     });
     o.deleteGroupChildTile("g", "c1");

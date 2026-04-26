@@ -1,7 +1,7 @@
 import { perfGridHintOnlyExpandColSpan } from "../plugins/builtinMeta";
 import { clampGridColSpan, clampGridRowSpan, tileColSpan } from "./gridPlacement";
 import { findTileInLayout, mapTileInLayout } from "./layoutTree";
-import type { DashboardLayout, DashboardLayoutV2, DashboardTile } from "./types";
+import type { DashboardLayout, DashboardLayoutV3, DashboardTile } from "./types";
 
 export type ApplyLayoutStructureFn = (
   next: DashboardLayout,
@@ -14,7 +14,7 @@ export type ApplyLayoutStructureFn = (
  * overwrite a wider user width. Future: optional `gridPolicy` on registry entries.
  */
 export function handlePerfTileGridHint(
-  items: DashboardLayoutV2["items"],
+  items: DashboardLayoutV3["items"],
   tileId: string,
   hint: { colSpan: number; rowSpan: number },
   applyLayoutStructure: ApplyLayoutStructureFn,
@@ -37,7 +37,7 @@ export function handlePerfTileGridHint(
   const g = t.grid;
   applyLayoutStructure(
     {
-      version: 2,
+      version: 3,
       items: mapTileInLayout(items, tileId, (x: DashboardTile) => ({
         ...x,
         grid: {

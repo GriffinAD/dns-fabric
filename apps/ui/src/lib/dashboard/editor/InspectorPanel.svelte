@@ -1,9 +1,9 @@
 <script lang="ts">
   import { iterateTilesInLayout } from "../layoutTree";
-  import type { DashboardLayoutV2 } from "../types";
+  import type { DashboardLayoutV3 } from "../types";
   import { editorSelection } from "./editorState";
 
-  let { layout }: { layout: DashboardLayoutV2 } = $props();
+  let { layout }: { layout: DashboardLayoutV3 } = $props();
 
   const tileCount = $derived([...iterateTilesInLayout(layout.items)].length);
 </script>

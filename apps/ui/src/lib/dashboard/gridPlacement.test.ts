@@ -636,7 +636,7 @@ describe("layoutWithGrid", () => {
       ],
     };
     const next = layoutWithGrid(base);
-    expect(next.version).toBe(2);
+    expect(next.version).toBe(3);
     expect(next.items[0]?.kind).toBe("tile");
     if (next.items[0]?.kind === "tile") {
       expect(next.items[0].grid?.colSpan).toBe(1);

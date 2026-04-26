@@ -20,7 +20,7 @@ function resetLayoutLocalPersistGate(): void {
   layoutLocalPersistBlockedReason = null;
 }
 
-/** True after `loadDashboardLayout` / hydrate sees layout JSON with version &gt; 2. */
+/** True after `loadDashboardLayout` / hydrate sees layout JSON with version &gt; 3. */
 export function isLayoutLocalPersistBlocked(): boolean {
   return layoutLocalPersistBlocked;
 }
@@ -51,8 +51,8 @@ export function layoutJsonUnsupportedVersionMessage(value: unknown): string | nu
   if (!value || typeof value !== "object") return null;
   const v = value as Record<string, unknown>;
   if (typeof v.version !== "number") return null;
-  if (v.version > 2) {
-    return `Dashboard layout version ${v.version} is not supported (this app accepts versions 1–2 only).`;
+  if (v.version > 3) {
+    return `Dashboard layout version ${v.version} is not supported (this app accepts versions 1–3 only).`;
   }
   return null;
 }

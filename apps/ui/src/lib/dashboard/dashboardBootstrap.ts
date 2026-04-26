@@ -3,13 +3,13 @@ import { DataGateway } from "../dataGateway";
 import { layoutWithGrid } from "./gridPlacement";
 import type { FabricEventBus } from "./eventBus";
 import { parseDashboardLayout, saveDashboardLayout } from "./layoutStorage";
-import type { DashboardLayoutV2 } from "./types";
-import { isLayoutV2 } from "./types";
+import type { DashboardLayoutV3 } from "./types";
+import { isLayoutV3 } from "./types";
 
 export type DashboardDataBootstrapHandlers = {
   onPluginsLoaded: (items: PluginEntry[]) => void;
   onPluginListError: (message: string) => void;
-  onServerLayoutApplied: (layout: DashboardLayoutV2) => void;
+  onServerLayoutApplied: (layout: DashboardLayoutV3) => void;
   /** GET layout failed or was skipped — UI should treat current layout as cache-only. */
   onLayoutHydrationFromServerFailed?: () => void;
 };
@@ -39,7 +39,7 @@ export function mountDashboardGatewaySideEffects(
       const parsed = parseDashboardLayout(raw);
       if (!parsed) return;
       const withGrid = layoutWithGrid(parsed);
-      if (!isLayoutV2(withGrid)) return;
+      if (!isLayoutV3(withGrid)) return;
       handlers.onServerLayoutApplied(withGrid);
       saveDashboardLayout(withGrid);
     })

@@ -24,6 +24,7 @@ describe("stripLegacyPerfSummaryTiles", () => {
       ],
     };
     const out = stripLegacyPerfSummaryTiles(layout);
+    expect(out.version).toBe(3);
     expect(out.items.length).toBe(0);
   });
 });

@@ -5,11 +5,11 @@ import { DataGateway } from "../dataGateway";
 import * as layoutNormalize from "./layoutNormalize";
 import * as layoutStorage from "./layoutStorage";
 import { createLayoutStore } from "./layoutStore";
-import type { DashboardLayoutV2 } from "./types";
+import type { DashboardLayoutV3 } from "./types";
 
-function minimalLayout(): DashboardLayoutV2 {
+function minimalLayout(): DashboardLayoutV3 {
   return {
-    version: 2,
+    version: 3,
     items: [
       {
         kind: "tile",
@@ -155,8 +155,8 @@ describe("createLayoutStore", () => {
     const put = vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
     const ls = createLayoutStore({ gateway: gw });
     const first = minimalLayout();
-    const second: DashboardLayoutV2 = {
-      version: 2,
+    const second: DashboardLayoutV3 = {
+      version: 3,
       items: [
         {
           kind: "tile",
@@ -354,7 +354,7 @@ describe("createLayoutStore", () => {
     ls.acceptServerLayout(minimalLayout());
     await ls.saveLayoutToFile();
     expect(postSave).toHaveBeenCalledTimes(1);
-    expect(postSave).toHaveBeenCalledWith("default", expect.objectContaining({ version: 2, items: expect.any(Array) }));
+    expect(postSave).toHaveBeenCalledWith("default", expect.objectContaining({ version: 3, items: expect.any(Array) }));
     await vi.advanceTimersByTimeAsync(500);
     expect(put).not.toHaveBeenCalled();
   });

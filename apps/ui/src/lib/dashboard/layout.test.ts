@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { DEFAULT_DASHBOARD_LAYOUT } from "./defaultLayout";
 import { iterateTilesInLayout } from "./layoutTree";
-import { isLayoutV2, type RootTileItem } from "./types";
+import { isLayoutV3, type RootTileItem } from "./types";
 
 describe("DEFAULT_DASHBOARD_LAYOUT", () => {
-  it("is v2 with a status group and root tiles", () => {
-    expect(DEFAULT_DASHBOARD_LAYOUT.version).toBe(2);
-    expect(isLayoutV2(DEFAULT_DASHBOARD_LAYOUT)).toBe(true);
+  it("is v3 with a status group and root tiles", () => {
+    expect(DEFAULT_DASHBOARD_LAYOUT.version).toBe(3);
+    expect(isLayoutV3(DEFAULT_DASHBOARD_LAYOUT)).toBe(true);
     const g = DEFAULT_DASHBOARD_LAYOUT.items.find((i) => i.kind === "group");
     expect(g?.kind).toBe("group");
     expect((g as { children: unknown[] }).children.length).toBe(4);
