@@ -5,7 +5,7 @@ gate: Rolling
 owner: GriffinAD
 peer_reviewer: GriffinAD
 status: Accepted
-last_review: 2026-04-24
+last_review: 2026-04-26
 adrs: []
 invariants: []
 ---
@@ -55,9 +55,20 @@ policy/broker paths, plugin lifecycle, and Kea integration operations.
   `pyproject.toml` is **100** — CI must not regress below **100%** on
   `src/kea_fabric/`.
 - **UI (`apps/ui/`):** Vitest coverage thresholds in `apps/ui/vite.config.ts`
-  enforce **100%** lines, branches, functions, and statements on the included
-  tree (`src/lib/**/*.ts`; `.svelte` sources are exercised via e2e and manual
-  review unless added to coverage scope).
+  enforce **100%** lines, statements, and functions on the **included** tree
+  (`src/lib/**/*.ts`, `src/lib/components/**/*.svelte`, `src/lib/theme/**/*.svelte`).
+  **Branches** use a **98%** floor (Svelte 5 + v8 instrumentation leaves a small
+  share of template branches infeasible to hit cleanly while keeping line
+  coverage strict).
+- **UI breadth (policy):** Every shipped operator surface **should** carry
+  automated tests (Vitest and/or Playwright). The Vitest `coverage.include` list
+  is intentionally **incremental**: expand it to more `src/lib/**/*.svelte`
+  bundles (dashboard shell, palette, plugin tiles, admin) as dedicated mount
+  tests land, so CI line coverage matches the same bar as TypeScript modules.
+- **Bootstrap:** `apps/ui/src/main.ts` applies theme/dashboard document preferences
+  then calls `mountOperatorApp` from `apps/ui/src/lib/operatorBoot.ts`, which is
+  unit-tested (success path mounts `App.svelte`, failure path, and optional
+  `VITE_E2E_THROWING` registration).
 
 ## Cross-refs
 
@@ -75,3 +86,4 @@ policy/broker paths, plugin lifecycle, and Kea integration operations.
 | 2026-04-20 | Accepted | GriffinAD | Testing stack update: Vitest for UI unit/component tests, Playwright for UI automation, and explicit 90%+ / target-100% coverage policy. |
 | 2026-04-22 | Accepted | GriffinAD | **100%** coverage as the project target; **99%** as the enforced CI floor (`fail_under` / Vitest thresholds), replacing the prior 90%+ minimum. |
 | 2026-04-24 | Accepted | GriffinAD | Raised enforced floors to **100%**: Python `fail_under` and Vitest coverage thresholds; clarified UI Vitest include scope. |
+| 2026-04-26 | Accepted | GriffinAD | Documented UI **branch** floor (98%), incremental Svelte coverage include policy, and `operatorBoot` / `main` split for tested bootstrap. |

@@ -35,7 +35,7 @@ Manual unless noted; all should pass on `plugin`.
 
 **Automated verification on branch:** `bash scripts/check_app.sh`; `npm run check:ui-unit` (100% line coverage on enforced UI paths).
 
-**Phase 0 integration commit (this branch):** run `git log -1 --oneline` on `plugin` (integration landed as a single signed commit).
+**Phase 0 integration commit (this branch):** run `git log -1` on `plugin` (integration landed as a single signed commit).
 
 ---
 
@@ -75,7 +75,7 @@ _Update once merge to `main` is done._
 | **Done** | [`migration/`](../../apps/ui/src/lib/dashboard/migration/) (`layoutUpgrade`, golden fixture + test); [`persistence/`](../../apps/ui/src/lib/dashboard/persistence/) (`hydrateInitial`, `remoteLayout`); slim [`layoutStorage.ts`](../../apps/ui/src/lib/dashboard/layoutStorage.ts); `layoutStore` / callers wired; `layoutCompare` / `layoutDedupe` split. |
 | **Remaining** | — |
 | **Verification** | `bash scripts/check_app.sh`; `npm run check:ui-unit` |
-| **Notes / risks** | No intentional UX change beyond modularisation. |
+| **Notes / risks** | No intentional UX change beyond modularization. |
 
 ### Phase 1 inventory (file → responsibility → module)
 
@@ -97,7 +97,7 @@ _Update once merge to `main` is done._
 | **Done** | _(none on this branch — avoids half-working nested DnD after an earlier type spike was reverted.)_ |
 | **Remaining** | Per plan: ADR/types `GroupChild` recursive; `specs/dashboard/layout.schema.json` + OpenAPI + `layout_validate.py`; `layoutJsonUnsupportedVersionMessage` for v3; `migrateV2ToV3` + fixtures; recursive `DashboardHost` + `gridPlacement` / `svelte-dnd-action` zones; max depth / cycle policy; Playwright nested scenario. |
 | **Verification** | _(pending Phase 2 slice)_ |
-| **Notes / risks** | **Explicit follow-up PR** after `plugin` stabilises persistence + palette + toolbar. Blueprint: [`docs/architecture/dashboard-plugin-blueprint.md`](../../docs/architecture/dashboard-plugin-blueprint.md). |
+| **Notes / risks** | **Explicit follow-up PR** after `plugin` stabilizes persistence + palette + toolbar. Blueprint: [`docs/architecture/dashboard-plugin-blueprint.md`](../../docs/architecture/dashboard-plugin-blueprint.md). |
 
 ---
 

@@ -117,11 +117,13 @@
       Could not save layout to the server: {persistError}
     </p>
   {/if}
-  <div class="flex flex-col gap-4 lg:flex-row lg:items-start">
-    <div class="shrink-0 lg:w-52">
-      <DashboardToolbar {ls} {editLayout} />
-    </div>
-    <div class="min-w-0 flex-1">
+  <div class="flex flex-col gap-4">
+    {#if editLayout}
+      <div class="shrink-0 self-start">
+        <DashboardToolbar {ls} />
+      </div>
+    {/if}
+    <div class="min-w-0 w-full flex-1">
       <DashboardHost
         {layout}
         {gateway}
@@ -139,9 +141,11 @@
         onPerfTileGridHint={onPerfTileGridHint}
       />
     </div>
-    <div class="shrink-0 lg:w-64">
-      <InspectorPanel {layout} />
-    </div>
+    {#if editLayout}
+      <div class="shrink-0 w-full min-w-0">
+        <InspectorPanel {layout} />
+      </div>
+    {/if}
   </div>
 {/if}
 
