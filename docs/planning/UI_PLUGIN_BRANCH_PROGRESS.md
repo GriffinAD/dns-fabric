@@ -5,7 +5,7 @@
 
 ## Current focus — Phase 2 closed; rolling verification
 
-**Phase 2 (v3 nested groups)** is **done** on this branch (types, migration, host read/edit, schema, tests). **Remaining:** manual Phase 0 checklist ticks (human sign-off); optional Phase 7 editor DnD polish against the v3 drop matrix; align [`dashboard-plugin-blueprint.md`](../architecture/dashboard-plugin-blueprint.md) or a short ADR only if a **new** host or persistence contract diverges from what the code already implements.
+**Phase 2 (v3 nested groups)** is **done** on this branch (types, migration, host read/edit, schema, tests). **Remaining:** optional Phase 7 editor DnD polish against the v3 drop matrix; align [`dashboard-plugin-blueprint.md`](../architecture/dashboard-plugin-blueprint.md) or a short ADR only if a **new** host or persistence contract diverges from what the code already implements. Phase 0 baseline checklist: **signed off** (manual verification on `plugin`).
 
 ## Before (frozen @ branch cut)
 
@@ -28,14 +28,14 @@ See plan **Architectural layers** table.
 
 Manual unless noted; all should pass on `plugin`.
 
-- [ ] App boots (`npm --prefix apps/ui run dev` or production build).
-- [ ] Dashboard renders with default or cached layout.
-- [ ] Edit mode: enter/exit editor.
-- [ ] Add tile (click + drag from palette).
-- [ ] Add/move container; move tile root ↔ group.
-- [ ] Tile + group settings overlays open/close.
-- [ ] Save layout to file; reset baseline; flush on navigate to admin.
-- [ ] Disabled / unknown plugin / invalid options → fallbacks (no hard crash).
+- [x] App boots (`npm --prefix apps/ui run dev` or production build).
+- [x] Dashboard renders with default or cached layout.
+- [x] Edit mode: enter/exit editor.
+- [x] Add tile (click + drag from palette).
+- [x] Add/move container; move tile root ↔ group.
+- [x] Tile + group settings overlays open/close.
+- [x] Save layout to file; reset baseline; flush on navigate to admin.
+- [x] Disabled / unknown plugin / invalid options → fallbacks (no hard crash).
 
 **Automated verification on branch:** `bash scripts/check_app.sh`; `npm run check:ui-unit` (100% line coverage on enforced UI paths).
 
@@ -65,7 +65,7 @@ _Update once merge to `main` is done._
 | --- | --- |
 | **Status** | done |
 | **Done** | Branch `plugin`; this progress file; [`featureFlags.ts`](../../apps/ui/src/lib/platform/featureFlags.ts) with `ui.palette.v2` (default on branch), `ui.drag.enhanced`, `ui.registry.v2`; Vitest for flags. |
-| **Remaining** | Manual Phase 0 checklist ticks above (human sign-off). Optional Playwright extensions. |
+| **Remaining** | Optional Playwright extensions. |
 | **Verification** | `bash scripts/check_app.sh`; `npm run check:ui-unit` |
 | **Notes / risks** | — |
 
@@ -99,7 +99,7 @@ _Update once merge to `main` is done._
 | --- | --- |
 | **Status** | done |
 | **Done** | Recursive `GroupChild` / v3 layout types + Zod + normalise; `migrateV2ToV3` + golden fixtures + `layout_validate.py` + `specs/dashboard/layout.schema.json` + OpenAPI; `layoutJsonUnsupportedVersionMessage` for v3; nested read host (`DashboardReadNestedHost`, no deprecated `<svelte:self>`); `DashboardHost` + `gridPlacement` / DnD / `layoutTree` / `groupDndFinalize` / undo paths for nested groups; Vitest coverage on enforced paths for migration, strip-legacy, placement, Zod, layout store cap; Playwright `dashboardNested.e2e.ts` (seeded v3 nested layout) + e2e fixture helpers; persisted layout version **3** in parent-move spec. |
-| **Remaining** | Manual Phase 0 checklist (nested moves, save/reset). Optional blueprint touch-up if reviewers want prose parity with shipped behaviour. Phase 7: deeper editor DnD UX still partial (see Phase 7 row). |
+| **Remaining** | Optional blueprint touch-up if reviewers want prose parity with shipped behaviour. Phase 7: deeper editor DnD UX still partial (see Phase 7 row). |
 | **Verification** | `bash scripts/check_app.sh`; `npm run check:ui-unit`; `npm run check:ui-e2e` |
 | **Notes / risks** | Plugin isolation e2e expects `VITE_E2E_THROWING=1` (Playwright `webServer` sets it). With `PW_REUSE_DEV_SERVER=1`, start the same dev command with that env or the spec **skips** after probing `globalThis.__KEA_FABRIC_E2E_THROWING`. Palette e2e accepts both legacy and `ui.palette.v2` test ids. |
 
