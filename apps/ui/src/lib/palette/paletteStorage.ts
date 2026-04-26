@@ -1,7 +1,44 @@
 const PINNED_KEY = "kea-fabric-palette-pinned";
 const RECENT_KEY = "kea-fabric-palette-recent";
+const DOCK_MODE_KEY = "kea-fabric-palette-dock";
 const MAX_RECENT = 12;
 const MAX_PINNED = 24;
+
+/** Where the edit palette sits relative to the dashboard while scrolling. */
+export type PaletteDockMode = "inline" | "sticky" | "float";
+
+export function normalizePaletteDockMode(value: unknown): PaletteDockMode {
+  if (value === "inline" || value === "sticky" || value === "float") return value;
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (t === "inline" || t === "sticky" || t === "float") return t;
+  }
+  return "float";
+}
+
+export function loadPaletteDockMode(): PaletteDockMode {
+  if (typeof localStorage === "undefined") return "float";
+  try {
+    const raw = localStorage.getItem(DOCK_MODE_KEY);
+    if (raw == null || raw === "") return "float";
+    try {
+      return normalizePaletteDockMode(JSON.parse(raw) as unknown);
+    } catch {
+      return normalizePaletteDockMode(raw);
+    }
+  } catch {
+    return "float";
+  }
+}
+
+export function savePaletteDockMode(mode: PaletteDockMode): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(DOCK_MODE_KEY, JSON.stringify(mode));
+  } catch {
+    /* ignore */
+  }
+}
 
 function readJsonArray(key: string): string[] {
   if (typeof localStorage === "undefined") return [];

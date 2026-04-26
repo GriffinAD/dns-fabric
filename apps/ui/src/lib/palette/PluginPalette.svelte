@@ -1,7 +1,15 @@
 <script lang="ts">
   import type { PluginEntry } from "../api/types";
   import { buildPaletteCatalog } from "./paletteCatalog";
-  import { loadPinnedPaletteIds, loadRecentPaletteIds, recordRecentPaletteId, savePinnedPaletteIds } from "./paletteStorage";
+  import {
+    loadPaletteDockMode,
+    loadPinnedPaletteIds,
+    loadRecentPaletteIds,
+    recordRecentPaletteId,
+    savePaletteDockMode,
+    savePinnedPaletteIds,
+    type PaletteDockMode,
+  } from "./paletteStorage";
   import { setPaletteAddGroupDragData, setPalettePluginDragData } from "./paletteDragCodec";
   import type { PaletteItem } from "./types";
 
@@ -18,6 +26,7 @@
   let q = $state("");
   let tab = $state<string>("All");
   let pinnedIds = $state(loadPinnedPaletteIds());
+  let dockMode = $state<PaletteDockMode>(loadPaletteDockMode());
 
   const catalog = $derived(buildPaletteCatalog(plugins));
   const categories = $derived.by(() => {
@@ -36,6 +45,11 @@
   });
 
   const recent = $derived(loadRecentPaletteIds());
+
+  function setDock(next: PaletteDockMode) {
+    dockMode = next;
+    savePaletteDockMode(next);
+  }
 
   function togglePin(id: string) {
     const cur = loadPinnedPaletteIds();
@@ -61,30 +75,81 @@
       onChipClick(item);
     }
   }
+
+  const shellClass = $derived.by(() => {
+    const base =
+      "rounded-lg border border-dashed border-gray-300 bg-gray-50/95 p-2 text-[13px] leading-snug backdrop-blur-sm dark:border-gray-600 dark:bg-gray-900/90";
+    if (dockMode === "float") {
+      return `${base} fixed z-[70] overflow-y-auto shadow-2xl ring-1 ring-black/10 dark:ring-white/15 left-3 right-3 bottom-[max(1rem,env(safe-area-inset-bottom,0px))] top-auto max-h-[min(52vh,22rem)] w-auto sm:left-auto sm:right-4 sm:top-24 sm:bottom-auto sm:max-h-[min(70vh,30rem)] sm:w-[17.5rem]`;
+    }
+    if (dockMode === "sticky") {
+      return `${base} sticky top-20 z-20`;
+    }
+    return base;
+  });
 </script>
 
 <div
-  class="rounded-lg border border-dashed border-gray-300 bg-gray-50/80 p-3 dark:border-gray-600 dark:bg-gray-800/50"
+  class={shellClass}
   data-testid="layout-edit-palette-v2"
   aria-label="Add dashboard plugins"
 >
-  <div class="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+  <div class="mb-1.5 flex flex-wrap items-center justify-between gap-1 border-b border-gray-200/80 pb-1.5 dark:border-gray-600/80">
+    <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Palette</span>
+    <div class="flex shrink-0 gap-0.5 rounded-md bg-gray-200/80 p-0.5 dark:bg-gray-800/80" role="group" aria-label="Palette position">
+      <button
+        type="button"
+        class="rounded px-1.5 py-0.5 text-[10px] font-medium {dockMode === 'inline'
+          ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+          : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}"
+        data-testid="palette-dock-inline"
+        title="Palette scrolls with the page at the top of the editor"
+        onclick={() => setDock("inline")}
+      >
+        Top
+      </button>
+      <button
+        type="button"
+        class="rounded px-1.5 py-0.5 text-[10px] font-medium {dockMode === 'sticky'
+          ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+          : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}"
+        data-testid="palette-dock-sticky"
+        title="Sticks under the header while you scroll the dashboard"
+        onclick={() => setDock("sticky")}
+      >
+        Stick
+      </button>
+      <button
+        type="button"
+        class="rounded px-1.5 py-0.5 text-[10px] font-medium {dockMode === 'float'
+          ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+          : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}"
+        data-testid="palette-dock-float"
+        title="Floating panel — stays on screen while editing lower on the page"
+        onclick={() => setDock("float")}
+      >
+        Float
+      </button>
+    </div>
+  </div>
+
+  <div class="mb-1.5 flex flex-col gap-1 sm:flex-row sm:items-center">
     <label class="sr-only" for="palette-search">Search palette</label>
     <input
       id="palette-search"
-      class="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-900"
-      placeholder="Search plugins…"
+      class="w-full rounded border border-gray-300 bg-white px-1.5 py-0.5 text-xs dark:border-gray-600 dark:bg-gray-900"
+      placeholder="Search…"
       bind:value={q}
       autocomplete="off"
     />
   </div>
-  <div class="mb-2 flex flex-wrap gap-1" role="tablist" aria-label="Palette categories">
+  <div class="mb-1.5 flex flex-wrap gap-0.5" role="tablist" aria-label="Palette categories">
     {#each categories as c (c)}
       <button
         type="button"
         role="tab"
         aria-selected={tab === c}
-        class="rounded px-2 py-0.5 text-xs font-medium {tab === c
+        class="rounded px-1.5 py-px text-[10px] font-medium {tab === c
           ? 'bg-primary-600 text-white'
           : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100'}"
         onclick={() => {
@@ -96,12 +161,12 @@
     {/each}
   </div>
   {#if pinnedIds.length > 0}
-    <p class="mb-1 text-xs font-semibold text-gray-600 dark:text-gray-400">Pinned</p>
-    <div class="mb-2 flex flex-wrap gap-2">
+    <p class="mb-0.5 text-[10px] font-semibold text-gray-600 dark:text-gray-400">Pinned</p>
+    <div class="mb-1 flex flex-wrap gap-1">
       {#each catalog.filter((i) => i.kind === "plugin" && pinnedIds.includes(i.id)) as p (p.id)}
         <button
           type="button"
-          class="rounded border border-amber-400/80 bg-amber-50 px-2 py-1 text-xs dark:border-amber-700 dark:bg-amber-950/40"
+          class="rounded border border-amber-400/70 bg-amber-50 px-1.5 py-px text-[10px] dark:border-amber-700 dark:bg-amber-950/40"
           onclick={() => togglePin(p.id)}
         >
           Unpin {p.label}
@@ -110,15 +175,15 @@
     </div>
   {/if}
   {#if recent.length > 0 && q.trim() === ""}
-    <p class="mb-1 text-xs font-semibold text-gray-600 dark:text-gray-400">Recent</p>
-    <div class="mb-2 flex flex-wrap gap-2">
+    <p class="mb-0.5 text-[10px] font-semibold text-gray-600 dark:text-gray-400">Recent</p>
+    <div class="mb-1 flex flex-wrap gap-1">
       {#each recent as rid (rid)}
         {@const item = catalog.find((i) => i.kind === "plugin" && i.id === rid)}
         {#if item && item.kind === "plugin"}
           <button
             type="button"
             draggable="true"
-            class="cursor-grab rounded-lg bg-gray-200 px-3 py-1 text-xs dark:bg-gray-700"
+            class="cursor-grab rounded border border-gray-300 bg-gray-100 px-1.5 py-px text-[10px] dark:border-gray-600 dark:bg-gray-700"
             aria-label="Add {item.label}"
             ondragstart={(e: DragEvent) => setPalettePluginDragData(e, item.id)}
             onclick={() => onChipClick(item)}
@@ -129,18 +194,23 @@
       {/each}
     </div>
   {/if}
-  <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">
-    <strong>Containers:</strong> use <span class="font-mono">Add container</span> or drag it. <strong>Tiles:</strong> drag
-    a chip or press Enter when focused.
-  </p>
-  <div class="flex flex-col gap-2">
+  <details class="mb-1.5 text-[10px] text-gray-600 dark:text-gray-400">
+    <summary class="cursor-pointer select-none text-gray-500 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-200">
+      How to add tiles
+    </summary>
+    <p class="mt-1 pl-0.5">
+      <strong>Containers:</strong> <span class="font-mono">Add container</span> or drag it.
+      <strong>Tiles:</strong> drag a chip or press Enter when focused.
+    </p>
+  </details>
+  <div class="flex flex-col gap-1">
     {#each filtered as item, idx (`${item.kind}-${item.kind === "plugin" ? item.id : item.id}-${idx}`)}
       {#if item.kind === "core" && item.id === "core:add-group" && onAddGroup}
         <button
           type="button"
           draggable="true"
           tabindex="0"
-          class="cursor-grab select-none rounded-lg border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:outline-none active:cursor-grabbing dark:bg-primary-500 dark:hover:bg-primary-600"
+          class="cursor-grab select-none rounded-md border border-transparent bg-primary-600 px-2 py-1 text-xs font-medium text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:outline-none active:cursor-grabbing dark:bg-primary-500 dark:hover:bg-primary-600"
           data-testid="layout-add-container"
           aria-label={item.label}
           onkeydown={(e) => onChipKeydown(e, item)}
@@ -150,12 +220,12 @@
           {item.label}
         </button>
       {:else if item.kind === "plugin"}
-        <div class="flex flex-wrap items-center gap-1">
+        <div class="flex flex-wrap items-center gap-0.5">
           <button
             type="button"
             draggable="true"
             tabindex="0"
-            class="cursor-grab select-none rounded-lg border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:outline-none active:cursor-grabbing dark:bg-primary-500 dark:hover:bg-primary-600"
+            class="cursor-grab select-none rounded-md border border-transparent bg-primary-600 px-2 py-1 text-xs font-medium text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:outline-none active:cursor-grabbing dark:bg-primary-500 dark:hover:bg-primary-600"
             aria-label="Add {item.label}"
             data-testid="palette-plugin-{item.id}"
             onkeydown={(e) => onChipKeydown(e, item)}
@@ -166,7 +236,7 @@
           </button>
           <button
             type="button"
-            class="rounded border border-gray-300 px-1 text-xs text-gray-600 dark:border-gray-600 dark:text-gray-300"
+            class="rounded border border-gray-300 px-1 text-[10px] leading-none text-gray-600 dark:border-gray-600 dark:text-gray-300"
             aria-label="Pin or unpin {item.label}"
             onclick={() => togglePin(item.id)}
           >
@@ -177,6 +247,6 @@
     {/each}
   </div>
   {#if filtered.length === 0}
-    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400" role="status">No palette items match this filter.</p>
+    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" role="status">No palette items match this filter.</p>
   {/if}
 </div>
