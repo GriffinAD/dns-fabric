@@ -1,6 +1,6 @@
 /**
  * Drag intent taxonomy for dashboard DnD (palette, in-grid moves). Wire Host + interactions
- * layers incrementally; see `UI_PLUGIN_BRANCH_PROGRESS.md` Phase 7.
+ * layers incrementally; see `UI_PLUGIN_BRANCH_PROGRESS.md` Phase 7 (matrix + `dndEditorFeedback`).
  */
 export type DashboardDragIntent =
   | { kind: "palette-plugin"; pluginId: string }

@@ -37,6 +37,12 @@
     type DashboardDndListItem,
     isDndCellGroup,
   } from "./groupDndFinalize";
+  import {
+    dashboardEditorDropTargetStyle,
+    dashboardEditorNestedFlipMs,
+    dashboardEditorRootFlipMs,
+    readPrefersReducedMotion,
+  } from "./interactions/dndEditorFeedback";
   import { dedupeById } from "./layoutTree";
   import { stripScrollportObserve } from "./stripWidth";
   import type {
@@ -144,7 +150,21 @@
 
   /** Rely on `enabled` only: some API responses omit `ui_dashboard` and would hide the whole palette. */
   const palette = $derived(plugins.filter((p) => p.enabled));
-  const flipDurationMs = 180;
+
+  /** Phase 7: honour `prefers-reduced-motion` for root FLIP only; nested zones stay at 0 ms. */
+  let reducedMotion = $state(readPrefersReducedMotion());
+  $effect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => {
+      reducedMotion = mq.matches;
+    };
+    reducedMotion = mq.matches;
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  });
+  const rootFlipMs = $derived(dashboardEditorRootFlipMs(reducedMotion));
+  const editorDropTargetStyle = dashboardEditorDropTargetStyle();
 
   /** Viewport width for an editor “strip” (Auto wrap off) — same math as `GroupReadNoWrap` widthPx. */
   let noWrapEditPortW = $state<Record<string, number>>({});
@@ -301,11 +321,11 @@
         aria-label="Dashboard tile grid"
         use:dragHandleZone={{
           items: dndRoot,
-          flipDurationMs,
+          flipDurationMs: rootFlipMs,
           type: SVELTE_DND_TYPE_DASHBOARD,
           autoAriaDisabled: true,
           morphDisabled: true,
-          dropTargetStyle: { outline: "none" },
+          dropTargetStyle: editorDropTargetStyle,
         }}
         onconsider={handleRootConsider}
         onfinalize={handleRootFinalize}
@@ -377,12 +397,12 @@
                         : 'min-h-0'}"
                       use:dragHandleZone={{
                         items: gItems,
-                        flipDurationMs: 0,
+                        flipDurationMs: dashboardEditorNestedFlipMs(),
                         type: SVELTE_DND_TYPE_DASHBOARD,
                         autoAriaDisabled: true,
                         morphDisabled: true,
                         dropAnimationDisabled: true,
-                        dropTargetStyle: { outline: "none" },
+                        dropTargetStyle: editorDropTargetStyle,
                       }}
                       onconsider={handleGroupConsider(g.id)}
                       onfinalize={handleGroupFinalize(g.id)}
@@ -446,12 +466,12 @@
                       use:noWrapStripPortMeasure={g.id}
                       use:dragHandleZone={{
                         items: gItems,
-                        flipDurationMs: 0,
+                        flipDurationMs: dashboardEditorNestedFlipMs(),
                         type: SVELTE_DND_TYPE_DASHBOARD,
                         autoAriaDisabled: true,
                         morphDisabled: true,
                         dropAnimationDisabled: true,
-                        dropTargetStyle: { outline: "none" },
+                        dropTargetStyle: editorDropTargetStyle,
                       }}
                       onconsider={handleGroupConsider(g.id)}
                       onfinalize={handleGroupFinalize(g.id)}
@@ -479,12 +499,12 @@
                               class="mt-1 flex min-h-0 min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto px-1 pb-1"
                               use:dragHandleZone={{
                                 items: subList,
-                                flipDurationMs: 0,
+                                flipDurationMs: dashboardEditorNestedFlipMs(),
                                 type: SVELTE_DND_TYPE_DASHBOARD,
                                 autoAriaDisabled: true,
                                 morphDisabled: true,
                                 dropAnimationDisabled: true,
-                                dropTargetStyle: { outline: "none" },
+                                dropTargetStyle: editorDropTargetStyle,
                               }}
                               onconsider={handleGroupConsider(sub.id)}
                               onfinalize={handleGroupFinalize(sub.id)}

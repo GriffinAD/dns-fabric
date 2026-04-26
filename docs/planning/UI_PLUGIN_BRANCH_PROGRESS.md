@@ -154,9 +154,20 @@ _Update once merge to `main` is done._
 | Field | Content |
 | --- | --- |
 | **Status** | partial |
-| **Done** | `interactions/dragIntent.ts` + `DASHBOARD_DRAG_INTENT_KINDS` + unit test; progress doc intent taxonomy pointer in plan. |
-| **Remaining** | Ghost, snap preview, drop highlight, rAF throttle, reduced-motion path, Playwright per plan §Phase 7. **Host-level** drop UX should target the **v3** recursive drop matrix once Phase 2 lands (avoid polishing v2-only zones that will be replaced). |
+| **Done** | `interactions/dragIntent.ts` + `DASHBOARD_DRAG_INTENT_KINDS` + unit test; **`interactions/dndEditorFeedback.ts`** + tests — shared **`dropTargetStyle`** (dashed primary outline) on all editor `dragHandleZone`s; root **FLIP** duration **180 ms** with **`prefers-reduced-motion: reduce` → 0 ms**; nested zones stay **0 ms** flip (perf guardrail). Matrix below. |
+| **Remaining** | Drag ghost / lift (`transformDraggedElement`), snap preview, rAF-throttled consider handlers if profiling shows jank, invalid-drop visuals, Playwright where stable. |
 | **Verification** | `npm run check:ui-unit` |
+
+### Drag intent → drop target (v3 editor)
+
+| Intent (`dragIntent.ts`) | Primary interaction | Valid drop targets (editor) |
+| --- | --- | --- |
+| `palette-plugin` | Palette / codec drag | Root `dragHandleZone`, group HTML5 `ondrop` (inner grid / nowrap strip), canvas chrome |
+| `palette-core` (`add-group`) | Add container chip | Root grid / canvas (native drop) |
+| `grid-tile` | Grip on tile | Any `dragHandleZone` of type `dashboard-layout` (root ↔ group ↔ nested group strip) |
+| `grid-group` | Grip on container | Same `dashboard-layout` **dragHandleZone** regions as tiles (root + per-group lists); structure updates go through `groupDndFinalize` / layout store. |
+
+Placement semantics are unchanged; this table is for UX and future ghost/snap work.
 
 ---
 
