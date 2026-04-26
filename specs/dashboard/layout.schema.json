@@ -90,6 +90,36 @@
         { "$ref": "#/$defs/dashboardGroup" },
         { "$ref": "#/$defs/dashboardTile" }
       ]
+    },
+    "dashboardGroupV3": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "v3 group: children may be tiles or nested groups (max nesting depth 8). innerWrap groups must not contain nested groups; enforce in API (layout_validate.py) and UI.",
+      "required": ["kind", "id", "children"],
+      "properties": {
+        "kind": { "const": "group" },
+        "id": { "type": "string", "minLength": 1 },
+        "showBorder": { "type": "boolean" },
+        "innerWrap": { "type": "boolean" },
+        "grid": { "$ref": "#/$defs/gridPlacement" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/groupChildV3" }
+        }
+      }
+    },
+    "groupChildV3": {
+      "oneOf": [
+        { "$ref": "#/$defs/dashboardTile" },
+        { "$ref": "#/$defs/dashboardGroupV3" }
+      ],
+      "description": "Tile or nested group (v3 only)."
+    },
+    "rootLayoutItemV3": {
+      "oneOf": [
+        { "$ref": "#/$defs/dashboardGroupV3" },
+        { "$ref": "#/$defs/dashboardTile" }
+      ]
     }
   },
   "oneOf": [
@@ -116,6 +146,19 @@
         "items": {
           "type": "array",
           "items": { "$ref": "#/$defs/rootLayoutItem" }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "title": "DashboardLayoutV3",
+      "required": ["version", "items"],
+      "properties": {
+        "version": { "type": "integer", "const": 3 },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/rootLayoutItemV3" }
         }
       }
     }
