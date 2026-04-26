@@ -7,14 +7,14 @@ describe("remoteLayout", () => {
   it("flushLayoutToServer delegates to gateway.putDashboardLayout", async () => {
     const put = vi.fn().mockResolvedValue(undefined);
     const gateway = { putDashboardLayout: put } as unknown as DataGateway;
-    await flushLayoutToServer(gateway, "default", { version: 2, items: [] });
-    expect(put).toHaveBeenCalledWith("default", { version: 2, items: [] });
+    await flushLayoutToServer(gateway, "default", { version: 3, items: [] });
+    expect(put).toHaveBeenCalledWith("default", { version: 3, items: [] });
   });
 
   it("postLayoutSaveFileSnapshot delegates to gateway.postDashboardLayoutSaveFile", async () => {
     const post = vi.fn().mockResolvedValue(undefined);
     const gateway = { postDashboardLayoutSaveFile: post } as unknown as DataGateway;
-    await postLayoutSaveFileSnapshot(gateway, "x", { version: 2, items: [] });
-    expect(post).toHaveBeenCalledWith("x", { version: 2, items: [] });
+    await postLayoutSaveFileSnapshot(gateway, "x", { version: 3, items: [] });
+    expect(post).toHaveBeenCalledWith("x", { version: 3, items: [] });
   });
 });

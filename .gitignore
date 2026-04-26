@@ -19,3 +19,8 @@ playwright-report/
 
 # Timestamped dashboard layout snapshots (server `dashboard-layout-exports/` or UI mock)
 **/Dashboard_Layout_*.json
+
+# Mutable operator layout cache at default KEA_FABRIC_DATA_DIR (not CI fixtures).
+# Keep `.fabric-data/dashboard-layouts.orig.json` tracked for UI mock baseline reads.
+.fabric-data/dashboard-layouts.json
+.fabric-data/dashboard-layout-exports/

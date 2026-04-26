@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { get } from "svelte/store";
+
   import Button from "flowbite-svelte/Button.svelte";
 
   import type { PluginEntry } from "../api/types";
@@ -11,10 +13,10 @@
   import TileSettingsOverlay from "./TileSettingsOverlay.svelte";
   import { groupOuterColSpan } from "./gridPlacement";
   import type { LayoutStore } from "./layoutStore";
-  import { findTileInLayout, PARENT_ID_DASHBOARD } from "./layoutTree";
+  import { collectAllGroupsInLayout, findTileInLayout, PARENT_ID_DASHBOARD } from "./layoutTree";
   import { clearStoredDashboardLayoutAndUnlock } from "./layoutStorage";
   import type { OverlayActions } from "./overlayActions";
-  import type { DashboardGroup, DashboardLayoutV2, DashboardTile } from "./types";
+  import type { DashboardGroup, DashboardLayoutV3, DashboardTile } from "./types";
 
   let {
     gateway,
@@ -33,7 +35,7 @@
   }: {
     gateway: DataGateway;
     plugins: PluginEntry[];
-    layout: DashboardLayoutV2;
+    layout: DashboardLayoutV3;
     editLayout: boolean;
     loadError: string | null;
     persistError: string | null;
@@ -60,15 +62,11 @@
 
   const parentOptions = $derived([
     { value: PARENT_ID_DASHBOARD, label: "Dashboard (root)" },
-    ...layout.items
-      .filter((it): it is DashboardGroup => it.kind === "group")
-      .map((g) => ({ value: g.id, label: `Container: ${g.id}` })),
+    ...collectAllGroupsInLayout(layout.items).map((g) => ({ value: g.id, label: `Container: ${g.id}` })),
   ]);
 
   const tileSettingsContainerMeta = $derived(
-    layout.items
-      .filter((it): it is DashboardGroup => it.kind === "group")
-      .map((g) => ({ id: g.id, innerWrap: g.innerWrap === true })),
+    collectAllGroupsInLayout(layout.items).map((g) => ({ id: g.id, innerWrap: g.innerWrap === true })),
   );
 
   function onEditTile(tile: DashboardTile) {
@@ -80,7 +78,69 @@
     editorSelection.set({ kind: "group", id: g.id, label: g.id });
     overlay.openGroupSettings(g);
   }
+
+  function isEditableTarget(node: EventTarget | null): boolean {
+    if (!(node instanceof HTMLElement)) return false;
+    if (node.isContentEditable) return true;
+    if (node.closest("[contenteditable='true']")) return true;
+    const t = node.tagName;
+    return t === "INPUT" || t === "TEXTAREA" || t === "SELECT";
+  }
+
+  function removeTileFromSettings() {
+    const st = settingsTile;
+    if (!st) return;
+    const f = findTileInLayout(layout.items, st.id);
+    if (f?.inGroup) {
+      overlay.deleteGroupChildTile(f.inGroup.id, st.id);
+    } else {
+      overlay.deleteRootLayoutItem(st.id);
+    }
+    overlay.closeTileSettings();
+  }
+
+  function removeGroupFromSettings() {
+    const sg = settingsGroup;
+    if (!sg) return;
+    const isRoot = layout.items.some((it) => it.kind === "group" && it.id === sg.id);
+    if (isRoot) {
+      overlay.deleteRootLayoutItem(sg.id);
+    } else {
+      overlay.deleteLayoutGroupById(sg.id);
+    }
+    overlay.closeGroupSettings();
+  }
+
+  function handleEditorDeleteKey(e: KeyboardEvent) {
+    if (e.key !== "Delete" || e.repeat) return;
+    // Modal dialogs own their own keyboard UX; don't let global editor shortcuts fire there.
+    if (settingsTile || settingsGroup) return;
+    if (isEditableTarget(e.target) || isEditableTarget(document.activeElement)) return;
+    if (!editLayout) return;
+    const sel = get(editorSelection);
+    if (!sel) return;
+    e.preventDefault();
+    if (sel.kind === "tile") {
+      const f = findTileInLayout(layout.items, sel.id);
+      if (f?.inGroup) {
+        overlay.deleteGroupChildTile(f.inGroup.id, sel.id);
+      } else {
+        overlay.deleteRootLayoutItem(sel.id);
+      }
+      editorSelection.set(null);
+      return;
+    }
+    const isRoot = layout.items.some((it) => it.kind === "group" && it.id === sel.id);
+    if (isRoot) {
+      overlay.deleteRootLayoutItem(sel.id);
+    } else {
+      overlay.deleteLayoutGroupById(sel.id);
+    }
+    editorSelection.set(null);
+  }
 </script>
+
+<svelte:window onkeydown={handleEditorDeleteKey} />
 
 {#if loadError}
   <p class="text-red-600 dark:text-red-400" role="alert">{loadError}</p>
@@ -117,31 +177,36 @@
       Could not save layout to the server: {persistError}
     </p>
   {/if}
-  <div class="flex flex-col gap-4 lg:flex-row lg:items-start">
-    <div class="shrink-0 lg:w-52">
-      <DashboardToolbar {ls} {editLayout} />
-    </div>
-    <div class="min-w-0 flex-1">
+  <div class="flex flex-col gap-4">
+    {#if editLayout}
+      <div class="shrink-0 self-start">
+        <DashboardToolbar {ls} />
+      </div>
+    {/if}
+    <div class="min-w-0 w-full flex-1">
       <DashboardHost
         {layout}
         {gateway}
         {plugins}
         {editLayout}
+        activeEditorKind={$editorSelection?.kind ?? null}
+        activeEditorId={$editorSelection?.id ?? null}
         onAddTile={ls.addRootTile}
         onAddGroup={ls.addGroup}
+        onAddGroupToGroup={ls.addGroupToParent}
         onAddTileToGroup={ls.addTileToGroup}
         onLayoutStructureChange={(next) =>
           ls.applyStructure(next, { preserveRootPlacementIfComplete: true })}
         onEditTile={onEditTile}
         onEditGroup={onEditGroup}
-        onDeleteRootItem={overlay.deleteRootLayoutItem}
-        onDeleteGroupChildTile={overlay.deleteGroupChildTile}
         onPerfTileGridHint={onPerfTileGridHint}
       />
     </div>
-    <div class="shrink-0 lg:w-64">
-      <InspectorPanel {layout} />
-    </div>
+    {#if editLayout}
+      <div class="shrink-0 w-full min-w-0">
+        <InspectorPanel {layout} />
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -156,11 +221,17 @@
       containerGroups={tileSettingsContainerMeta}
       onClose={overlay.closeTileSettings}
       onSave={overlay.saveTileFromOverlay}
+      onDelete={removeTileFromSettings}
     />
   {/key}
 {/if}
 {#if settingsGroup}
   {#key settingsGroup.id}
-    <GroupSettingsOverlay group={settingsGroup} onClose={overlay.closeGroupSettings} onSave={overlay.saveGroupFromOverlay} />
+    <GroupSettingsOverlay
+      group={settingsGroup}
+      onClose={overlay.closeGroupSettings}
+      onSave={overlay.saveGroupFromOverlay}
+      onDelete={removeGroupFromSettings}
+    />
   {/key}
 {/if}

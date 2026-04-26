@@ -5,7 +5,7 @@ gate: Rolling
 owner: GriffinAD
 peer_reviewer: GriffinAD
 status: Accepted
-last_review: 2026-04-21
+last_review: 2026-04-26
 adrs: [ADR-0016, ADR-0017, ADR-0045, ADR-0046, ADR-0047, ADR-0048, ADR-0049]
 invariants: []
 ---
@@ -47,6 +47,11 @@ not bundle alternate icon packs or custom font stacks at runtime.
 
 The dashboard runtime is a host shell that renders plugin surfaces inside
 container controls selected by dashboard configuration.
+
+The diagram below is the **host-control taxonomy** for plugin manifest
+`allowed_host_controls`. The **primary shipped layout editor** is
+`DashboardHost` (20-column grid, nested groups, layout document **v3**); see
+[Layout editor v3 and drag/drop split](#layout-editor-v3-and-dragdrop-split).
 
 - `DashboardEditor` provides palette + layout editing.
 - `DashboardHost` resolves stored layout into active containers.
@@ -109,6 +114,24 @@ it can appear in the editor palette.
 - Reorder and resize where host/container allows.
 - Persist layout mutations only after validation.
 - Reject invalid drops with user-visible reason.
+
+### Layout editor v3 and drag/drop split
+
+- **Grid model:** `DashboardHost` implements the **20-column** editor/read grid
+  and **nested dashboard groups** persisted as layout **v3**
+  (`specs/dashboard/layout.schema.json`, `apps/ui/src/lib/dashboard/gridPlacement.ts`).
+- **Two drag systems:** **Native HTML5** drag/drop handles **palette → grid**
+  insertions (MIME types on `DataTransfer`; `dragover`/`drop` on the editor
+  chrome). **In-grid reorder** (root and inside groups) uses
+  **`svelte-dnd-action`** (`dragHandleZone`) so `preventDefault` on `dragover`
+  is not applied to non-palette drags.
+- **Host DOM contract:** geometry and palette insert-index helpers MUST resolve
+  editor surfaces via stable `data-dashboard-editor` attributes
+  (`grid-chrome`, `drop-zone`, `tile-row`, `palette`) defined in
+  `apps/ui/src/lib/dashboard/interactions/editorDomContract.ts`. `data-testid`
+  remains for Playwright and debugging but is **not** the sole selector for
+  engine logic. Palette root-drop orchestration lives in
+  `apps/ui/src/lib/dashboard/interactions/editorPaletteRootDrop.ts`.
 
 ### Host controls
 
@@ -331,3 +354,4 @@ Operators can change **display mode**, **host control** (from the plugin manifes
 | 2026-04-22 | Accepted | GriffinAD | Cross-ref ADR-0047 (charts: Flowbite Svelte plugin + bespoke SVG). |
 | 2026-04-23 | Accepted | GriffinAD | Working UI engine docs at repo root: `UI_ENGINE_REVIEW.md`, `UI_ENGINE_SPEC.md`, `UI_ENGINE_PLAN.md` (implementation plan; promote into this doc when execution completes). |
 | 2026-04-23 | Accepted | GriffinAD | Phase 8 closure: implementation snapshot refreshed (registry, layout store, event bus, ADR-0048/0049); runtime plugin contract §; `specs/contracts/ui_dashboard_plugin.py` aligned with OpenAPI; planning docs moved under `docs/planning/` with banners. |
+| 2026-04-26 | Accepted | GriffinAD | Narrative bridge: layout v3 `DashboardHost` vs diagram host-controls; HTML5 palette vs svelte-dnd split; documented `data-dashboard-editor` DOM contract + `editorPaletteRootDrop` module. |

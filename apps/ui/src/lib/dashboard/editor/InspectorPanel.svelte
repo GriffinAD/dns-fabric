@@ -1,11 +1,21 @@
 <script lang="ts">
-  import { iterateTilesInLayout } from "../layoutTree";
-  import type { DashboardLayoutV2 } from "../types";
+  import { findTileInLayout, iterateTilesInLayout } from "../layoutTree";
+  import type { DashboardLayoutV3 } from "../types";
   import { editorSelection } from "./editorState";
 
-  let { layout }: { layout: DashboardLayoutV2 } = $props();
+  let { layout }: { layout: DashboardLayoutV3 } = $props();
 
   const tileCount = $derived([...iterateTilesInLayout(layout.items)].length);
+
+  /** Where the selected tile lives (for inspector only; not painted on the dashboard in read mode). */
+  const tilePlacementParentLabel = $derived.by((): string | null => {
+    const s = $editorSelection;
+    if (s == null || s.kind !== "tile") return null;
+    const f = findTileInLayout(layout.items, s.id);
+    if (f == null) return null;
+    if (f.inGroup == null) return "Dashboard (root grid)";
+    return `Container ${f.inGroup.id}`;
+  });
 </script>
 
 <aside
@@ -21,6 +31,11 @@
       <span class="font-mono">{$editorSelection.id}</span>
       — {$editorSelection.label}
     </p>
+    {#if $editorSelection.kind === "tile" && tilePlacementParentLabel}
+      <p class="mt-1 text-gray-600 dark:text-gray-400" data-testid="inspector-tile-parent">
+        Placement: {tilePlacementParentLabel}
+      </p>
+    {/if}
   {:else}
     <p class="mt-2 text-gray-500 dark:text-gray-400">Select a tile or container in the grid to see details.</p>
   {/if}

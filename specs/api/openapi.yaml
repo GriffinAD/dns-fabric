@@ -541,17 +541,53 @@ components:
         showBorder:
           type: boolean
           description: When true, draw a border on the group and hide inner tile card chrome. Default true if omitted.
+        innerWrap:
+          type: boolean
+          description: >
+            When true, child tiles use root-width grid cells (no horizontal strip). v2 groups only
+            allow tiles as children.
         grid:
           $ref: "#/components/schemas/GridPlacement"
         children:
           type: array
           items:
             $ref: "#/components/schemas/DashboardTile"
+    DashboardGroupV3:
+      type: object
+      additionalProperties: false
+      required: [kind, id, children]
+      description: >
+        v3 group: children may be tiles or nested groups (max depth 8). innerWrap must not wrap
+        nested groups; validated server-side (see specs/dashboard/layout.schema.json).
+      properties:
+        kind:
+          type: string
+          enum: [group]
+        id:
+          type: string
+          minLength: 1
+        showBorder:
+          type: boolean
+        innerWrap:
+          type: boolean
+        grid:
+          $ref: "#/components/schemas/GridPlacement"
+        children:
+          type: array
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/DashboardTile"
+              - $ref: "#/components/schemas/DashboardGroupV3"
     RootLayoutItem:
       oneOf:
         - $ref: "#/components/schemas/DashboardGroup"
         - $ref: "#/components/schemas/DashboardTile"
       description: v2 root row is an array of groups and/or tiles (kind discriminates group vs tile).
+    RootLayoutItemV3:
+      oneOf:
+        - $ref: "#/components/schemas/DashboardGroupV3"
+        - $ref: "#/components/schemas/DashboardTile"
+      description: v3 root row; groups may nest (subject to depth and innerWrap rules).
     DashboardLayoutV1:
       type: object
       additionalProperties: false
@@ -576,13 +612,27 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RootLayoutItem"
+    DashboardLayoutV3:
+      type: object
+      additionalProperties: false
+      required: [version, items]
+      properties:
+        version:
+          type: integer
+          enum: [3]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RootLayoutItemV3"
     DashboardLayout:
       oneOf:
         - $ref: "#/components/schemas/DashboardLayoutV1"
         - $ref: "#/components/schemas/DashboardLayoutV2"
+        - $ref: "#/components/schemas/DashboardLayoutV3"
       description: >
-        v1 is a flat `tiles` array. v2 uses `items` with nested `group` containers and optional
-        `kind` on root tiles. Validated server-side against specs/dashboard/layout.schema.json.
+        v1 is a flat `tiles` array. v2 uses `items` with group containers (tile children only).
+        v3 allows nested groups under `items`. Validated server-side against
+        specs/dashboard/layout.schema.json.
     DashboardLayoutSaveFileResponse:
       type: object
       additionalProperties: false

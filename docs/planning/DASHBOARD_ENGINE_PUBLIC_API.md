@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Layout types | `dashboard/types.ts` | stable |
 | Migration | `dashboard/migration/` | stable |
-| Persistence façade | `dashboard/persistence/` | stable |
+| Persistence facade | `dashboard/persistence/` | stable |
 | Grid placement | `dashboard/gridPlacement.ts`, `dashboard/layoutTree.ts` | stable |
 | Host view contract | `dashboard/DashboardHost.svelte` props | experimental |
 | Kea adapters | `dataGateway.ts`, `api/types.ts` | internal (host-specific) |

@@ -21,6 +21,14 @@ items in [`UI_ENGINE_PLAN.md`](UI_ENGINE_PLAN.md). Where this spec contradicts
 is Accepted). This doc is meant to be promoted into that blueprint (or a
 sibling Tier C doc) once agreed.
 
+**Normative host detail (Accepted blueprint):** layout schema **v3**, host DOM
+contract (`data-dashboard-editor`, `data-dashboard-tile-grid`, related
+attributes), and the split between **HTML5** palette / root insertion drags vs
+**svelte-dnd-action** in-grid reordering are specified in
+[`dashboard-plugin-blueprint.md`](../architecture/dashboard-plugin-blueprint.md).
+The root edit-mode grid markup lives in `apps/ui/src/lib/dashboard/DashboardEditRootGrid.svelte`
+(state and commit handlers remain in `DashboardHost.svelte`).
+
 ---
 
 ## 1. Principles

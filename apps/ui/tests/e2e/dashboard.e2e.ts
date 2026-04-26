@@ -28,7 +28,8 @@ test("dashboard host renders tiles from mock API", async ({ page }) => {
 test("edit layout shows palette on the live dashboard", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Edit layout" }).click();
-  await expect(page.getByTestId("layout-edit-palette")).toBeVisible();
+  const palette = page.getByTestId("layout-edit-palette").or(page.getByTestId("layout-edit-palette-v2"));
+  await expect(palette).toBeVisible();
   await expect(page.getByRole("button", { name: "Add DHCP pools" })).toBeVisible();
 });
 
@@ -68,14 +69,25 @@ test("layout editor drop zone reserves bottom padding for drag hit-testing past 
   expect(paddingBottomPx).toBeGreaterThan(120);
 });
 
+test("layout editor root grid enforces minimum row gap for between-row DnD hit testing", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Edit layout" }).click();
+  const rowGapPx = await page.getByTestId("editor-drop-zone").evaluate((el) => {
+    return parseFloat(window.getComputedStyle(el).rowGap);
+  });
+  /* At least 0.75rem so the dragged ghost’s centre can sit between full-width root rows when
+   * `--dashboard-gap` is 0 (svelte-dnd-action uses centre-based index resolution). */
+  expect(rowGapPx).toBeGreaterThanOrEqual(11);
+});
+
 test("layout editor persists perf display style after leaving edit mode", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Edit layout" }).click();
-  await page
+  const ramTile = page
     .getByTestId("editor-drop-zone")
-    .locator('[data-testid="editor-tile"][data-tile-id="tile-perf-ram"]')
-    .getByTestId("tile-edit-button")
-    .click();
+    .locator('[data-testid="editor-tile"][data-tile-id="tile-perf-ram"]');
+  await ramTile.hover();
+  await ramTile.getByTestId("tile-edit-button").click();
   await expect(page.getByTestId("tile-settings-overlay")).toBeVisible();
   await page.getByTestId("tile-settings-perf-display").selectOption("percent_only");
   await page.getByTestId("tile-settings-overlay").getByRole("button", { name: "Save" }).click();
@@ -88,10 +100,9 @@ test("tile settings parent: move tile from container to dashboard root", async (
   await expect(page.getByTestId("dashboard-host")).toBeVisible();
   await page.getByRole("button", { name: "Edit layout", exact: true }).click();
   await expect(page.getByTestId("editor-drop-zone")).toBeVisible();
-  await page
-    .locator('[data-testid="editor-tile"][data-tile-id="tile-perf-ram"]')
-    .getByTestId("tile-edit-button")
-    .click();
+  const ramTile = page.locator('[data-testid="editor-tile"][data-tile-id="tile-perf-ram"]');
+  await ramTile.hover();
+  await ramTile.getByTestId("tile-edit-button").click();
   await expect(page.getByTestId("tile-settings-overlay")).toBeVisible();
   const parent = page.getByTestId("tile-settings-parent");
   await expect(parent).toBeVisible();
@@ -102,7 +113,7 @@ test("tile settings parent: move tile from container to dashboard root", async (
   const raw = await page.evaluate(() => localStorage.getItem("kea-fabric-dashboard-layout"));
   expect(raw).toBeTruthy();
   const stored = JSON.parse(raw!) as { version: number; items: { kind: string; id: string; children?: { id: string }[]; pluginId?: string }[] };
-  expect(stored.version).toBe(2);
+  expect(stored.version).toBe(3);
   expect(stored.items.some((i) => i.kind === "tile" && i.id === "tile-perf-ram")).toBe(true);
   const groupStatus = stored.items.find((i) => i.kind === "group" && i.id === "group-status");
   expect(groupStatus?.children?.some((c) => c.id === "tile-perf-ram")).toBe(false);
@@ -127,6 +138,27 @@ test("layout editor lists tiles in layout order (DnD targets)", async ({ page })
   ];
   const ids = await tiles.evaluateAll((els) => els.map((e) => e.getAttribute("data-tile-id")));
   expect(ids).toEqual(expectedOrder);
+});
+
+test("editor pointer drag toggles chrome DnD active flag during reorder", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Edit layout" }).click();
+  const chrome = page.getByTestId("editor-grid-chrome");
+  await expect(chrome).toHaveAttribute("data-editor-pointer-dnd", "false");
+  const zone = page.getByTestId("editor-drop-zone");
+  const firstTile = zone.getByTestId("editor-tile").first();
+  /* First item is often a container: hover near its top-left padding so inner plugins do not
+   * suppress container chrome (see `app.css` :has(.editor-plugin-surface:hover)). */
+  await firstTile.hover({ position: { x: 14, y: 14 } });
+  const handle = firstTile.getByTestId("editor-tile-drag-handle");
+  const box = await handle.boundingBox();
+  expect(box).toBeTruthy();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + box!.width / 2 + 120, box!.y + box!.height / 2 + 6);
+  await expect(chrome).toHaveAttribute("data-editor-pointer-dnd", "true", { timeout: 8000 });
+  await page.mouse.up();
+  await expect(chrome).toHaveAttribute("data-editor-pointer-dnd", "false", { timeout: 8000 });
 });
 
 test.skip("edit layout: grid tracks, --d-track ruler, tile shells, and Flowbite cards line up (no false pass)", async ({

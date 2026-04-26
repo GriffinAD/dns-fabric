@@ -4,7 +4,7 @@ import { DataGateway } from "../dataGateway";
 import { createFabricEventBus, perfUpdatedCpuPercent } from "./eventBus";
 import * as gridPlacement from "./gridPlacement";
 import { mountDashboardGatewaySideEffects } from "./dashboardBootstrap";
-import type { DashboardLayoutV2 } from "./types";
+import type { DashboardLayoutV2, DashboardLayoutV3 } from "./types";
 
 describe("mountDashboardGatewaySideEffects", () => {
   it("invokes handlers for plugins, layout, and SSE via event bus", async () => {
@@ -137,7 +137,7 @@ describe("mountDashboardGatewaySideEffects", () => {
     const spy = vi.spyOn(gridPlacement, "layoutWithGrid").mockReturnValue({
       version: 1,
       tiles: [],
-    } as unknown as DashboardLayoutV2);
+    } as unknown as DashboardLayoutV3);
     const layouts: unknown[] = [];
     const stop = mountDashboardGatewaySideEffects(gw, bus, {
       onPluginsLoaded: () => {},

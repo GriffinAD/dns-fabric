@@ -11,6 +11,17 @@ export const PLAIN_ADD_GROUP = "x-kea-fabric:layout-add-group";
 export const PLAIN_PLUGIN_PREFIX = "x-kea-fabric:plugin:";
 const MAX_PLUGIN_ID_LEN = 256;
 
+/**
+ * True when `DataTransfer.types` match what {@link setPalettePluginDragData} /
+ * {@link setPaletteAddGroupDragData} register — safe to call from `dragover` (unlike
+ * {@link parsePaletteDrop}, which relies on `getData` and is only fully reliable on `drop`).
+ */
+export function isPaletteFabricHtml5Drag(dt: DataTransfer | null): boolean {
+  if (!dt?.types) return false;
+  const types = Array.from(dt.types as Iterable<string>);
+  return types.includes(DND_PLUGIN_MIME) || types.includes(DND_LAYOUT_DND);
+}
+
 /** Parse palette-originated drag data; returns `null` for unknown or invalid payloads. */
 export function parsePaletteDrop(dt: DataTransfer | null): PaletteDrop | null {
   if (!dt) return null;

@@ -6,7 +6,7 @@ import { createFabricEventBus, type FabricEventBus } from "./dashboard/eventBus"
 import { createLayoutStore } from "./dashboard/layoutStore";
 import { DataGateway } from "./dataGateway";
 import * as themeStorage from "./theme/themeStorage";
-import type { DashboardLayoutV2 } from "./dashboard/types";
+import type { DashboardLayoutV3 } from "./dashboard/types";
 
 const { mountDashboardSideEffectsMock } = vi.hoisted(() => ({
   mountDashboardSideEffectsMock: vi.fn(() => vi.fn()),
@@ -47,7 +47,7 @@ describe("attachOperatorShellLifecycle", () => {
     const setPlugins = vi.fn();
     const stopBootstrap = vi.fn();
 
-    const minimalLayout: DashboardLayoutV2 = { version: 2, items: [] };
+    const minimalLayout: DashboardLayoutV3 = { version: 3, items: [] };
     mountDashboardSideEffectsMock.mockImplementation(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ((_gw: DataGateway, _bus: FabricEventBus, handlers: DashboardDataBootstrapHandlers) => {

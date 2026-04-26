@@ -1,11 +1,41 @@
 import type { Page } from "@playwright/test";
 
-import type { DashboardLayout } from "../../../src/lib/dashboard/types";
+import type { DashboardLayout, DashboardLayoutV3 } from "../../../src/lib/dashboard/types";
 
 /**
  * Non-overlapping 20-col layout used by dashboard grid e2e. Matches how we expect the first row
  * to pack (8+4+4+4) and a full-width DHCP pools row, so localStorage is never ambiguous vs dev.
  */
+/** v3 nested groups for read-mode / placement e2e (GET layout stubbed 404; hydrate from localStorage). */
+export const E2E_NESTED_V3_LAYOUT: DashboardLayoutV3 = {
+  version: 3,
+  items: [
+    {
+      kind: "group",
+      id: "outer-e2e",
+      showBorder: true,
+      grid: { col: 0, row: 0, colSpan: 20, rowSpan: 4 },
+      children: [
+        {
+          kind: "group",
+          id: "inner-e2e",
+          showBorder: true,
+          grid: { col: 0, row: 0, colSpan: 10, rowSpan: 2 },
+          children: [
+            {
+              id: "tile-nested-pools",
+              pluginId: "dhcp.pools",
+              hostControl: "single-panel",
+              displayMode: "compact",
+              grid: { col: 0, row: 0, colSpan: 10, rowSpan: 1 },
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
 export const E2E_EDITOR_GRID_LAYOUT: DashboardLayout = {
   version: 1,
   tiles: [
@@ -104,6 +134,18 @@ export const E2E_EDITOR_LAYOUT_WITH_THROWING: DashboardLayout = {
 export async function seedEditorLayoutInLocalStorageBeforeNavigation(page: Page): Promise<void> {
   const key = "kea-fabric-dashboard-layout";
   const value = JSON.stringify(E2E_EDITOR_GRID_LAYOUT);
+  await page.addInitScript(
+    (args: { key: string; value: string }) => {
+      localStorage.setItem(args.key, args.value);
+    },
+    { key, value },
+  );
+}
+
+/** v3 nested group layout for nested-host e2e. */
+export async function seedNestedV3LayoutInLocalStorageBeforeNavigation(page: Page): Promise<void> {
+  const key = "kea-fabric-dashboard-layout";
+  const value = JSON.stringify(E2E_NESTED_V3_LAYOUT);
   await page.addInitScript(
     (args: { key: string; value: string }) => {
       localStorage.setItem(args.key, args.value);

@@ -456,7 +456,84 @@ def test_layout_validate_v2() -> None:
         }
     )
     assert is_dashboard_layout({"version": 1, "items": []}) is False
-    assert is_dashboard_layout({"version": 3, "items": []}) is False
+    assert is_dashboard_layout({"version": 3, "items": []}) is True
+
+
+def test_layout_validate_v3() -> None:
+    """v3 nested groups, duplicate ids, depth, innerWrap + nested forbidden."""
+    from kea_fabric.api.layout_validate import is_dashboard_layout
+
+    tile = {
+        "id": "t1",
+        "pluginId": "dhcp.pools",
+        "hostControl": "single-panel",
+        "displayMode": "full",
+        "grid": {"col": 0, "row": 0, "colSpan": 4, "rowSpan": 1},
+    }
+    inner_group = {
+        "kind": "group",
+        "id": "g-inner",
+        "showBorder": True,
+        "grid": {"col": 0, "row": 0, "colSpan": 10, "rowSpan": 1},
+        "children": [tile],
+    }
+    root_group = {
+        "kind": "group",
+        "id": "g-root",
+        "showBorder": True,
+        "grid": {"col": 0, "row": 0, "colSpan": 20, "rowSpan": 2},
+        "children": [inner_group],
+    }
+    assert is_dashboard_layout({"version": 3, "items": [root_group]})
+
+    dup_layout = {
+        "version": 3,
+        "items": [
+            root_group,
+            {
+                "id": "g-root",
+                "pluginId": "perf.cpu",
+                "hostControl": "single-panel",
+                "displayMode": "full",
+            },
+        ],
+    }
+    assert is_dashboard_layout(dup_layout) is False
+
+    wrap_nested = {
+        "version": 3,
+        "items": [
+            {
+                "kind": "group",
+                "id": "gw",
+                "innerWrap": True,
+                "children": [inner_group],
+            },
+        ],
+    }
+    assert is_dashboard_layout(wrap_nested) is False
+
+    def nested_group_chain(*, depth: int) -> dict[str, object]:
+        leaf: dict[str, object] = {
+            "id": "leaf",
+            "pluginId": "dhcp.pools",
+            "hostControl": "single-panel",
+            "displayMode": "full",
+        }
+        node: dict[str, object] = leaf
+        for i in range(depth):
+            node = {"kind": "group", "id": f"g{i}", "children": [node]}
+        return node
+
+    assert is_dashboard_layout(
+        {"version": 3, "items": [nested_group_chain(depth=8)]},
+    )
+    assert (
+        is_dashboard_layout(
+            {"version": 3, "items": [nested_group_chain(depth=9)]},
+        )
+        is False
+    )
 
 
 def test_list_endpoints_mock_empty(client: TestClient) -> None:
@@ -698,6 +775,240 @@ def test_layout_validate_private_helpers() -> None:
         )
         is False
     )
+
+
+def test_layout_validate_v3_branches() -> None:
+    """Cover v3-only branches in layout_validate (100% on layout_validate.py)."""
+    import kea_fabric.api.layout_validate as lv
+    from kea_fabric.api.layout_validate import is_dashboard_layout
+
+    assert is_dashboard_layout({"version": 4, "items": []}) is False
+    assert is_dashboard_layout({"version": 3, "items": [None]}) is False
+    assert is_dashboard_layout({"version": 3, "items": "bad"}) is False
+
+    assert lv._valid_root_item_v3("nope") is False
+    assert lv._valid_group_v3({"kind": "tile", "id": "x"}, depth=1) is False
+    assert (
+        lv._valid_group_v3(
+            {"kind": "group", "id": "", "children": []},
+            depth=1,
+        )
+        is False
+    )
+    assert (
+        lv._valid_group_v3(
+            {"kind": "group", "id": "g", "showBorder": "x", "children": []},
+            depth=1,
+        )
+        is False
+    )
+    assert (
+        lv._valid_group_v3(
+            {
+                "kind": "group",
+                "id": "g",
+                "grid": {"col": 0, "row": 0, "colSpan": 21, "rowSpan": 1},
+                "children": [],
+            },
+            depth=1,
+        )
+        is False
+    )
+    assert (
+        lv._valid_group_v3(
+            {"kind": "group", "id": "g", "children": "bad"},
+            depth=1,
+        )
+        is False
+    )
+    assert (
+        lv._valid_group_v3(
+            {"kind": "group", "id": "g", "children": [None]},
+            depth=1,
+        )
+        is False
+    )
+    assert (
+        lv._valid_group_v3(
+            {"kind": "group", "id": "g", "children": []},
+            depth=9,
+        )
+        is False
+    )
+
+    bad_nested_grid = {
+        "kind": "group",
+        "id": "outer",
+        "children": [
+            {
+                "kind": "group",
+                "id": "inner",
+                "grid": {"col": 0, "row": 0, "colSpan": 0, "rowSpan": 1},
+                "children": [
+                    {
+                        "id": "t",
+                        "pluginId": "p",
+                        "hostControl": "single-panel",
+                        "displayMode": "full",
+                    },
+                ],
+            },
+        ],
+    }
+    assert lv._valid_group_v3(bad_nested_grid, depth=1) is False
+
+    wrap_and_nest = {
+        "kind": "group",
+        "id": "w",
+        "innerWrap": True,
+        "children": [
+            {
+                "kind": "group",
+                "id": "n",
+                "children": [
+                    {
+                        "id": "t",
+                        "pluginId": "p",
+                        "hostControl": "single-panel",
+                        "displayMode": "full",
+                    },
+                ],
+            },
+        ],
+    }
+    assert lv._valid_group_v3(wrap_and_nest, depth=1) is False
+
+    mixed_ch: list[object] = [1, {"id": "a", "pluginId": "p"}]
+    assert lv._collect_ids_from_children(mixed_ch, set()) is False
+    assert lv._collect_ids_from_children([{"id": "a"}, {"id": "a"}], set()) is True
+
+    dup_cross = [
+        {
+            "id": "shared",
+            "pluginId": "dhcp.pools",
+            "hostControl": "single-panel",
+            "displayMode": "full",
+        },
+        {
+            "kind": "group",
+            "id": "g",
+            "children": [
+                {
+                    "id": "shared",
+                    "pluginId": "perf.cpu",
+                    "hostControl": "single-panel",
+                    "displayMode": "full",
+                },
+            ],
+        },
+    ]
+    assert lv._layout_graph_has_duplicate_ids_v3(dup_cross) is True
+    no_dup: list[object] = [None, {"id": "z"}]
+    assert lv._layout_graph_has_duplicate_ids_v3(no_dup) is False
+    no_id_group = [{"kind": "group", "children": []}]
+    assert lv._layout_graph_has_duplicate_ids_v3(no_id_group) is False
+
+    assert lv._layout_max_nested_group_depth_v3([None]) == 0
+    assert (
+        lv._layout_max_nested_group_depth_v3(
+            [{"kind": "group", "id": "g", "children": "not-a-list"}],
+        )
+        == 0
+    )
+    assert lv._layout_max_nested_group_depth_v3(
+        [{"kind": "group", "id": "g", "children": []}],
+    ) == 1
+
+    nest_bad_child = {
+        "kind": "group",
+        "id": "o",
+        "children": [
+            {
+                "kind": "group",
+                "id": "i",
+                "children": [
+                    {
+                        "id": "",
+                        "pluginId": "p",
+                        "hostControl": "single-panel",
+                        "displayMode": "full",
+                    },
+                ],
+            },
+        ],
+    }
+    assert lv._valid_group_v3(nest_bad_child, depth=1) is False
+
+    assert (
+        lv._collect_ids_from_children(
+            [
+                {"id": ""},
+                {"id": "x"},
+                {"id": "x"},
+            ],
+            set(),
+        )
+        is True
+    )
+    assert (
+        lv._collect_ids_from_children(
+            [
+                {
+                    "kind": "group",
+                    "id": "g",
+                    "children": [
+                        {"id": "d"},
+                        {"id": "d"},
+                    ],
+                },
+            ],
+            set(),
+        )
+        is True
+    )
+
+    assert (
+        lv._layout_graph_has_duplicate_ids_v3(
+            [
+                {
+                    "id": "d",
+                    "pluginId": "a",
+                    "hostControl": "single-panel",
+                    "displayMode": "full",
+                },
+                {
+                    "id": "d",
+                    "pluginId": "b",
+                    "hostControl": "single-panel",
+                    "displayMode": "full",
+                },
+            ],
+        )
+        is True
+    )
+
+    assert (
+        lv._max_nested_group_depth_from_children(
+            [{"kind": "group", "id": "a", "children": "nope"}],
+            1,
+        )
+        == 2
+    )
+
+
+def test_layout_validate_v3_depth_guard(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Defensive depth check after per-item validation (branch coverage)."""
+    import kea_fabric.api.layout_validate as lv
+    from kea_fabric.api.layout_validate import is_dashboard_layout
+
+    monkeypatch.setattr(lv, "_layout_max_nested_group_depth_v3", lambda _items: 99)
+    ok_tile = {
+        "id": "t",
+        "pluginId": "dhcp.pools",
+        "hostControl": "single-panel",
+        "displayMode": "full",
+    }
+    assert is_dashboard_layout({"version": 3, "items": [ok_tile]}) is False
 
 
 def test_layout_validate_v2_group_shape() -> None:
