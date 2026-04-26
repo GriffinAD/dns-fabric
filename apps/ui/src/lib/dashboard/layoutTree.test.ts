@@ -6,11 +6,13 @@ import {
   dedupeLayoutV2ItemIds,
   iterateTilesInLayout,
   findTileInLayout,
+  findGroupByIdInItems,
   mapTileInLayout,
   mapRootItemsReplaceGroup,
   moveTileToParent,
   removeTileFromAnywhere,
   dedupeById,
+  appendTileToGroupInItems,
 } from "./layoutTree";
 import type { DashboardGroup, DashboardLayoutV1, DashboardLayoutV2, DashboardTile, RootLayoutItem } from "./types";
 import { isLayoutV2 } from "./types";
@@ -119,6 +121,23 @@ describe("layoutTree", () => {
     expect(group?.children[1]?.grid?.col).toBe(4);
   });
 
+  it("iterateTilesInLayout walks tiles inside nested groups", () => {
+    const inner: DashboardGroup = {
+      kind: "group",
+      id: "inner",
+      showBorder: true,
+      children: [baseTile("deep", "perf.cpu")],
+    };
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      children: [inner],
+    };
+    const ids = [...iterateTilesInLayout([outer])].map((t) => t.id);
+    expect(ids).toEqual(["deep"]);
+  });
+
   it("iterateTilesInLayout walks root tiles and group children", () => {
     const items = migrateV1ToV2([
       baseTile("a", "perf.cpu"),
@@ -127,6 +146,25 @@ describe("layoutTree", () => {
     const ids = [...iterateTilesInLayout(items)].map((t) => t.id);
     expect(ids).toContain("a");
     expect(ids).toContain("b");
+  });
+
+  it("findTileInLayout finds a tile nested two groups deep", () => {
+    const deep = { ...baseTile("deep", "perf.cpu"), grid: { col: 0, row: 0, colSpan: 2, rowSpan: 1 } };
+    const inner: DashboardGroup = {
+      kind: "group",
+      id: "inner",
+      showBorder: true,
+      children: [deep],
+    };
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      children: [inner],
+    };
+    const hit = findTileInLayout([outer], "deep");
+    expect(hit?.tile.id).toBe("deep");
+    expect(hit?.inGroup?.id).toBe("inner");
   });
 
   it("findTileInLayout finds root tile and mapTileInLayout updates it", () => {
@@ -146,6 +184,27 @@ describe("layoutTree", () => {
     const r = next[0];
     if (r?.kind === "tile") expect(r.region).toBe("x");
     else expect.fail("expected root tile");
+  });
+
+  it("mapTileInLayout recurses through nested groups to update a deep tile", () => {
+    const deep = { ...baseTile("deep", "perf.cpu"), grid: { col: 0, row: 0, colSpan: 2, rowSpan: 1 } };
+    const inner: DashboardGroup = {
+      kind: "group",
+      id: "inner",
+      showBorder: true,
+      children: [deep],
+    };
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      children: [inner],
+    };
+    const next = mapTileInLayout([outer], "deep", (t) => ({ ...t, region: "z" }));
+    const o = next[0] as DashboardGroup;
+    const i = o.children[0] as DashboardGroup;
+    const t = i.children[0] as DashboardTile;
+    expect(t.region).toBe("z");
   });
 
   it("findTileInLayout and mapTileInLayout update nested tiles", () => {
@@ -219,6 +278,55 @@ describe("layoutTree", () => {
     expect((items[0] as DashboardGroup).showBorder).toBe(false);
   });
 
+  it("removeTileFromAnywhere recurses into nested groups", () => {
+    const innerTile = { ...baseTile("x", "perf.cpu"), grid: { col: 0, row: 0, colSpan: 2, rowSpan: 1 } };
+    const inner: DashboardGroup = {
+      kind: "group",
+      id: "inner",
+      showBorder: true,
+      children: [innerTile, { ...baseTile("y", "perf.ram"), grid: { col: 2, row: 0, colSpan: 2, rowSpan: 1 } }],
+    };
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      children: [inner],
+    };
+    const out = removeTileFromAnywhere([outer], "x");
+    const o = out[0] as DashboardGroup;
+    const i = o.children[0] as DashboardGroup;
+    expect(i.children.length).toBe(1);
+    expect(i.children[0]?.id).toBe("y");
+  });
+
+  it("appendTileToGroupInItems preserves sibling tiles while targeting a nested group", () => {
+    const target: DashboardGroup = {
+      kind: "group",
+      id: "target",
+      showBorder: true,
+      children: [],
+    };
+    const sideTile = {
+      ...baseTile("side", "perf.network"),
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+    };
+    const wrapper: DashboardGroup = {
+      kind: "group",
+      id: "wrap",
+      showBorder: true,
+      children: [sideTile, target],
+    };
+    const tile = {
+      ...baseTile("in", "dhcp.pools"),
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+    };
+    const out = appendTileToGroupInItems([wrapper], "target", tile);
+    const w = out[0] as DashboardGroup;
+    expect(w.children[0]?.id).toBe("side");
+    const tg = w.children[1] as DashboardGroup;
+    expect(tg.children.some((c) => c.id === "in")).toBe(true);
+  });
+
   it("removeTileFromAnywhere drops a root tile and a nested tile", () => {
     const t1 = { kind: "tile" as const, ...baseTile("r1", "dhcp.pools") };
     const t2 = { ...baseTile("in1", "perf.cpu"), grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 } };
@@ -257,6 +365,128 @@ describe("layoutTree", () => {
     expect(out.some((i) => i.kind === "tile" && i.id === "r1")).toBe(false);
     const gg = out.find((i): i is DashboardGroup => i.kind === "group" && i.id === "g1");
     expect(gg?.children?.some((c) => c.id === "r1")).toBe(true);
+  });
+
+  it("findGroupByIdInItems finds a nested group", () => {
+    const inner: DashboardGroup = {
+      kind: "group",
+      id: "inner",
+      showBorder: true,
+      children: [baseTile("leaf", "perf.cpu")],
+    };
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      children: [inner],
+    };
+    const items: RootLayoutItem[] = [outer];
+    expect(findGroupByIdInItems(items, "inner")?.id).toBe("inner");
+    expect(findGroupByIdInItems(items, "outer")?.id).toBe("outer");
+    expect(findGroupByIdInItems(items, "missing")).toBeNull();
+  });
+
+  it("appendTileToGroupInItems walks a prior root group before the target", () => {
+    const target: DashboardGroup = {
+      kind: "group",
+      id: "target",
+      showBorder: true,
+      children: [],
+    };
+    const wrapper: DashboardGroup = {
+      kind: "group",
+      id: "wrapper",
+      showBorder: true,
+      children: [target],
+    };
+    const other: DashboardGroup = {
+      kind: "group",
+      id: "other",
+      showBorder: true,
+      children: [],
+    };
+    const tile = {
+      ...baseTile("x", "dhcp.pools"),
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+    };
+    const out = appendTileToGroupInItems([other, wrapper], "target", tile);
+    const w = out[1] as DashboardGroup;
+    expect(w.children[0]?.id).toBe("target");
+    const inner = w.children[0] as DashboardGroup;
+    expect(inner.children.some((c) => c.id === "x")).toBe(true);
+  });
+
+  it("appendTileToGroupInItems leaves root tiles unchanged when appending to a group", () => {
+    const target: DashboardGroup = {
+      kind: "group",
+      id: "g",
+      showBorder: true,
+      children: [],
+    };
+    const rootTile: RootLayoutItem = {
+      kind: "tile",
+      ...baseTile("solo", "perf.cpu"),
+    };
+    const tile = {
+      ...baseTile("in", "dhcp.pools"),
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+    };
+    const out = appendTileToGroupInItems([rootTile, target], "g", tile);
+    expect(out[0]).toEqual(rootTile);
+    expect((out[1] as DashboardGroup).children.length).toBe(1);
+  });
+
+  it("appendTileToGroupInItems recurses until it finds the target group id", () => {
+    const target: DashboardGroup = {
+      kind: "group",
+      id: "target",
+      showBorder: true,
+      children: [],
+    };
+    const mid: DashboardGroup = {
+      kind: "group",
+      id: "mid",
+      showBorder: true,
+      children: [target],
+    };
+    const root: DashboardGroup = {
+      kind: "group",
+      id: "root",
+      showBorder: true,
+      children: [mid],
+    };
+    const tile = {
+      ...baseTile("deep", "dhcp.pools"),
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+    };
+    const out = appendTileToGroupInItems([root], "target", tile);
+    const r = out[0] as DashboardGroup;
+    const m = r.children[0] as DashboardGroup;
+    const t = m.children[0] as DashboardGroup;
+    expect(t.children.some((c) => c.id === "deep")).toBe(true);
+  });
+
+  it("appendTileToGroupInItems appends into a nested group", () => {
+    const inner: DashboardGroup = {
+      kind: "group",
+      id: "inner",
+      showBorder: true,
+      children: [],
+    };
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      children: [inner],
+    };
+    const tile = {
+      ...baseTile("new", "dhcp.clients"),
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+    };
+    const out = appendTileToGroupInItems([outer], "inner", tile);
+    const o = out[0] as DashboardGroup;
+    const i = o.children[0] as DashboardGroup;
+    expect(i.children.some((c) => c.id === "new")).toBe(true);
   });
 
   it("moveTileToParent leaves other groups unchanged when reparenting into a group", () => {

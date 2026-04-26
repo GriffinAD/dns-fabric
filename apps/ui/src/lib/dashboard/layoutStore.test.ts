@@ -395,6 +395,19 @@ describe("createLayoutStore", () => {
     expect(get(ls.layout)).toEqual(afterAdd);
   });
 
+  it("applyStructure trims undo past stack beyond UNDO_CAP", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.openEditor();
+    ls.acceptServerLayout(minimalLayout());
+    for (let i = 0; i < 52; i++) {
+      ls.addRootTile("perf.cpu");
+    }
+    expect(get(ls.layout).items.length).toBeGreaterThan(50);
+    expect(ls.canUndo()).toBe(true);
+  });
+
   it("canUndo and canRedo reflect stack state", () => {
     const gw = new DataGateway("");
     const ls = createLayoutStore({ gateway: gw });

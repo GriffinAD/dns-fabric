@@ -32,6 +32,7 @@ import type {
   DashboardGroup,
   DashboardLayout,
   DashboardLayoutV1,
+  DashboardLayoutV3,
   GridPlacement,
   RootLayoutItem,
   DashboardTile,
@@ -352,6 +353,39 @@ describe("commitGroupInnerRowWraps", () => {
     const out = commitGroupInnerRowWraps([g1, g2]);
     expect((out[0] as DashboardGroup).children[1]!.grid?.row).toBe(1);
     expect((out[1] as DashboardGroup).children[0]!.grid?.row).toBe(0);
+  });
+
+  it("recurses into nested innerWrap groups under a nowrap parent", () => {
+    const inner: DashboardGroup = {
+      kind: "group",
+      id: "inner",
+      showBorder: true,
+      innerWrap: true,
+      grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+      children: [wrapTile("a", 5), wrapTile("b", 5)],
+    };
+    const outer: DashboardGroup = {
+      kind: "group",
+      id: "outer",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 },
+      children: [inner],
+    };
+    const out = commitGroupInnerRowWraps([outer]);
+    const nested = (out[0] as DashboardGroup).children[0] as DashboardGroup;
+    expect(nested.children[1]!.grid?.row).toBe(1);
+  });
+
+  it("leaves root-level tiles unchanged", () => {
+    const t: RootLayoutItem = {
+      kind: "tile",
+      id: "solo",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "full",
+    };
+    expect(commitGroupInnerRowWraps([t])).toEqual([t]);
   });
 });
 
@@ -1437,5 +1471,164 @@ describe("grid placement edge cases", () => {
     if (out[0]?.kind === "group") {
       expect(placementsOverlap(out[0].children.map((c) => c.grid!))).toBe(false);
     }
+  });
+
+  it("layoutWithGrid handles v3 nested group with incomplete inner group grid for row span", () => {
+    const v3: DashboardLayoutV3 = {
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "outer",
+          showBorder: true,
+          innerWrap: false,
+          grid: { col: 0, row: 0, colSpan: 20, rowSpan: 3 },
+          children: [
+            {
+              kind: "group",
+              id: "inner",
+              showBorder: true,
+              innerWrap: false,
+              children: [
+                {
+                  id: "t1",
+                  pluginId: "perf.cpu",
+                  hostControl: "single-panel",
+                  displayMode: "full",
+                  grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const next = layoutWithGrid(v3, { preserveRootPlacementIfComplete: true });
+    expect(next.version).toBe(3);
+    const outer = next.items[0];
+    expect(outer?.kind).toBe("group");
+  });
+
+  it("layoutWithGrid packs v3 nested nowrap groups under preserveRootPlacementIfComplete", () => {
+    const v3: DashboardLayoutV3 = {
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "outer",
+          showBorder: true,
+          innerWrap: false,
+          grid: { col: 0, row: 0, colSpan: 20, rowSpan: 4 },
+          children: [
+            {
+              kind: "group",
+              id: "inner",
+              showBorder: true,
+              innerWrap: false,
+              grid: { col: 0, row: 0, colSpan: 12, rowSpan: 2 },
+              children: [
+                {
+                  id: "t1",
+                  pluginId: "perf.cpu",
+                  hostControl: "single-panel",
+                  displayMode: "full",
+                  grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const next = layoutWithGrid(v3, { preserveRootPlacementIfComplete: true });
+    expect(next.version).toBe(3);
+    const outer = next.items[0];
+    expect(outer?.kind).toBe("group");
+    if (outer?.kind === "group") {
+      expect(outer.children[0]?.id).toBe("inner");
+    }
+  });
+
+  it("groupEditInnerColumnCount uses nested innerCols when child group has no grid", () => {
+    const nested: DashboardGroup = {
+      kind: "group",
+      id: "nested",
+      showBorder: true,
+      innerWrap: false,
+      children: [
+        {
+          id: "u",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+        },
+      ],
+    };
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 10, rowSpan: 1 },
+      children: [nested],
+    };
+    expect(groupEditInnerColumnCount(g)).toBeGreaterThanOrEqual(10);
+  });
+
+  it("groupEditInnerColumnCount skips nested group child grids that fail integer span checks", () => {
+    const nested: DashboardGroup = {
+      kind: "group",
+      id: "nested",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 1.5 as unknown as number, rowSpan: 1 },
+      children: [
+        {
+          id: "u",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+        },
+      ],
+    };
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 10, rowSpan: 1 },
+      children: [nested],
+    };
+    expect(groupEditInnerColumnCount(g)).toBeGreaterThanOrEqual(10);
+  });
+
+  it("groupEditInnerColumnCount extends maxEnd for nested group with wide grid", () => {
+    const nested: DashboardGroup = {
+      kind: "group",
+      id: "nested",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+      children: [
+        {
+          id: "u",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          grid: { col: 0, row: 0, colSpan: 2, rowSpan: 1 },
+        },
+      ],
+    };
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+      children: [nested],
+    };
+    expect(groupEditInnerColumnCount(g)).toBeGreaterThanOrEqual(8);
   });
 });
