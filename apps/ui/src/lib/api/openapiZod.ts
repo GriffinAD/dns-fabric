@@ -188,6 +188,35 @@ export const dashboardLayoutSaveFileResponseSchema = z
   })
   .strict();
 
+const adminLogRecordSchema = z
+  .object({
+    ts: z.string(),
+    level: z.enum(["CRITICAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"]),
+    event: z.string(),
+    message: z.string(),
+    service: z.string(),
+    operation: z.string(),
+    subcategory: z.string(),
+    mode: z.string().nullable().optional(),
+    request_id: z.string().nullable().optional(),
+    trace_id: z.string().nullable().optional(),
+    actor: z.string().nullable().optional(),
+    error_type: z.string().nullable().optional(),
+    error_message: z.string().nullable().optional(),
+  })
+  .strict();
+
+export const adminLogsResponseSchema = z
+  .object({
+    items: z.array(adminLogRecordSchema),
+    cursor: z.number().int().nonnegative().optional(),
+    page_size: z.number().int().positive().optional(),
+    next_cursor: z.number().int().nullable().optional(),
+    total_count: z.number().int().nonnegative().optional(),
+    total_pages: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+
 /** GET /api/v1/* JSON bodies served from baseFixtures (dev mocks). */
 export const mockFixtureSchemas: Record<string, z.ZodType<unknown>> = {
   "/api/v1/health": healthResponseSchema,

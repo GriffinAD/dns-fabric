@@ -5,6 +5,13 @@ import { DataGateway } from "../dataGateway";
 import AdminPage from "./AdminPage.svelte";
 
 describe("AdminPage", () => {
+  it("renders logs page for logs subpath", () => {
+    const gateway = new DataGateway("");
+    vi.spyOn(gateway, "getAdminLogs").mockResolvedValue({ items: [], next_cursor: null });
+    render(AdminPage, { props: { gateway, adminSubpath: "logs" } });
+    expect(screen.getByTestId("admin-logs-page")).toBeTruthy();
+  });
+
   it("renders registry sample page for ext/sample subpath", () => {
     const gateway = new DataGateway("");
     vi.spyOn(gateway, "getHealth").mockResolvedValue({

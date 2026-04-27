@@ -52,6 +52,13 @@
     settings: settingsPatch = undefined,
     onRetry,
     onRefresh,
+    refreshLabel = "",
+    onViewAll,
+    serverPaging = false,
+    serverPage = 1,
+    serverTotalPages = 1,
+    onServerPageChange,
+    serverRowCount,
     onCommit,
     jsonPrettyExport = true,
     searchPlaceholder = "Search…",
@@ -72,6 +79,13 @@
     settings?: BaseDataTableSettingsPatch;
     onRetry?: () => void;
     onRefresh?: () => void;
+    refreshLabel?: string;
+    onViewAll?: () => void | Promise<void>;
+    serverPaging?: boolean;
+    serverPage?: number;
+    serverTotalPages?: number;
+    onServerPageChange?: (nextPage: number, pageSize: number) => void | Promise<void>;
+    serverRowCount?: number | null;
     onCommit?: (args: { rowId: string; patch: Record<string, unknown> }) => void | Promise<void>;
     jsonPrettyExport?: boolean;
     searchPlaceholder?: string;
@@ -137,10 +151,20 @@
       !settings.allowModal &&
       !inlineExpandedMode,
   );
+  const hasRefreshLabel = $derived(refreshLabel.trim().length > 0);
+  const serverPagingEnabled = $derived(pagingEnabled && serverPaging);
 
-  const pageData = $derived(
-    pagingEnabled ? paginateRows(sorted, page, pageSize) : { slice: sorted, totalPages: 1, page: 0 },
-  );
+  const pageData = $derived.by(() => {
+    if (!pagingEnabled) {
+      return { slice: sorted, totalPages: 1, page: 0 };
+    }
+    if (serverPagingEnabled) {
+      const totalPages = Math.max(1, Math.floor(serverTotalPages));
+      const currentPage = Math.max(1, Math.min(totalPages, Math.floor(serverPage)));
+      return { slice: sorted, totalPages, page: currentPage - 1 };
+    }
+    return paginateRows(sorted, page, pageSize);
+  });
   const pageSizeOptions = $derived.by(() => {
     const options = new Set([5, 10, 25, 50]);
     options.add(pageSize);
@@ -151,11 +175,13 @@
 
   const filterActive = $derived(settings.allowFilter && filterQuery.trim().length > 0);
   const filterHintText = $derived(`Filters rows by visible columns. ${sorted.length} rows match.`);
-  const rowCountText = $derived(`${sorted.length} rows`);
+  const rowCountText = $derived(
+    typeof serverRowCount === "number" && serverRowCount >= 0 ? `${serverRowCount} rows` : `${sorted.length} rows`,
+  );
   $effect(() => {
     void sorted.length;
     void pageData.totalPages;
-    if (page > pageData.totalPages - 1) {
+    if (!serverPagingEnabled && page > pageData.totalPages - 1) {
       page = Math.max(0, pageData.totalPages - 1);
     }
   });
@@ -328,7 +354,11 @@
       return;
     }
     const clamped = Math.max(1, Math.min(pageData.totalPages, parsed));
-    page = clamped - 1;
+    if (serverPagingEnabled) {
+      void onServerPageChange?.(clamped, pageSize);
+    } else {
+      page = clamped - 1;
+    }
     gotoPageValue = String(clamped);
     announce = `Page ${clamped} of ${pageData.totalPages}`;
   }
@@ -562,13 +592,40 @@
               <span class="mr-2 text-sm text-gray-600 dark:text-gray-300" data-testid="table-row-count">{@html rowCountText}</span>
             {/if}
           {/if}
+          {#if settings.allowRefresh && onRefresh && !refreshInHeader}
+            <Button
+              type="button"
+              size="sm"
+              color="alternative"
+              class={hasRefreshLabel ? "!h-9 !rounded-md px-3 text-xs font-medium" : "!h-9 !rounded-md w-9 justify-center px-2"}
+              aria-label="Refresh table data"
+              title={hasRefreshLabel ? refreshLabel : "Refresh"}
+              onclick={() => onRefresh()}
+            >
+              {#if hasRefreshLabel}
+                {refreshLabel}
+              {:else}
+                <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
+                  <path
+                    fill-rule="evenodd"
+                    d="M15.312 4.688a7 7 0 1 0 1.64 7.278.75.75 0 1 1 1.448.392A8.5 8.5 0 1 1 16 3.78V2.75a.75.75 0 0 1 1.5 0V6.5a.75.75 0 0 1-.75.75H13a.75.75 0 0 1 0-1.5h2.312V4.688Z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              {/if}
+            </Button>
+          {/if}
           {#if settings.allowModal || inlineExpandedMode}
             <Button
               type="button"
               size="sm"
-              class="!h-9 !rounded-md"
+              color="alternative"
+              class="!h-9 !rounded-md px-3 text-xs font-medium"
               onclick={() => {
                 if (inlineExpandedMode) {
+                  if (!showAllRows) {
+                    void onViewAll?.();
+                  }
                   showAllRows = !showAllRows;
                   announce = showAllRows ? "Switched to paged rows" : "Showing all rows";
                   return;
@@ -617,25 +674,6 @@
                   <path d="M14.69 2.86a2 2 0 0 1 2.828 2.829l-9.4 9.398a1 1 0 0 1-.465.262l-3.5.875a.75.75 0 0 1-.91-.91l.875-3.5a1 1 0 0 1 .262-.465l9.4-9.4ZM13.63 5.04 5.71 12.96l-.49 1.958 1.958-.49 7.92-7.92-1.468-1.468Z" />
                 </svg>
               {/if}
-            </Button>
-          {/if}
-          {#if settings.allowRefresh && onRefresh && !refreshInHeader}
-            <Button
-              type="button"
-              size="sm"
-              color="alternative"
-              class="!h-9 !rounded-md w-9 justify-center px-2"
-              aria-label="Refresh table data"
-              title="Refresh"
-              onclick={() => onRefresh()}
-            >
-              <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
-                <path
-                  fill-rule="evenodd"
-                  d="M15.312 4.688a7 7 0 1 0 1.64 7.278.75.75 0 1 1 1.448.392A8.5 8.5 0 1 1 16 3.78V2.75a.75.75 0 0 1 1.5 0V6.5a.75.75 0 0 1-.75.75H13a.75.75 0 0 1 0-1.5h2.312V4.688Z"
-                  clip-rule="evenodd"
-                />
-              </svg>
             </Button>
           {/if}
         </div>
@@ -783,7 +821,11 @@
               totalPages={pageData.totalPages}
               density="default"
               onChange={(nextPage) => {
-                page = nextPage - 1;
+                if (serverPagingEnabled) {
+                  void onServerPageChange?.(nextPage, pageSize);
+                } else {
+                  page = nextPage - 1;
+                }
                 announce = `Page ${nextPage} of ${pageData.totalPages}`;
               }}
             />
@@ -815,7 +857,11 @@
                   const next = Number.parseInt(pageSizeSelectValue, 10);
                   pageSize = Number.isNaN(next) ? 10 : next;
                   pageSizeSelectValue = String(pageSize);
-                  page = 0;
+                  if (serverPagingEnabled) {
+                    void onServerPageChange?.(1, pageSize);
+                  } else {
+                    page = 0;
+                  }
                   announce = `Page size ${pageSize}`;
                 }}
               >

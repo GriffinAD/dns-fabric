@@ -190,6 +190,51 @@ def test_mutation_writes_audit_log(tmp_path: Path) -> None:
     assert row["action"] == "dhcp.client.patch"
 
 
+def test_request_middleware_writes_structured_log_and_headers(tmp_path: Path) -> None:
+    state.reset_stub_state()
+    settings = ApiSettings(data_dir=tmp_path, sse_interval_seconds=0.05)
+    with TestClient(create_app(settings=settings)) as c:
+        r = c.get("/api/v1/health", headers={"X-Request-Id": "req-123"})
+        assert r.status_code == 200
+        assert r.headers["x-request-id"] == "req-123"
+        assert int(r.headers["x-response-time-ms"]) >= 0
+    logs_path = tmp_path / "logs" / "system.jsonl"
+    assert logs_path.is_file()
+    lines = [
+        line
+        for line in logs_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert len(lines) >= 1
+    row = json.loads(lines[-1])
+    assert row["event"] == "api.request.completed"
+    assert row["request_id"] == "req-123"
+    assert row["operation"] == "GET /api/v1/health"
+    state.reset_stub_state()
+
+
+def test_request_middleware_logs_failed_request(tmp_path: Path) -> None:
+    state.reset_stub_state()
+    settings = ApiSettings(data_dir=tmp_path, sse_interval_seconds=0.05)
+    app = create_app(settings=settings)
+
+    @app.get("/api/v1/test/crash")
+    def _crash() -> dict[str, str]:
+        raise RuntimeError("boom")
+
+    with TestClient(app, raise_server_exceptions=False) as c:
+        r = c.get("/api/v1/test/crash")
+        assert r.status_code == 500
+    logs_path = tmp_path / "logs" / "system.jsonl"
+    rows = [
+        json.loads(line)
+        for line in logs_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert any(row["event"] == "api.request.failed" for row in rows)
+    state.reset_stub_state()
+
+
 def test_layout_get_404_put_get(client: TestClient) -> None:
     r = client.get("/api/v1/dashboards/default/layout")
     assert r.status_code == 404
@@ -372,6 +417,35 @@ def test_replication_summary(client: TestClient) -> None:
     assert data["status"] in ("healthy", "lagging", "disconnected", "unknown")
     assert "observed_at" in data
     assert "failover_groups" in data
+
+
+def test_admin_logs_endpoint_filters_by_level(tmp_path: Path) -> None:
+    settings = ApiSettings(
+        data_dir=tmp_path,
+        api_token="operator-secret",
+        viewer_token="viewer-secret",
+        sse_interval_seconds=0.05,
+    )
+    with TestClient(create_app(settings=settings)) as c:
+        meta = c.get("/api/v1/meta", headers=_auth_headers("operator-secret"))
+        assert meta.status_code == 200
+        r = c.get(
+            "/api/v1/admin/logs",
+            headers=_auth_headers("operator-secret"),
+            params={"level": "INFO"},
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert isinstance(body.get("items"), list)
+        assert isinstance(body.get("total_count"), int)
+        assert body.get("cursor") == 0
+        assert body.get("page_size") == 500
+        assert isinstance(body.get("total_pages"), int)
+
+
+def test_admin_logs_endpoint_rejects_invalid_level(client: TestClient) -> None:
+    r = client.get("/api/v1/admin/logs", params={"level": "BOGUS"})
+    assert r.status_code == 400
 
 
 def test_api_list_shape_snapshot(client: TestClient) -> None:
@@ -1510,22 +1584,44 @@ def test_wrong_bearer_token_returns_401(tmp_path: Path) -> None:
 
 
 def test_get_settings_and_fabric_service_helpers(tmp_path: Path) -> None:
-    from kea_fabric.api.deps import get_fabric_service, get_settings
+    from kea_fabric.api.deps import get_fabric_service, get_global_logger, get_settings
     from kea_fabric.persistence.layout_store import JsonLayoutStore
     from kea_fabric.services.fabric import FabricService
+    from kea_fabric.structured_logging import GlobalStructuredLogger
 
     settings = ApiSettings(data_dir=tmp_path, sse_interval_seconds=0.05)
     app = create_app(settings=settings)
     req = MagicMock()
     req.app.state.settings = app.state.settings
     req.app.state.fabric_service = app.state.fabric_service
+    req.app.state.global_logger = app.state.global_logger
     assert get_settings(req) is app.state.settings
     assert isinstance(get_fabric_service(req), FabricService)
+    assert isinstance(get_global_logger(req), GlobalStructuredLogger)
 
     z_store = JsonLayoutStore(tmp_path / "z.json")
-    fs = FabricService(settings=settings, layout_store=z_store)
+    fs = FabricService(
+        settings=settings,
+        layout_store=z_store,
+        global_logger=GlobalStructuredLogger(data_dir=tmp_path),
+    )
     _ = fs.nebula_adapter
     fs.reset_mocks_for_tests()
+
+
+def test_emit_auth_log_without_global_logger_is_noop() -> None:
+    from kea_fabric.api.deps import _emit_auth_log
+
+    req = MagicMock()
+    req.app.state = MagicMock()
+    req.app.state.global_logger = None
+    _emit_auth_log(
+        req,
+        level="INFO",
+        event="auth.test",
+        message="noop",
+        operation="resolve_auth_role",
+    )
 
 
 def test_layout_store_malformed_file(tmp_path: Path) -> None:

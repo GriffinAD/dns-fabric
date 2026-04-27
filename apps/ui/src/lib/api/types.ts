@@ -163,3 +163,30 @@ export interface FabricEvent {
   occurred_at: string;
   payload: Record<string, unknown>;
 }
+
+export type LogLevel = "CRITICAL" | "ERROR" | "WARN" | "INFO" | "DEBUG" | "TRACE";
+
+export interface AdminLogRecord {
+  ts: string;
+  level: LogLevel;
+  event: string;
+  message: string;
+  service: string;
+  operation: string;
+  subcategory: string;
+  mode?: string | null;
+  request_id?: string | null;
+  trace_id?: string | null;
+  actor?: string | null;
+  error_type?: string | null;
+  error_message?: string | null;
+}
+
+export interface AdminLogsResponse {
+  items: AdminLogRecord[];
+  cursor?: number;
+  page_size?: number;
+  next_cursor?: number | null;
+  total_count?: number;
+  total_pages?: number;
+}

@@ -94,7 +94,7 @@
 </script>
 
 <main class="min-h-screen bg-slate-100 p-8 dark:bg-gray-900">
-  <div class="mx-auto flex max-w-6xl flex-col gap-6">
+  <div class="mx-auto w-full max-w-6xl">
     <ShellHeader
       {route}
       layoutSource={$layoutSource}
@@ -106,6 +106,13 @@
       onGoHome={goHome}
       onGoAdmin={() => void goAdmin()}
     />
+  </div>
+
+  <div
+    class="mx-auto mt-6 flex flex-col gap-6"
+    class:max-w-6xl={route !== "admin"}
+    class:max-w-[140rem]={route === "admin"}
+  >
 
     {#if route === "admin"}
       <AdminPage {gateway} adminSubpath={adminSubpath} />

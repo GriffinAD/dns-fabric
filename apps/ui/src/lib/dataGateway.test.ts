@@ -510,6 +510,39 @@ describe("DataGateway", () => {
     await expect(gw.pauseDiscoveryScan(true)).rejects.toThrow(/500/);
   });
 
+  it("getAdminLogs serializes all supported filters", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ items: [], next_cursor: null }),
+      }),
+    );
+    const gw = new DataGateway("");
+    await gw.getAdminLogs({
+      service: "fabric",
+      operation: "get_meta",
+      subcategory: "read",
+      level: "INFO",
+      mode: "mock",
+      from: "2026-01-01T00:00:00Z",
+      to: "2026-01-02T00:00:00Z",
+      cursor: 1,
+      limit: 25,
+    });
+    const path = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(path).toContain("/api/v1/admin/logs?");
+    expect(path).toContain("service=fabric");
+    expect(path).toContain("operation=get_meta");
+    expect(path).toContain("subcategory=read");
+    expect(path).toContain("level=INFO");
+    expect(path).toContain("mode=mock");
+    expect(path).toContain("from=2026-01-01T00%3A00%3A00Z");
+    expect(path).toContain("to=2026-01-02T00%3A00%3A00Z");
+    expect(path).toContain("cursor=1");
+    expect(path).toContain("limit=25");
+  });
+
   const endpointCases = [
     ["getHealth", (g: DataGateway) => g.getHealth(), { status: "ok", checked_at: "t" }],
     ["listPlugins", (g: DataGateway) => g.listPlugins(), { items: [] }],
@@ -519,6 +552,14 @@ describe("DataGateway", () => {
     ["listDiscoveryRecords", (g: DataGateway) => g.listDiscoveryRecords(), { items: [] }],
     ["getDiscoveryScan", (g: DataGateway) => g.getDiscoveryScan(), { state: "idle", updated_at: "t" }],
     ["getPerfSummary", (g: DataGateway) => g.getPerfSummary(), { cpu_percent_total: 1, memory_used_percent: 2, collected_at: "t" }],
+    [
+      "getAdminLogs",
+      (g: DataGateway) => g.getAdminLogs(),
+      {
+        items: [],
+        next_cursor: null,
+      },
+    ],
     [
       "getDashboardLayout",
       (g: DataGateway) => g.getDashboardLayout("default"),

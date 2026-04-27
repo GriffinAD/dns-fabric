@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { dashboardLayoutExportFilename, parseDashboardLayout } from "../lib/dashboard/layoutStorage";
@@ -9,9 +9,30 @@ import { perfSummaryForTick } from "./perfSimulate";
 import { getDiscoveryScan, getPerfTick, getSavedLayout, nextPerfTick, setDiscoveryPaused, setSavedLayout } from "./state";
 
 const _mockDir = dirname(fileURLToPath(import.meta.url));
+/** Resolve repo-root `.fabric-data` from the mock module location. */
+function resolveFabricDataDir(): string {
+  const candidates = [
+    resolve(_mockDir, "../../../../../.fabric-data"),
+    resolve(_mockDir, "../../../../.fabric-data"),
+    resolve(process.cwd(), ".fabric-data"),
+  ];
+  for (const dir of candidates) {
+    const hasLayouts =
+      existsSync(join(dir, "dashboard-layouts.json")) ||
+      existsSync(join(dir, "dashboard-layouts.orig.json"));
+    const hasLogs = existsSync(join(dir, "logs/system.jsonl"));
+    if (existsSync(dir) && (hasLayouts || hasLogs)) return dir;
+  }
+  for (const dir of candidates) {
+    if (existsSync(dir)) return dir;
+  }
+  return candidates[1]!;
+}
+
+const FABRIC_DATA_DIR = resolveFabricDataDir();
 /** Repo-root ``.fabric-data/dashboard-layouts.orig.json`` (read-only; never written by the mock). */
-const BASELINE_LAYOUTS_FILE = join(_mockDir, "../../../../.fabric-data/dashboard-layouts.orig.json");
-const FABRIC_DATA_DIR = join(_mockDir, "../../../../.fabric-data");
+const BASELINE_LAYOUTS_FILE = join(FABRIC_DATA_DIR, "dashboard-layouts.orig.json");
+const STRUCTURED_LOG_FILE = join(FABRIC_DATA_DIR, "logs/system.jsonl");
 
 const listPaths = new Set([
   "/api/v1/dhcp/pools",
@@ -19,6 +40,67 @@ const listPaths = new Set([
   "/api/v1/dhcp/reservations",
   "/api/v1/discovery/records",
 ]);
+
+type MockLogLevel = "CRITICAL" | "ERROR" | "WARN" | "INFO" | "DEBUG" | "TRACE";
+type MockLogRecord = {
+  ts: string;
+  level: MockLogLevel;
+  event: string;
+  message: string;
+  service: string;
+  operation: string;
+  subcategory: string;
+  mode: string | null;
+  request_id: string | null;
+  trace_id: string | null;
+  actor: string | null;
+  error_type: string | null;
+  error_message: string | null;
+};
+
+function readDiskStructuredLogs(): MockLogRecord[] {
+  if (!existsSync(STRUCTURED_LOG_FILE)) return [];
+  try {
+    return readFileSync(STRUCTURED_LOG_FILE, "utf8")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => JSON.parse(line) as MockLogRecord)
+      .filter((row) => row && typeof row === "object" && typeof row.ts === "string");
+  } catch {
+    return [];
+  }
+}
+
+function appendMockLog(
+  level: MockLogLevel,
+  event: string,
+  message: string,
+  operation: string,
+  subcategory: string,
+): void {
+  const row: MockLogRecord = {
+    ts: new Date().toISOString(),
+    level,
+    event,
+    message,
+    service: "api",
+    operation,
+    subcategory,
+    mode: "mock",
+    request_id: null,
+    trace_id: null,
+    actor: null,
+    error_type: null,
+    error_message: null,
+  };
+  try {
+    mkdirSync(dirname(STRUCTURED_LOG_FILE), { recursive: true });
+    appendFileSync(STRUCTURED_LOG_FILE, `${JSON.stringify(row)}\n`, "utf8");
+  } catch {
+    // Best-effort disk mirror for mock-mode observability.
+  }
+}
 
 const dhcpClientsState = structuredClone(baseFixtures["/api/v1/dhcp/clients"] as { items: Record<string, unknown>[] });
 const dhcpReservationsState = structuredClone(
@@ -40,6 +122,45 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
+function sendReadableJsonDocument(res: ServerResponse, status: number, body: unknown): void {
+  const escaped = JSON.stringify(body, null, 2)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+  res.statusCode = status;
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.end(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>kea-fabric mock api response</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0;
+        background: #0b1220;
+        color: #e5e7eb;
+        font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+      }
+      pre {
+        margin: 0;
+        padding: 16px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      @media (prefers-color-scheme: light) {
+        body { background: #f8fafc; color: #111827; }
+      }
+    </style>
+  </head>
+  <body>
+    <pre>${escaped}</pre>
+  </body>
+</html>`);
+}
+
 /**
  * Returns true if the request was handled (caller should not call next).
  */
@@ -57,6 +178,8 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
   const url = new URL(raw, "http://localhost");
   const pathOnly = url.pathname;
   const method = (req.method ?? "GET").toUpperCase();
+
+  appendMockLog("INFO", "api.request.completed", `${method} ${pathOnly}`, `${method} ${pathOnly}`, "request");
 
   if (method === "GET" && pathOnly === "/api/v1/events/stream") {
     res.statusCode = 200;
@@ -88,6 +211,53 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
     return true;
   }
 
+  if (method === "GET" && pathOnly === "/api/v1/admin/logs") {
+    appendMockLog("INFO", "admin.logs.query", "admin logs query", "GET /api/v1/admin/logs", "admin");
+    const diskRows = readDiskStructuredLogs();
+    const service = url.searchParams.get("service");
+    const operation = url.searchParams.get("operation");
+    const subcategory = url.searchParams.get("subcategory");
+    const level = url.searchParams.get("level");
+    const mode = url.searchParams.get("mode");
+    const cursorRaw = Number.parseInt(url.searchParams.get("cursor") ?? "0", 10);
+    const pageSizeRaw = Number.parseInt(
+      url.searchParams.get("page_size") ?? url.searchParams.get("limit") ?? "500",
+      10,
+    );
+    const cursor = Number.isNaN(cursorRaw) ? 0 : Math.max(0, cursorRaw);
+    const pageSize = Number.isNaN(pageSizeRaw) ? 500 : Math.max(1, Math.min(500, pageSizeRaw));
+    const filtered = diskRows.filter((row) => {
+      if (service && row.service !== service) return false;
+      if (operation && row.operation !== operation) return false;
+      if (subcategory && row.subcategory !== subcategory) return false;
+      if (level && row.level !== level) return false;
+      if (mode && row.mode !== mode) return false;
+      return true;
+    });
+    const items = filtered.slice(cursor, cursor + pageSize);
+    const nextCursor = cursor + items.length >= filtered.length ? null : cursor + items.length;
+    const totalPages = filtered.length > 0 ? Math.ceil(filtered.length / pageSize) : 0;
+    const accept = String(req.headers.accept ?? "");
+    const fetchDest = String(req.headers["sec-fetch-dest"] ?? "");
+    const fetchMode = String(req.headers["sec-fetch-mode"] ?? "");
+    const prefersDocument =
+      accept.includes("text/html") || fetchDest === "document" || fetchMode === "navigate";
+    const payload = {
+      items,
+      cursor,
+      page_size: pageSize,
+      next_cursor: nextCursor,
+      total_count: filtered.length,
+      total_pages: totalPages,
+    };
+    if (prefersDocument) {
+      sendReadableJsonDocument(res, 200, payload);
+    } else {
+      sendJson(res, 200, payload);
+    }
+    return true;
+  }
+
   if (method === "GET" && pathOnly === "/api/v1/discovery/scan") {
     const scan = getDiscoveryScan();
     sendJson(res, 200, scan);
@@ -103,6 +273,13 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
       const scan = setDiscoveryPaused(paused);
       sendJson(res, 200, scan);
     } catch {
+      appendMockLog(
+        "WARN",
+        "api.route.invalid_json",
+        "invalid json body",
+        "POST /api/v1/discovery/scan/pause",
+        "validation",
+      );
       sendJson(res, 400, { title: "Invalid JSON", status: 400 });
     }
     return true;
@@ -128,6 +305,13 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
       dhcpClientsState.items[idx] = { ...dhcpClientsState.items[idx], ...patch };
       sendJson(res, 200, dhcpClientsState.items[idx]);
     } catch {
+      appendMockLog(
+        "WARN",
+        "api.route.invalid_json",
+        "invalid json body",
+        "PATCH /api/v1/dhcp/clients/{id}",
+        "validation",
+      );
       sendJson(res, 400, { title: "Invalid JSON", status: 400 });
     }
     return true;
@@ -153,6 +337,13 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
       dhcpReservationsState.items[idx] = { ...dhcpReservationsState.items[idx], ...patch };
       sendJson(res, 200, dhcpReservationsState.items[idx]);
     } catch {
+      appendMockLog(
+        "WARN",
+        "api.route.invalid_json",
+        "invalid json body",
+        "PATCH /api/v1/dhcp/reservations/{id}",
+        "validation",
+      );
       sendJson(res, 400, { title: "Invalid JSON", status: 400 });
     }
     return true;
@@ -210,6 +401,13 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
       writeFileSync(outPath, JSON.stringify(layout, null, 2) + "\n", "utf8");
       sendJson(res, 200, { filename: basename });
     } catch {
+      appendMockLog(
+        "WARN",
+        "api.route.invalid_json",
+        "invalid json body",
+        "POST /api/v1/dashboards/{id}/layout/save-file",
+        "validation",
+      );
       sendJson(res, 400, { title: "Invalid JSON", status: 400 });
     }
     return true;
@@ -239,6 +437,13 @@ export async function handleMockApi(req: IncomingMessage, res: ServerResponse): 
         res.statusCode = 204;
         res.end();
       } catch {
+        appendMockLog(
+          "WARN",
+          "api.route.invalid_json",
+          "invalid json body",
+          "PUT /api/v1/dashboards/{id}/layout",
+          "validation",
+        );
         sendJson(res, 400, { title: "Invalid JSON", status: 400 });
       }
       return true;

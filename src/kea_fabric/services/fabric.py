@@ -18,6 +18,7 @@ from kea_fabric.services.layout_service import DashboardLayoutService
 from kea_fabric.services.perf_service import PerfService
 from kea_fabric.services.replication_service import ReplicationService
 from kea_fabric.settings import ApiSettings
+from kea_fabric.structured_logging import GlobalStructuredLogger
 
 
 class FabricService:
@@ -26,12 +27,17 @@ class FabricService:
         *,
         settings: ApiSettings,
         layout_store: JsonLayoutStore,
+        global_logger: GlobalStructuredLogger,
         dhcp: DhcpDataSource | None = None,
         nebula: MockNebulaReplicationAdapter | None = None,
     ) -> None:
         self._dhcp = dhcp or MockDhcpAdapter()
         self._replication_adapter = nebula or MockNebulaReplicationAdapter()
-        self._audit = AuditLogService(data_dir=settings.data_dir)
+        self._global_logger = global_logger
+        self._audit = AuditLogService(
+            data_dir=settings.data_dir,
+            global_logger=global_logger,
+        )
         self._layout = DashboardLayoutService(
             settings=settings,
             layout_store=layout_store,
@@ -50,14 +56,40 @@ class FabricService:
         self._replication.reset_for_tests()
 
     def get_health(self) -> dict[str, Any]:
+        self._global_logger.emit(
+            level="DEBUG",
+            event="service.fabric.health",
+            message="health requested",
+            service="fabric",
+            operation="get_health",
+            subcategory="read",
+        )
         return copy.deepcopy(STUB_HEALTH)
 
     def get_meta(self, mock: str | None) -> dict[str, Any]:
         if mock == "error":
+            self._global_logger.emit(
+                level="WARN",
+                event="service.fabric.meta.error",
+                message="meta mock error requested",
+                service="fabric",
+                operation="get_meta",
+                subcategory="read",
+                error_type="mock_error",
+                error_message="mock=error",
+            )
             raise HTTPException(
                 status_code=503,
                 detail={"type": "about:blank", "title": "mock error", "status": 503},
             )
+        self._global_logger.emit(
+            level="DEBUG",
+            event="service.fabric.meta",
+            message="meta requested",
+            service="fabric",
+            operation="get_meta",
+            subcategory="read",
+        )
         return copy.deepcopy(STUB_META)
 
     def list_plugins(self, mock: str | None) -> dict[str, Any]:

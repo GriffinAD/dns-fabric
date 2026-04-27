@@ -13,6 +13,7 @@
 
   const registryPage = $derived(resolveAdminRoute(adminSubpath));
   const isUiGauges = $derived(adminSubpath === "ui/gauges");
+  const isLogs = $derived(adminSubpath === "logs");
   const isOverview = $derived(adminSubpath === "" || adminSubpath === "/");
 
   let health = $state<HealthResponse | null>(null);
@@ -41,9 +42,9 @@
 </script>
 
 <div
-  class="mx-auto flex flex-col gap-6"
-  class:max-w-7xl={isUiGauges}
-  class:max-w-4xl={!isUiGauges}
+  class="mx-auto flex w-full flex-col gap-6"
+  class:max-w-7xl={isUiGauges || isLogs}
+  class:max-w-4xl={!isUiGauges && !isLogs}
   data-testid="admin-page"
 >
   <nav
@@ -70,6 +71,16 @@
       data-testid="admin-nav-ui-gauges"
     >
       Gauges
+    </a>
+    <span class="text-gray-400" aria-hidden="true">/</span>
+    <a
+      href="#/admin/logs"
+      class="rounded px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 {adminSubpath === 'logs'
+        ? 'font-semibold text-gray-900 dark:text-white'
+        : 'text-primary-600 hover:underline dark:text-primary-400'}"
+      data-testid="admin-nav-logs"
+    >
+      Logging
     </a>
     <span class="text-gray-400" aria-hidden="true">/</span>
     <a

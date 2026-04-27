@@ -9,6 +9,7 @@ import {
   discoveryRecordListResponseSchema,
   discoveryScanResponseSchema,
   dashboardLayoutSaveFileResponseSchema,
+  adminLogsResponseSchema,
   fabricEventSchema,
   healthResponseSchema,
   metaResponseSchema,
@@ -26,6 +27,8 @@ import type {
   DhcpReservation,
   DiscoveryRecordListResponse,
   DiscoveryScanResponse,
+  AdminLogsResponse,
+  LogLevel,
   FabricEvent,
   HealthResponse,
   MetaResponse,
@@ -320,6 +323,32 @@ export class DataGateway {
 
   getPerfSummary(): Promise<PerfSummaryResponse> {
     return this.getJsonValidated("/api/v1/perf/summary", perfSummaryResponseSchema);
+  }
+
+  getAdminLogs(filters?: {
+    service?: string;
+    operation?: string;
+    subcategory?: string;
+    level?: LogLevel;
+    mode?: string;
+    from?: string;
+    to?: string;
+    cursor?: number;
+    limit?: number;
+  }): Promise<AdminLogsResponse> {
+    const q = new URLSearchParams();
+    if (filters?.service) q.set("service", filters.service);
+    if (filters?.operation) q.set("operation", filters.operation);
+    if (filters?.subcategory) q.set("subcategory", filters.subcategory);
+    if (filters?.level) q.set("level", filters.level);
+    if (filters?.mode) q.set("mode", filters.mode);
+    if (filters?.from) q.set("from", filters.from);
+    if (filters?.to) q.set("to", filters.to);
+    if (filters?.cursor != null) q.set("cursor", String(filters.cursor));
+    if (filters?.limit != null) q.set("limit", String(filters.limit));
+    const suffix = q.toString();
+    const path = suffix ? `/api/v1/admin/logs?${suffix}` : "/api/v1/admin/logs";
+    return this.getJsonValidated(path, adminLogsResponseSchema);
   }
 
   /**

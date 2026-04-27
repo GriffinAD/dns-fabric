@@ -16,10 +16,10 @@ todos:
     status: pending
   - id: structured-logging-review
     content: Define system-wide structured logging schema, event taxonomy, and rollout standards across API/services/discovery
-    status: pending
+    status: completed
   - id: admin-log-viewer
     content: Add admin log viewer endpoint/UI with filters for service, operation subcategory, discovery mode/event, severity, and time window
-    status: pending
+    status: completed
   - id: test-discovery-modes
     content: Add unit/integration coverage for discovery success/fail paths and parity with existing route behavior
     status: pending
@@ -45,6 +45,12 @@ isProject: false
 - Deterministic startup loading, strict contract validation, typed registry wiring
 - Structured logging standardization and discovery-focused diagnostics
 - Admin logs query/view capability with operational filters
+
+## Global logger requirement
+
+- Service_V2 assumes one **global structured logging system** across the entire platform.
+- Discovery/service/admin logging are views over the same logging substrate, schema, and level taxonomy.
+- No component-specific logging formats are allowed in Service_V2 runtime paths.
 
 ### Non-goals (Service_V2)
 
@@ -217,9 +223,11 @@ flowchart LR
   - hash or omit sensitive fields,
   - include allowlist-based payload fragments only.
 - Define log-level policy:
+  - allowed categories (strict): `CRITICAL`, `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE`
   - `INFO`: startup summaries, successful mode selection, admin queries
   - `WARN`: recoverable/ignored module conditions
-  - `ERROR`: strict-mode startup blockers and contract violations
+  - `ERROR`/`CRITICAL`: strict-mode startup blockers and contract violations
+  - `DEBUG`/`TRACE`: deep diagnostics, gated by environment/log level settings
 
 ### 4.2 Discovery-focused debug surface
 
@@ -238,7 +246,7 @@ flowchart LR
   - `service`
   - `operation`
   - `subcategory` (including discovery-related categories)
-  - `level`
+  - `level` (logging type): `CRITICAL`, `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE`
   - `mode` (`off`/`strict` where relevant)
   - `from`/`to` time range
   - pagination cursor/limit
