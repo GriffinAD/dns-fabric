@@ -1,0 +1,11 @@
+{
+  "version": 3,
+  "items": [
+    {
+      "kind": "tile",
+      "id": "t1",
+      "hostControl": "single-panel",
+      "displayMode": "full"
+    }
+  ]
+}

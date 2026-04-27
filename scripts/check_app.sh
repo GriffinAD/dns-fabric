@@ -8,6 +8,7 @@ bash scripts/compile_python_tree.sh
 uv run ruff check src tests scripts
 uv run mypy src tests
 uv run pytest --cov=kea_fabric --cov-report=term-missing -q
+uv run python scripts/check_layout_parity.py
 uv run python scripts/check_openapi_drift.py
 uv run python scripts/validate_specs.py
 uv build

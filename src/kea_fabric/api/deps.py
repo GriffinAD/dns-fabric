@@ -34,7 +34,10 @@ def resolve_auth_role(
     """Resolve operator vs viewer when auth is enabled (anonymous OK when disabled)."""
     settings: ApiSettings = request.app.state.settings
     bearer = _extract_bearer(authorization)
-    token = bearer or access_token
+    query_token = access_token
+    if query_token is not None and request.url.path != "/api/v1/events/stream":
+        query_token = None
+    token = bearer or query_token
     if not settings.auth_enabled:
         return "operator"
     if token is None:

@@ -8,7 +8,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from kea_fabric.adapters import MockDhcpAdapter, MockNebulaReplicationAdapter
+from kea_fabric.adapters.dhcp import KeaDhcpAdapter, MockDhcpAdapter
+from kea_fabric.adapters.nebula import MockNebulaReplicationAdapter
 from kea_fabric.api import v1_router
 from kea_fabric.persistence import JsonLayoutStore
 from kea_fabric.services.fabric import FabricService
@@ -32,10 +33,15 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app(settings: ApiSettings | None = None) -> FastAPI:
     settings = settings or ApiSettings.from_env()
     layout_store = JsonLayoutStore(settings.data_dir / "dashboard-layouts.json")
+    dhcp = (
+        KeaDhcpAdapter(endpoint=settings.kea_endpoint)
+        if settings.dhcp_backend == "kea"
+        else MockDhcpAdapter()
+    )
     fabric = FabricService(
         settings=settings,
         layout_store=layout_store,
-        dhcp=MockDhcpAdapter(),
+        dhcp=dhcp,
         nebula=MockNebulaReplicationAdapter(),
     )
     app = FastAPI(

@@ -1,20 +1,22 @@
-"""Orchestrates mock adapters, layout persistence, and list mock toggles."""
+"""Legacy façade that composes focused API services."""
 
 from __future__ import annotations
 
 import copy
-import json
-from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
 
 from kea_fabric.adapters.dhcp import DhcpDataSource, MockDhcpAdapter
 from kea_fabric.adapters.nebula import MockNebulaReplicationAdapter
-from kea_fabric.api import layout_validate, state
-from kea_fabric.api.stub_data import LIST_PATHS, STUB_HEALTH, STUB_META
+from kea_fabric.api.stub_data import STUB_HEALTH, STUB_META
 from kea_fabric.persistence.layout_store import JsonLayoutStore
+from kea_fabric.services.audit_service import AuditLogService
+from kea_fabric.services.dhcp_service import DhcpDataService
+from kea_fabric.services.discovery_service import DiscoveryService
+from kea_fabric.services.layout_service import DashboardLayoutService
+from kea_fabric.services.perf_service import PerfService
+from kea_fabric.services.replication_service import ReplicationService
 from kea_fabric.settings import ApiSettings
 
 
@@ -27,39 +29,25 @@ class FabricService:
         dhcp: DhcpDataSource | None = None,
         nebula: MockNebulaReplicationAdapter | None = None,
     ) -> None:
-        self._settings = settings
-        self._layout_store = layout_store
         self._dhcp = dhcp or MockDhcpAdapter()
-        self._nebula = nebula or MockNebulaReplicationAdapter()
+        self._replication_adapter = nebula or MockNebulaReplicationAdapter()
+        self._audit = AuditLogService(data_dir=settings.data_dir)
+        self._layout = DashboardLayoutService(
+            settings=settings,
+            layout_store=layout_store,
+        )
+        self._dhcp_service = DhcpDataService(dhcp=self._dhcp)
+        self._discovery = DiscoveryService(dhcp=self._dhcp)
+        self._perf = PerfService(dhcp=self._dhcp)
+        self._replication = ReplicationService(nebula=self._replication_adapter)
 
     @property
     def nebula_adapter(self) -> MockNebulaReplicationAdapter:
-        return self._nebula
+        return self._replication_adapter
 
     def reset_mocks_for_tests(self) -> None:
         """Reset volatile mock adapter state (pytest)."""
-        self._nebula.reset()
-
-    def _apply_list_mock(
-        self,
-        path: str,
-        payload: dict[str, Any],
-        mock: str | None,
-    ) -> dict[str, Any]:
-        if mock == "error":
-            raise HTTPException(
-                status_code=503,
-                detail={
-                    "type": "about:blank",
-                    "title": "mock error",
-                    "status": 503,
-                    "detail": "mock=error",
-                },
-            )
-        data = copy.deepcopy(payload)
-        if mock == "empty" and path in LIST_PATHS:
-            data["items"] = []
-        return data
+        self._replication.reset_for_tests()
 
     def get_health(self) -> dict[str, Any]:
         return copy.deepcopy(STUB_HEALTH)
@@ -73,187 +61,64 @@ class FabricService:
         return copy.deepcopy(STUB_META)
 
     def list_plugins(self, mock: str | None) -> dict[str, Any]:
-        return self._apply_list_mock("/plugins", self._dhcp.plugins_payload(), mock)
+        return self._dhcp_service.list_plugins(mock)
 
     def list_pools(self, mock: str | None) -> dict[str, Any]:
-        return self._apply_list_mock("/dhcp/pools", self._dhcp.pools_payload(), mock)
+        return self._dhcp_service.list_pools(mock)
 
     def list_clients(self, mock: str | None) -> dict[str, Any]:
-        return self._apply_list_mock(
-            "/dhcp/clients",
-            self._dhcp.clients_payload(),
-            mock,
-        )
+        return self._dhcp_service.list_clients(mock)
 
     def list_reservations(self, mock: str | None) -> dict[str, Any]:
-        return self._apply_list_mock(
-            "/dhcp/reservations",
-            self._dhcp.reservations_payload(),
-            mock,
-        )
+        return self._dhcp_service.list_reservations(mock)
 
     def list_discovery_records(self, mock: str | None) -> dict[str, Any]:
-        return self._apply_list_mock(
-            "/discovery/records",
-            self._dhcp.discovery_records_payload(),
-            mock,
-        )
+        return self._discovery.list_discovery_records(mock)
 
     def get_discovery_scan(self) -> dict[str, Any]:
-        return state.get_discovery_scan()
+        return self._discovery.get_discovery_scan()
 
     def post_discovery_pause(self, body: object) -> dict[str, Any]:
-        if not isinstance(body, dict):
-            raise HTTPException(
-                status_code=400,
-                detail={"title": "Invalid JSON", "status": 400},
-            )
-        paused = bool(body["paused"]) if "paused" in body else True
-        return state.set_discovery_paused(paused)
+        result = self._discovery.post_discovery_pause(body)
+        paused = result.get("state") == "paused"
+        self._audit.record(
+            "discovery.pause",
+            {"state": result.get("state"), "paused": bool(paused)},
+        )
+        return result
 
     def patch_client(self, client_id: str, body: object) -> dict[str, Any]:
-        if not isinstance(body, dict):
-            raise HTTPException(
-                status_code=400,
-                detail={"title": "Invalid JSON", "status": 400},
-            )
-        allowed = {"hostname", "vendor_name"}
-        patch = {k: v for k, v in body.items() if k in allowed}
-        if not patch:
-            raise HTTPException(
-                status_code=400,
-                detail={"title": "No editable fields provided", "status": 400},
-            )
-        row = self._dhcp.update_client(client_id, patch)
-        if row is None:
-            raise HTTPException(
-                status_code=404,
-                detail={"title": "client not found", "status": 404},
-            )
+        row = self._dhcp_service.patch_client(client_id, body)
+        self._audit.record("dhcp.client.patch", {"id": client_id})
         return row
 
     def patch_reservation(self, reservation_id: str, body: object) -> dict[str, Any]:
-        if not isinstance(body, dict):
-            raise HTTPException(
-                status_code=400,
-                detail={"title": "Invalid JSON", "status": 400},
-            )
-        allowed = {"hardware_address", "reserved_address", "hostname"}
-        patch = {k: v for k, v in body.items() if k in allowed}
-        if not patch:
-            raise HTTPException(
-                status_code=400,
-                detail={"title": "No editable fields provided", "status": 400},
-            )
-        row = self._dhcp.update_reservation(reservation_id, patch)
-        if row is None:
-            raise HTTPException(
-                status_code=404,
-                detail={"title": "reservation not found", "status": 404},
-            )
+        row = self._dhcp_service.patch_reservation(reservation_id, body)
+        self._audit.record("dhcp.reservation.patch", {"id": reservation_id})
         return row
 
     def get_perf(self, mock: str | None) -> dict[str, Any]:
-        if mock == "error":
-            raise HTTPException(status_code=503)
-        return copy.deepcopy(self._dhcp.perf_payload())
+        return self._perf.get_perf(mock)
 
     def get_layout(self, dashboard_id: str) -> dict[str, Any]:
-        layout = self._layout_store.get(dashboard_id)
-        if layout is None:
-            raise HTTPException(
-                status_code=404,
-                detail={"title": "layout not found", "status": 404},
-            )
-        return layout
+        return self._layout.get_layout(dashboard_id)
 
     def put_layout(self, dashboard_id: str, body: object) -> None:
-        if not layout_validate.is_dashboard_layout(body):
-            raise HTTPException(
-                status_code=400,
-                detail={"title": "Invalid layout", "status": 400},
-            )
-        assert isinstance(body, dict)
-        self._layout_store.set(dashboard_id, body)
+        self._layout.put_layout(dashboard_id, body)
+        self._audit.record("dashboard.layout.put", {"dashboard_id": dashboard_id})
 
     def save_layout_to_file(self, dashboard_id: str, body: object) -> dict[str, str]:
-        """Persist layout; write ``Dashboard_Layout_<ts>.json`` under ``data_dir``."""
-        if not layout_validate.is_dashboard_layout(body):
-            raise HTTPException(
-                status_code=400,
-                detail={"title": "Invalid layout", "status": 400},
-            )
-        assert isinstance(body, dict)
-        self._layout_store.set(dashboard_id, body)
-        exports_dir = self._settings.data_dir / "dashboard-layout-exports"
-        exports_dir.mkdir(parents=True, exist_ok=True)
-        ts = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        path = self._allocate_dashboard_export_path(exports_dir, ts)
-        path.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
-        return {"filename": path.name}
-
-    @staticmethod
-    def _allocate_dashboard_export_path(exports_dir: Path, ts: str) -> Path:
-        base = exports_dir / f"Dashboard_Layout_{ts}.json"
-        if not base.exists():
-            return base
-        for n in range(1, 1000):
-            candidate = exports_dir / f"Dashboard_Layout_{ts}_{n}.json"
-            if not candidate.exists():
-                return candidate
-        msg = "Could not allocate a unique dashboard export filename"
-        raise HTTPException(status_code=500, detail={"title": msg, "status": 500})
+        result = self._layout.save_layout_to_file(dashboard_id, body)
+        self._audit.record(
+            "dashboard.layout.save_file",
+            {"dashboard_id": dashboard_id, "filename": result.get("filename")},
+        )
+        return result
 
     def reset_layout_from_orig(self, dashboard_id: str) -> dict[str, Any]:
-        """Replace the live layout from read-only ``dashboard-layouts.orig.json``."""
-        orig_path = self._settings.data_dir / "dashboard-layouts.orig.json"
-        if not orig_path.is_file():
-            hint = (
-                f"Expected {orig_path}. "
-                "Set KEA_FABRIC_DATA_DIR to the directory that contains "
-                "dashboard-layouts.orig.json (next to dashboard-layouts.json)."
-            )
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "title": "baseline layout file not found",
-                    "status": 404,
-                    "detail": hint,
-                },
-            )
-        try:
-            raw = json.loads(orig_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "title": "baseline layout file is not valid JSON",
-                    "status": 500,
-                },
-            )
-        if not isinstance(raw, dict):
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "title": "baseline layout file must be a JSON object",
-                    "status": 500,
-                },
-            )
-        layout = raw.get(dashboard_id)
-        layout_ok = isinstance(layout, dict) and layout_validate.is_dashboard_layout(
-            layout,
-        )
-        if not layout_ok:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "title": "Invalid or missing layout in baseline file",
-                    "status": 400,
-                },
-            )
-        assert isinstance(layout, dict)
-        self._layout_store.set(dashboard_id, layout)
-        return copy.deepcopy(layout)
+        result = self._layout.reset_layout_from_orig(dashboard_id)
+        self._audit.record("dashboard.layout.reset", {"dashboard_id": dashboard_id})
+        return result
 
     def nebula_replication_summary(self) -> dict[str, object]:
-        return self._nebula.replication_summary()
+        return self._replication.summary()

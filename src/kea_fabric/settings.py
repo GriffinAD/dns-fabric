@@ -39,6 +39,8 @@ class ApiSettings:
     api_token: str | None = None
     viewer_token: str | None = None
     sse_interval_seconds: float = 15.0
+    dhcp_backend: str = "mock"
+    kea_endpoint: str | None = None
 
     @property
     def auth_enabled(self) -> bool:
@@ -52,4 +54,8 @@ class ApiSettings:
             api_token=_env_str("KEA_FABRIC_API_TOKEN"),
             viewer_token=_env_str("KEA_FABRIC_API_VIEWER_TOKEN"),
             sse_interval_seconds=float(sse_raw),
+            dhcp_backend=(
+                os.environ.get("KEA_FABRIC_DHCP_BACKEND", "mock").strip() or "mock"
+            ),
+            kea_endpoint=_env_str("KEA_FABRIC_KEA_ENDPOINT"),
         )

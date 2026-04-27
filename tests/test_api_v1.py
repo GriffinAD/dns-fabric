@@ -9,10 +9,11 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.testclient import TestClient
 
 from kea_fabric.api import state
+from kea_fabric.api.deps import resolve_auth_role
 from kea_fabric.api.event_stream import fabric_sse_lines
 from kea_fabric.api.main import create_app
 from kea_fabric.settings import ApiSettings
@@ -58,6 +59,8 @@ def test_plugins(client: TestClient) -> None:
     r = client.get("/api/v1/plugins")
     assert r.status_code == 200
     assert len(r.json()["items"]) >= 1
+    assert "version" in r.json()["items"][0]
+    assert "capabilities" in r.json()["items"][0]
 
 
 def test_plugins_mock_empty(client: TestClient) -> None:
@@ -168,6 +171,23 @@ def test_discovery_pause_invalid_json(client: TestClient) -> None:
         headers={"Content-Type": "application/json"},
     )
     assert r.status_code == 400
+
+
+def test_mutation_writes_audit_log(tmp_path: Path) -> None:
+    state.reset_stub_state()
+    settings = ApiSettings(data_dir=tmp_path, sse_interval_seconds=0.05)
+    with TestClient(create_app(settings=settings)) as c:
+        r = c.patch("/api/v1/dhcp/clients/cli-dyn-1", json={"hostname": "audited"})
+        assert r.status_code == 200
+    audit_path = tmp_path / "audit" / "mutations.jsonl"
+    assert audit_path.is_file()
+    audit_text = audit_path.read_text(encoding="utf-8")
+    lines = [
+        line for line in audit_text.splitlines() if line.strip()
+    ]
+    assert len(lines) >= 1
+    row = json.loads(lines[-1])
+    assert row["action"] == "dhcp.client.patch"
 
 
 def test_layout_get_404_put_get(client: TestClient) -> None:
@@ -308,7 +328,7 @@ def test_layout_save_file_alloc_exhausted_returns_500(tmp_path: Path) -> None:
     body = {"version": 2, "items": []}
     fake_now = MagicMock()
     fake_now.strftime.return_value = ts
-    with patch("kea_fabric.services.fabric.datetime") as mock_dt:
+    with patch("kea_fabric.services.layout_service.datetime") as mock_dt:
         mock_dt.now.return_value = fake_now
         with TestClient(create_app(settings=settings)) as c:
             r = c.post("/api/v1/dashboards/default/layout/save-file", json=body)
@@ -351,6 +371,32 @@ def test_replication_summary(client: TestClient) -> None:
     data = r.json()
     assert data["status"] in ("healthy", "lagging", "disconnected", "unknown")
     assert "observed_at" in data
+    assert "failover_groups" in data
+
+
+def test_api_list_shape_snapshot(client: TestClient) -> None:
+    snapshot_path = Path(__file__).parent / "fixtures" / "api_list_shape_snapshot.json"
+    expected = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    endpoints = [
+        "/api/v1/plugins",
+        "/api/v1/dhcp/pools",
+        "/api/v1/dhcp/clients",
+        "/api/v1/dhcp/reservations",
+        "/api/v1/discovery/records",
+    ]
+
+    actual: dict[str, dict[str, list[str]]] = {}
+    for path in endpoints:
+        payload = client.get(path).json()
+        sig: dict[str, list[str]] = {"top": sorted(payload.keys())}
+        items = payload.get("items")
+        if isinstance(items, list) and items:
+            first = items[0]
+            if isinstance(first, dict):
+                sig["item_keys"] = sorted(first.keys())
+        actual[path] = sig
+
+    assert actual == expected
 
 
 def test_fabric_sse_lines_include_heartbeat_and_data(tmp_path: Path) -> None:
@@ -370,6 +416,37 @@ def test_fabric_sse_lines_include_heartbeat_and_data(tmp_path: Path) -> None:
     assert "sse-heartbeat" in joined
     assert "fabric.perf.updated" in joined
     assert "data:" in joined
+
+
+def test_access_token_query_only_allowed_for_sse(tmp_path: Path) -> None:
+    settings = ApiSettings(
+        data_dir=tmp_path,
+        api_token="operator-token",
+        viewer_token="viewer-token",
+        sse_interval_seconds=0.01,
+    )
+    request = MagicMock(spec=Request)
+    request.app.state.settings = settings
+    request.url.path = "/api/v1/meta"
+    with pytest.raises(HTTPException):
+        resolve_auth_role(request=request, access_token="operator-token")
+
+    request.url.path = "/api/v1/events/stream"
+    role = resolve_auth_role(request=request, access_token="operator-token")
+    assert role == "operator"
+
+
+def test_kea_backend_switch_still_serves_mock_contract(tmp_path: Path) -> None:
+    settings = ApiSettings(
+        data_dir=tmp_path,
+        dhcp_backend="kea",
+        kea_endpoint="http://127.0.0.1:8000",
+        sse_interval_seconds=0.05,
+    )
+    with TestClient(create_app(settings=settings)) as c:
+        r = c.get("/api/v1/dhcp/pools")
+        assert r.status_code == 200
+        assert "items" in r.json()
 
 
 def test_layout_validate_false() -> None:
@@ -1382,18 +1459,19 @@ def test_layout_reset_forbidden_for_viewer(tmp_path: Path) -> None:
 
 
 def test_access_token_query_param_auth(tmp_path: Path) -> None:
-    state.reset_stub_state()
     settings = ApiSettings(
         data_dir=tmp_path,
         api_token="tok",
         viewer_token=None,
         sse_interval_seconds=0.05,
     )
-    with TestClient(create_app(settings=settings)) as c:
-        assert c.get("/api/v1/meta").status_code == 401
-        r = c.get("/api/v1/meta?access_token=tok")
-        assert r.status_code == 200
-    state.reset_stub_state()
+    request = MagicMock(spec=Request)
+    request.app.state.settings = settings
+    request.url.path = "/api/v1/meta"
+    with pytest.raises(HTTPException):
+        resolve_auth_role(request=request, access_token="tok")
+    request.url.path = "/api/v1/events/stream"
+    assert resolve_auth_role(request=request, access_token="tok") == "operator"
 
 
 def test_json_layout_store_roundtrip(tmp_path: Path) -> None:
