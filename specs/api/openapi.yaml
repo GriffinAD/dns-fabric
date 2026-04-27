@@ -1,991 +1,761 @@
-openapi: 3.0.3
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          title: Detail
+          type: array
+      title: HTTPValidationError
+      type: object
+    ValidationError:
+      properties:
+        ctx:
+          title: Context
+          type: object
+        input:
+          title: Input
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          title: Location
+          type: array
+        msg:
+          title: Message
+          type: string
+        type:
+          title: Error Type
+          type: string
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+      type: object
 info:
   title: Kea Fabric API
-  version: "1.0.0"
-  description: >
-    Versioned HTTP API for Kea Fabric operator surfaces. DTOs use DHCP-neutral
-    field names at the boundary (no Kea-specific types in public schemas).
-servers:
-  - url: /api/v1
-    description: Relative to the operator origin
-security:
-  - BearerAuth: []
+  version: 1.0.0
+openapi: 3.1.0
 paths:
-  /health:
+  /api/v1/admin/replication/summary:
     get:
-      operationId: getHealth
-      summary: Liveness and dependency summary for admin surfaces
-      tags: [Admin]
-      security: []
-      responses:
-        "200":
-          description: Health snapshot
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthResponse"
-  /admin/replication/summary:
-    get:
-      operationId: getNebulaReplicationSummary
-      summary: Read-only Nebula replication observation (mock in Phase B)
-      tags: [Admin]
-      responses:
-        "200":
-          description: Replication posture snapshot
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/NebulaReplicationSummary"
-  /meta:
-    get:
-      operationId: getMeta
-      summary: Runtime metadata for the shell
-      tags: [Meta]
-      responses:
-        "200":
-          description: Metadata
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/MetaResponse"
-  /plugins:
-    get:
-      operationId: listPlugins
-      summary: Installed plugins with optional dashboard manifest
-      tags: [Plugins]
-      responses:
-        "200":
-          description: Plugin list
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PluginListResponse"
-  /dashboards/{dashboardId}/layout:
-    get:
-      operationId: getDashboardLayout
-      summary: Saved dashboard layout for the operator shell
-      tags: [Dashboard]
+      operationId: get_replication_summary_api_v1_admin_replication_summary_get
       parameters:
-        - $ref: "#/components/parameters/DashboardId"
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
       responses:
-        "200":
-          description: Layout document
+        '200':
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DashboardLayout"
+                additionalProperties: true
+                title: Response Get Replication Summary Api V1 Admin Replication Summary
+                  Get
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Replication Summary
+  /api/v1/dashboards/{dashboard_id}/layout:
+    get:
+      operationId: get_layout_api_v1_dashboards__dashboard_id__layout_get
+      parameters:
+      - in: path
+        name: dashboard_id
+        required: true
+        schema:
+          title: Dashboard Id
+          type: string
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Get Layout Api V1 Dashboards  Dashboard Id  Layout
+                  Get
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Layout
     put:
-      operationId: putDashboardLayout
-      summary: Replace dashboard layout (last-write-wins; validate against layout schema server-side)
-      tags: [Dashboard]
+      operationId: put_layout_api_v1_dashboards__dashboard_id__layout_put
       parameters:
-        - $ref: "#/components/parameters/DashboardId"
-      requestBody:
+      - in: path
+        name: dashboard_id
         required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DashboardLayout"
+        schema:
+          title: Dashboard Id
+          type: string
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
       responses:
-        "204":
-          description: Layout accepted
-        "400":
-          description: Invalid layout
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProblemDetails"
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Put Layout
+  /api/v1/dashboards/{dashboard_id}/layout/reset:
     post:
-      operationId: resetDashboardLayout
-      summary: Restore dashboard layout from dashboard-layouts.orig.json (read-only baseline on disk)
-      tags: [Dashboard]
+      description: Restore layout from read-only ``dashboard-layouts.orig.json`` on
+        disk.
+      operationId: reset_layout_api_v1_dashboards__dashboard_id__layout_reset_post
       parameters:
-        - $ref: "#/components/parameters/DashboardId"
-      responses:
-        "200":
-          description: Layout after reset (same shape as GET layout)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DashboardLayout"
-        "400":
-          description: Baseline file exists but layout for this id is invalid
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "404":
-          description: Baseline file missing
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-  /dashboards/{dashboardId}/layout/save-file:
-    post:
-      operationId: postDashboardLayoutSaveFile
-      summary: Persist layout to live store and write a timestamped JSON snapshot on disk
-      tags: [Dashboard]
-      parameters:
-        - $ref: "#/components/parameters/DashboardId"
-      requestBody:
+      - in: path
+        name: dashboard_id
         required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DashboardLayout"
+        schema:
+          title: Dashboard Id
+          type: string
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
       responses:
-        "200":
-          description: Layout stored; snapshot filename on the server
+        '200':
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DashboardLayoutSaveFileResponse"
-        "400":
-          description: Invalid layout or JSON
+                additionalProperties: true
+                title: Response Reset Layout Api V1 Dashboards  Dashboard Id  Layout
+                  Reset Post
+                type: object
+          description: Successful Response
+        '422':
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProblemDetails"
-  /events/stream:
-    get:
-      operationId: streamFabricEvents
-      summary: Server-sent events for live dashboard tiles (namespaced topics)
-      tags: [Events]
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Reset Layout
+  /api/v1/dashboards/{dashboard_id}/layout/save-file:
+    post:
+      description: Persist layout to the live store and write a timestamped JSON snapshot.
+      operationId: save_dashboard_layout_file_api_v1_dashboards__dashboard_id__layout_save_file_post
       parameters:
-        - name: access_token
-          in: query
-          required: false
-          description: >
-            Dev escape hatch when browsers cannot set Authorization on EventSource;
-            must match configured API token when auth is enabled.
-          schema:
-            type: string
+      - in: path
+        name: dashboard_id
+        required: true
+        schema:
+          title: Dashboard Id
+          type: string
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
       responses:
-        "200":
-          description: >
-            SSE stream (`text/event-stream`). Each event carries a JSON body matching FabricEvent.
-          content:
-            text/event-stream:
-              schema:
-                type: string
-                example: |
-                  data: {"topic":"fabric.perf.updated","occurred_at":"2026-04-22T10:05:01Z","payload":{}}
-
-                  data: {"topic":"fabric.discovery.updated","occurred_at":"2026-04-22T10:05:02Z","payload":{}}
-
-  /dhcp/pools:
-    get:
-      operationId: listDhcpPools
-      summary: DHCP address pools (Kea-agnostic DTO)
-      tags: [DHCP]
-      parameters:
-        - $ref: "#/components/parameters/ListLimit"
-        - $ref: "#/components/parameters/ListCursor"
-        - $ref: "#/components/parameters/ListSort"
-        - $ref: "#/components/parameters/ListFilter"
-      responses:
-        "200":
-          description: Pool collection
+        '200':
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DhcpPoolListResponse"
-  /dhcp/clients:
-    get:
-      operationId: listDhcpClients
-      summary: Active DHCP clients (Kea-agnostic DTO)
-      tags: [DHCP]
-      parameters:
-        - $ref: "#/components/parameters/ListLimit"
-        - $ref: "#/components/parameters/ListCursor"
-        - $ref: "#/components/parameters/ListSort"
-        - $ref: "#/components/parameters/ListFilter"
-      responses:
-        "200":
-          description: Client collection
+                additionalProperties:
+                  type: string
+                title: Response Save Dashboard Layout File Api V1 Dashboards  Dashboard
+                  Id  Layout Save File Post
+                type: object
+          description: Successful Response
+        '422':
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DhcpClientListResponse"
-  /dhcp/clients/{clientId}:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Save Dashboard Layout File
+  /api/v1/dhcp/clients:
+    get:
+      operationId: get_clients_api_v1_dhcp_clients_get
+      parameters:
+      - in: query
+        name: mock
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Mock
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Get Clients Api V1 Dhcp Clients Get
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Clients
+  /api/v1/dhcp/clients/{client_id}:
     patch:
-      operationId: patchDhcpClient
-      summary: Update editable DHCP client fields
-      tags: [DHCP]
+      operationId: patch_client_api_v1_dhcp_clients__client_id__patch
       parameters:
-        - name: clientId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
+      - in: path
+        name: client_id
         required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DhcpClientPatchRequest"
+        schema:
+          title: Client Id
+          type: string
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
       responses:
-        "200":
-          description: Updated client row
+        '200':
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DhcpClient"
-  /dhcp/reservations:
+                additionalProperties: true
+                title: Response Patch Client Api V1 Dhcp Clients  Client Id  Patch
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Patch Client
+  /api/v1/dhcp/pools:
     get:
-      operationId: listDhcpReservations
-      summary: Static reservations / fixed assignments
-      tags: [DHCP]
+      operationId: get_pools_api_v1_dhcp_pools_get
       parameters:
-        - $ref: "#/components/parameters/ListLimit"
-        - $ref: "#/components/parameters/ListCursor"
-        - $ref: "#/components/parameters/ListSort"
-        - $ref: "#/components/parameters/ListFilter"
+      - in: query
+        name: mock
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Mock
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
       responses:
-        "200":
-          description: Reservation collection
+        '200':
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DhcpReservationListResponse"
-  /dhcp/reservations/{reservationId}:
+                additionalProperties: true
+                title: Response Get Pools Api V1 Dhcp Pools Get
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Pools
+  /api/v1/dhcp/reservations:
+    get:
+      operationId: get_reservations_api_v1_dhcp_reservations_get
+      parameters:
+      - in: query
+        name: mock
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Mock
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Get Reservations Api V1 Dhcp Reservations Get
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Reservations
+  /api/v1/dhcp/reservations/{reservation_id}:
     patch:
-      operationId: patchDhcpReservation
-      summary: Update editable DHCP reservation fields
-      tags: [DHCP]
+      operationId: patch_reservation_api_v1_dhcp_reservations__reservation_id__patch
       parameters:
-        - name: reservationId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
+      - in: path
+        name: reservation_id
         required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DhcpReservationPatchRequest"
+        schema:
+          title: Reservation Id
+          type: string
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
       responses:
-        "200":
-          description: Updated reservation row
+        '200':
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DhcpReservation"
-  /discovery/records:
+                additionalProperties: true
+                title: Response Patch Reservation Api V1 Dhcp Reservations  Reservation
+                  Id  Patch
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Patch Reservation
+  /api/v1/discovery/records:
     get:
-      operationId: listDiscoveryRecords
-      summary: Discovery snapshot (normalized records)
-      tags: [Discovery]
+      operationId: get_discovery_records_api_v1_discovery_records_get
       parameters:
-        - $ref: "#/components/parameters/ListLimit"
-        - $ref: "#/components/parameters/ListCursor"
-        - $ref: "#/components/parameters/ListSort"
-        - $ref: "#/components/parameters/ListFilter"
+      - in: query
+        name: mock
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Mock
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
       responses:
-        "200":
-          description: Discovery records
+        '200':
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DiscoveryRecordListResponse"
-  /discovery/scan:
+                additionalProperties: true
+                title: Response Get Discovery Records Api V1 Discovery Records Get
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Discovery Records
+  /api/v1/discovery/scan:
     get:
-      operationId: getDiscoveryScan
-      summary: Discovery scan status for toolbar and controls
-      tags: [Discovery]
+      operationId: get_discovery_scan_api_v1_discovery_scan_get
+      parameters:
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
       responses:
-        "200":
-          description: Scan status
+        '200':
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DiscoveryScanResponse"
-  /discovery/scan/pause:
+                additionalProperties: true
+                title: Response Get Discovery Scan Api V1 Discovery Scan Get
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Discovery Scan
+  /api/v1/discovery/scan/pause:
     post:
-      operationId: pauseDiscoveryScan
-      summary: Pause or resume an active discovery scan (idempotent)
-      tags: [Discovery]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DiscoveryPauseRequest"
+      operationId: post_discovery_pause_api_v1_discovery_scan_pause_post
+      parameters:
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
       responses:
-        "200":
-          description: Updated scan status
+        '200':
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DiscoveryScanResponse"
-  /perf/summary:
+                additionalProperties: true
+                title: Response Post Discovery Pause Api V1 Discovery Scan Pause Post
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Post Discovery Pause
+  /api/v1/events/stream:
     get:
-      operationId: getPerfSummary
-      summary: Aggregate host performance snapshot for dashboard cards
-      tags: [Performance]
+      operationId: stream_events_api_v1_events_stream_get
+      parameters:
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
       responses:
-        "200":
-          description: Performance summary
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PerfSummaryResponse"
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      description: >
-        When `KEA_FABRIC_API_TOKEN` / `KEA_FABRIC_API_VIEWER_TOKEN` are set, send
-        `Authorization: Bearer <token>`. Viewer token allows reads only; operator allows writes.
-  parameters:
-    DashboardId:
-      name: dashboardId
-      in: path
-      required: true
-      schema:
-        type: string
-    ListLimit:
-      name: limit
-      in: query
-      required: false
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 500
-    ListCursor:
-      name: cursor
-      in: query
-      required: false
-      schema:
-        type: string
-    ListSort:
-      name: sort
-      in: query
-      required: false
-      schema:
-        type: string
-        description: Server-defined sort key (e.g. assigned_address:asc)
-    ListFilter:
-      name: filter
-      in: query
-      required: false
-      schema:
-        type: string
-        description: Opaque filter expression evaluated server-side
-  schemas:
-    NebulaReplicationSummary:
-      type: object
-      additionalProperties: false
-      required: [status, observed_at]
-      properties:
-        status:
-          type: string
-          enum: [healthy, lagging, disconnected, unknown]
-        observed_at:
-          type: string
-          format: date-time
-        partner_id:
-          type: string
-          nullable: true
-        detail:
-          type: string
-          nullable: true
-    ProblemDetails:
-      type: object
-      additionalProperties: true
-      description: RFC 7807-style problem (fields may vary)
-      properties:
-        type:
-          type: string
-        title:
-          type: string
-        status:
-          type: integer
-        detail:
-          type: string
-    HealthResponse:
-      type: object
-      additionalProperties: false
-      required: [status, checked_at]
-      properties:
-        status:
-          type: string
-          enum: [ok, degraded, down]
-        checked_at:
-          type: string
-          format: date-time
-        dependencies:
-          type: array
-          items:
-            type: object
-            additionalProperties: false
-            required: [name, status]
-            properties:
-              name:
-                type: string
-              status:
-                type: string
-                enum: [ok, degraded, down]
-              detail:
-                type: string
-                nullable: true
-    FabricEvent:
-      type: object
-      additionalProperties: false
-      required: [topic, occurred_at, payload]
-      properties:
-        topic:
-          type: string
-          description: Namespaced topic (e.g. fabric.perf.updated)
-        occurred_at:
-          type: string
-          format: date-time
-        payload:
-          type: object
-          additionalProperties: true
-    TileOptions:
-      type: object
-      additionalProperties: false
-      properties:
-        cpu_total:
-          type: boolean
-          description: When true, CPU is shown as a single aggregate gauge.
-        network_by_adapter:
-          type: boolean
-        disk_by_volume:
-          type: boolean
-        display_style:
-          type: string
-          enum: [gauge, percent_only]
-        gauge_gradient_mode:
-          type: string
-          enum: [smooth, banded]
-          description: >
-            Perf semicircle gauge fill. Omitted defaults to smooth gradient between threshold colours.
-        perf_max_cols:
-          type: integer
-          minimum: 1
-          maximum: 20
-          description: >
-            Max dashboard columns for a performance tile; extra gauges wrap inside the tile.
-    GridPlacement:
-      type: object
-      additionalProperties: false
-      required: [col, row, colSpan, rowSpan]
-      description: >
-        20-column grid cell for root and auto-wrap groups. Server validates col + colSpan <= 20 when present.
-      properties:
-        col:
-          type: integer
-          minimum: 0
-          maximum: 10000
-        row:
-          type: integer
-          minimum: 0
-        colSpan:
-          type: integer
-          minimum: 1
-          maximum: 20
-        rowSpan:
-          type: integer
-          minimum: 1
-          maximum: 12
-          description: Tile height in grid rows (same cap as layout.schema.json).
-    DashboardTile:
-      type: object
-      additionalProperties: false
-      required: [id, pluginId, hostControl, displayMode]
-      properties:
-        id:
-          type: string
-        pluginId:
-          type: string
-        hostControl:
-          type: string
-          enum: [single-panel, tab-control, vertical-stack, split-grid]
-        displayMode:
-          type: string
-          enum: [compact, full]
-        region:
-          type: string
-          nullable: true
-        rowPanel:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: v1 only; optional row panel id. v2 uses DashboardGroup instead.
-        kind:
-          type: string
-          enum: [tile]
-          description: v2 root tiles may set kind to `tile` (optional; same fields as inner tiles).
-        grid:
-          $ref: "#/components/schemas/GridPlacement"
-        options:
-          $ref: "#/components/schemas/TileOptions"
-    DashboardGroup:
-      type: object
-      additionalProperties: false
-      required: [kind, id, children]
-      description: >
-        Root-level container on the 12-column grid; inner tiles share the same column contract
-        as the main dashboard (see specs/dashboard/layout.schema.json).
-      properties:
-        kind:
-          type: string
-          enum: [group]
-        id:
-          type: string
-          minLength: 1
-        showBorder:
-          type: boolean
-          description: When true, draw a border on the group and hide inner tile card chrome. Default true if omitted.
-        innerWrap:
-          type: boolean
-          description: >
-            When true, child tiles use root-width grid cells (no horizontal strip). v2 groups only
-            allow tiles as children.
-        grid:
-          $ref: "#/components/schemas/GridPlacement"
-        children:
-          type: array
-          items:
-            $ref: "#/components/schemas/DashboardTile"
-    DashboardGroupV3:
-      type: object
-      additionalProperties: false
-      required: [kind, id, children]
-      description: >
-        v3 group: children may be tiles or nested groups (max depth 8). innerWrap must not wrap
-        nested groups; validated server-side (see specs/dashboard/layout.schema.json).
-      properties:
-        kind:
-          type: string
-          enum: [group]
-        id:
-          type: string
-          minLength: 1
-        showBorder:
-          type: boolean
-        innerWrap:
-          type: boolean
-        grid:
-          $ref: "#/components/schemas/GridPlacement"
-        children:
-          type: array
-          items:
-            oneOf:
-              - $ref: "#/components/schemas/DashboardTile"
-              - $ref: "#/components/schemas/DashboardGroupV3"
-    RootLayoutItem:
-      oneOf:
-        - $ref: "#/components/schemas/DashboardGroup"
-        - $ref: "#/components/schemas/DashboardTile"
-      description: v2 root row is an array of groups and/or tiles (kind discriminates group vs tile).
-    RootLayoutItemV3:
-      oneOf:
-        - $ref: "#/components/schemas/DashboardGroupV3"
-        - $ref: "#/components/schemas/DashboardTile"
-      description: v3 root row; groups may nest (subject to depth and innerWrap rules).
-    DashboardLayoutV1:
-      type: object
-      additionalProperties: false
-      required: [version, tiles]
-      properties:
-        version:
-          type: integer
-          enum: [1]
-        tiles:
-          type: array
-          items:
-            $ref: "#/components/schemas/DashboardTile"
-    DashboardLayoutV2:
-      type: object
-      additionalProperties: false
-      required: [version, items]
-      properties:
-        version:
-          type: integer
-          enum: [2]
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/RootLayoutItem"
-    DashboardLayoutV3:
-      type: object
-      additionalProperties: false
-      required: [version, items]
-      properties:
-        version:
-          type: integer
-          enum: [3]
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/RootLayoutItemV3"
-    DashboardLayout:
-      oneOf:
-        - $ref: "#/components/schemas/DashboardLayoutV1"
-        - $ref: "#/components/schemas/DashboardLayoutV2"
-        - $ref: "#/components/schemas/DashboardLayoutV3"
-      description: >
-        v1 is a flat `tiles` array. v2 uses `items` with group containers (tile children only).
-        v3 allows nested groups under `items`. Validated server-side against
-        specs/dashboard/layout.schema.json.
-    DashboardLayoutSaveFileResponse:
-      type: object
-      additionalProperties: false
-      required: [filename]
-      properties:
-        filename:
-          type: string
-          description: >
-            Basename of the snapshot written under ``dashboard-layout-exports/`` next to
-            ``dashboard-layouts.json`` (e.g. ``Dashboard_Layout_2026-04-25_153045.json``).
-    DiscoveryPauseRequest:
-      type: object
-      additionalProperties: false
-      required: [paused]
-      properties:
-        paused:
-          type: boolean
-    DiscoveryScanResponse:
-      type: object
-      additionalProperties: false
-      required: [state, updated_at]
-      properties:
-        state:
-          type: string
-          enum: [idle, running, paused, failed]
-        updated_at:
-          type: string
-          format: date-time
-        record_count:
-          type: integer
-          minimum: 0
-          nullable: true
-    MetaResponse:
-      type: object
-      additionalProperties: false
-      required: [api_version, service]
-      properties:
-        api_version:
-          type: string
-          example: "1.0.0"
-        service:
-          type: string
-          example: kea-fabric
-        dashboard_embed_auth:
-          type: string
-          enum: [none, signed]
-          description: Whether embed surfaces require a launch token
-    UiDashboardManifest:
-      type: object
-      additionalProperties: false
-      required:
-        - allowed_host_controls
-        - default_size_hint
-        - supports_compact
-        - supports_full
-      properties:
-        allowed_host_controls:
-          type: array
-          items:
-            type: string
-            enum:
-              - single-panel
-              - tab-control
-              - vertical-stack
-              - split-grid
-        default_size_hint:
-          type: string
-        min_size:
-          type: string
-          nullable: true
-        max_size:
-          type: string
-          nullable: true
-        compact_min_footprint:
-          type: string
-          nullable: true
-        supports_compact:
-          type: boolean
-        supports_full:
-          type: boolean
-    PluginEntry:
-      type: object
-      additionalProperties: false
-      required: [id, name, enabled]
-      properties:
-        id:
-          type: string
-          description: Stable plugin identifier (e.g. dhcp.pools)
-        name:
-          type: string
-        enabled:
-          type: boolean
-        ui_dashboard:
-          $ref: "#/components/schemas/UiDashboardManifest"
-    PluginListResponse:
-      type: object
-      additionalProperties: false
-      required: [items]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/PluginEntry"
-    DhcpPool:
-      type: object
-      additionalProperties: false
-      required: [id, subnet_cidr, range_start, range_end]
-      properties:
-        id:
-          type: string
-        subnet_cidr:
-          type: string
-          description: Subnet in CIDR notation
-        range_start:
-          type: string
-          description: First address in pool (inclusive)
-        range_end:
-          type: string
-          description: Last address in pool (inclusive)
-        dns_domain:
-          type: string
-          nullable: true
-    DhcpPoolListResponse:
-      type: object
-      additionalProperties: false
-      required: [items]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/DhcpPool"
-    DhcpClient:
-      type: object
-      additionalProperties: false
-      required: [id, hardware_address, assigned_address, pool_id]
-      properties:
-        id:
-          type: string
-        hardware_address:
-          type: string
-          description: Client MAC or stable L2 identifier
-        assigned_address:
-          type: string
-        pool_id:
-          type: string
-        hostname:
-          type: string
-          nullable: true
-        client_category:
-          type: string
-          nullable: true
-          description: UI category for icon mapping (e.g. workstation, infra)
-        vendor_name:
-          type: string
-          nullable: true
-        scan_status:
-          type: string
-          nullable: true
-        lease_started_at:
-          type: string
-          format: date-time
-          nullable: true
-        lease_expires_at:
-          type: string
-          format: date-time
-          nullable: true
-        subnet_cidr:
-          type: string
-          nullable: true
-        services:
-          type: array
-          items:
-            type: string
-          description: Logical service tags (e.g. ssh, mdns)
-    DhcpClientListResponse:
-      type: object
-      additionalProperties: false
-      required: [items]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/DhcpClient"
-    DhcpClientPatchRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        hostname:
-          type: string
-          nullable: true
-        vendor_name:
-          type: string
-          nullable: true
-      minProperties: 1
-    DhcpReservation:
-      type: object
-      additionalProperties: false
-      required: [id, hardware_address, reserved_address]
-      properties:
-        id:
-          type: string
-        hardware_address:
-          type: string
-        reserved_address:
-          type: string
-        hostname:
-          type: string
-          nullable: true
-        category:
-          type: string
-          nullable: true
-          description: Reservation category badge (e.g. STATIC)
-        subnet_cidr:
-          type: string
-          nullable: true
-        vendor_name:
-          type: string
-          nullable: true
-        scan_status:
-          type: string
-          nullable: true
-        services:
-          type: array
-          items:
-            type: string
-    DhcpReservationListResponse:
-      type: object
-      additionalProperties: false
-      required: [items]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/DhcpReservation"
-    DhcpReservationPatchRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        hardware_address:
-          type: string
-        reserved_address:
-          type: string
-        hostname:
-          type: string
-          nullable: true
-      minProperties: 1
-    DiscoveryRecord:
-      type: object
-      additionalProperties: false
-      required: [id, last_seen_at, state]
-      properties:
-        id:
-          type: string
-        last_seen_at:
-          type: string
-          format: date-time
-        state:
-          type: string
-          enum: [active, stale, lost]
-        addresses:
-          type: array
-          items:
-            type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-    DiscoveryRecordListResponse:
-      type: object
-      additionalProperties: false
-      required: [items]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/DiscoveryRecord"
-    NetworkAdapterSample:
-      type: object
-      additionalProperties: false
-      required: [name, in_mbps, out_mbps]
-      properties:
-        name:
-          type: string
-        in_mbps:
-          type: number
-          format: float
-        out_mbps:
-          type: number
-          format: float
-    DiskVolumeSample:
-      type: object
-      additionalProperties: false
-      required: [label, used_percent]
-      properties:
-        label:
-          type: string
-        used_percent:
-          type: number
-          format: float
-          minimum: 0
-          maximum: 100
-    PerfSummaryResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - cpu_percent_total
-        - memory_used_percent
-        - collected_at
-      properties:
-        cpu_percent_total:
-          type: number
-          format: float
-          minimum: 0
-          maximum: 100
-        cpu_core_percent:
-          type: array
-          items:
-            type: number
-            format: float
-          description: Optional per-core utilization percentages (0–100 each)
-        memory_used_percent:
-          type: number
-          format: float
-          minimum: 0
-          maximum: 100
-        memory_used_bytes:
-          type: integer
-          format: int64
-          nullable: true
-        memory_total_bytes:
-          type: integer
-          format: int64
-          nullable: true
-        network_in_mbps:
-          type: number
-          format: float
-          nullable: true
-        network_out_mbps:
-          type: number
-          format: float
-          nullable: true
-        network_adapters:
-          type: array
-          items:
-            $ref: "#/components/schemas/NetworkAdapterSample"
-        disk_used_percent:
-          type: number
-          format: float
-          nullable: true
-        disk_volumes:
-          type: array
-          items:
-            $ref: "#/components/schemas/DiskVolumeSample"
-        collected_at:
-          type: string
-          format: date-time
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Stream Events
+  /api/v1/health:
+    get:
+      operationId: get_health_api_v1_health_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Get Health Api V1 Health Get
+                type: object
+          description: Successful Response
+      summary: Get Health
+  /api/v1/meta:
+    get:
+      operationId: get_meta_api_v1_meta_get
+      parameters:
+      - in: query
+        name: mock
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Mock
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Get Meta Api V1 Meta Get
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Meta
+  /api/v1/perf/summary:
+    get:
+      operationId: get_perf_api_v1_perf_summary_get
+      parameters:
+      - in: query
+        name: mock
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Mock
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Get Perf Api V1 Perf Summary Get
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Perf
+  /api/v1/plugins:
+    get:
+      operationId: get_plugins_api_v1_plugins_get
+      parameters:
+      - in: query
+        name: mock
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Mock
+      - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Get Plugins Api V1 Plugins Get
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Plugins

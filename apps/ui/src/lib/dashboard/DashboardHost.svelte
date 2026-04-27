@@ -11,8 +11,6 @@
   import type { PluginEntry } from "../api/types";
   import { DataGateway } from "../dataGateway";
   import PluginPalette from "../palette/PluginPalette.svelte";
-  import { setPaletteAddGroupDragData, setPalettePluginDragData } from "../palette/paletteDragCodec";
-  import { getFeatureFlag } from "../platform/featureFlags";
   import {
     gridAreaStyle,
     gridColumnSpanStyle,
@@ -287,54 +285,7 @@
 
 <div class="flex flex-col gap-4" data-testid="dashboard-host">
   {#if editLayout && (palette.length > 0 || onAddGroup)}
-    {#if getFeatureFlag("ui.palette.v2")}
-      <PluginPalette {plugins} {onAddTile} {onAddGroup} />
-    {:else}
-      <div
-        class="rounded-lg border border-dashed border-gray-200/70 bg-gray-50/80 p-3 dark:border-gray-600 dark:bg-gray-800/50"
-        data-dashboard-editor="palette"
-        data-testid="layout-edit-palette"
-        aria-label="Add dashboard plugins"
-      >
-        <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">
-          <strong>Containers:</strong> use <span class="font-mono">Add container</span> or drag it onto the grid (drops
-          <strong>before</strong> the tile or container under the pointer, or at the end on empty space). Drag onto a
-          <strong>nowrap</strong> container body to nest a new empty container when Auto wrap is off. Then
-          <strong>drag the grip (⋮⋮)</strong> on the container (hover the container chrome, not a nested plugin) to move
-          the whole container. <strong>Tiles:</strong> drag
-          a plugin chip to the grid or <strong>into a container</strong>. <strong>Reorder</strong> root tiles and tiles
-          inside a container with their grips. <strong>Hover</strong> each plugin tile to show its grip and pencil
-          (overlaid on the tile). <strong>Containers</strong> show their own grip row at the top when you hover the
-          container chrome, not while the pointer is over a nested plugin. Use the pencil to resize
-          and configure.
-        </p>
-        <div class="flex flex-wrap gap-2">
-          {#if onAddGroup}
-            <button
-              type="button"
-              draggable="true"
-              class="cursor-grab select-none rounded-lg border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:outline-none active:cursor-grabbing dark:bg-primary-500 dark:hover:bg-primary-600"
-              data-testid="layout-add-container"
-              ondragstart={(e: DragEvent) => setPaletteAddGroupDragData(e)}
-              onclick={() => onAddGroup?.()}
-            >
-              Add container
-            </button>
-          {/if}
-          {#each palette as p (p.id)}
-            <button
-              type="button"
-              draggable="true"
-              class="cursor-grab select-none rounded-lg border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:outline-none active:cursor-grabbing dark:bg-primary-500 dark:hover:bg-primary-600"
-              ondragstart={(e: DragEvent) => setPalettePluginDragData(e, p.id)}
-              onclick={() => onAddTile?.(p.id)}
-            >
-              Add {p.name}
-            </button>
-          {/each}
-        </div>
-      </div>
-    {/if}
+    <PluginPalette {plugins} {onAddTile} {onAddGroup} />
   {/if}
 
   {#if editLayout}

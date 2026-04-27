@@ -12,18 +12,11 @@ describe("featureFlags", () => {
 
   it("returns defaults when env unset", () => {
     expect(getFeatureFlag("ui.palette.v2")).toBe(true);
-    expect(getFeatureFlag("ui.drag.enhanced")).toBe(false);
-    expect(getFeatureFlag("ui.registry.v2")).toBe(false);
   });
 
   it("reads VITE_UI_PALETTE_V2 when stubbed", () => {
     vi.stubEnv("VITE_UI_PALETTE_V2", "true");
     expect(getFeatureFlag("ui.palette.v2")).toBe(true);
-  });
-
-  it("treats explicit false string as off", () => {
-    vi.stubEnv("VITE_UI_DRAG_ENHANCED", "false");
-    expect(getFeatureFlag("ui.drag.enhanced")).toBe(false);
   });
 
   it("falls back to defaults when import.meta.env is undefined", () => {
@@ -61,16 +54,8 @@ describe("featureFlags", () => {
     }
   });
 
-  it("treats boolean true in import.meta.env as on", () => {
-    const meta = import.meta as unknown as { env: Record<string, unknown> };
-    const had = Object.prototype.hasOwnProperty.call(meta.env, "VITE_UI_REGISTRY_V2");
-    const prevVal = meta.env.VITE_UI_REGISTRY_V2;
-    meta.env.VITE_UI_REGISTRY_V2 = true;
-    try {
-      expect(getFeatureFlag("ui.registry.v2")).toBe(true);
-    } finally {
-      if (had) meta.env.VITE_UI_REGISTRY_V2 = prevVal;
-      else delete meta.env.VITE_UI_REGISTRY_V2;
-    }
+  it("treats explicit false string as off", () => {
+    vi.stubEnv("VITE_UI_PALETTE_V2", "false");
+    expect(getFeatureFlag("ui.palette.v2")).toBe(false);
   });
 });

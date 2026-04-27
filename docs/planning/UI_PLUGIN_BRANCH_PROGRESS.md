@@ -3,7 +3,7 @@
 **Branch:** `plugin`  
 **Plan:** [.cursor/plans/ui-v2-plugin-branch.plan.md](../../.cursor/plans/ui-v2-plugin-branch.plan.md) (read-only reference; do not edit as part of routine work)
 
-## Current focus — Phases 2 + 7 closed; rolling verification
+## Current focus — merged baseline; rolling verification
 
 **Phase 2 (v3 nested groups)** and **Phase 7 (editor DnD UX)** are **done** on this branch. **Remaining:** align [`dashboard-plugin-blueprint.md`](../architecture/dashboard-plugin-blueprint.md) or a short ADR only if a **new** host or persistence contract diverges from what the code already implements. Phase 0 baseline checklist: **signed off** (manual verification on `plugin`).
 
@@ -53,9 +53,10 @@ Manual unless noted; all should pass on `plugin`.
 
 ---
 
-## After (when `plugin` merges)
+## After (post-merge to `main`)
 
-_Update once merge to `main` is done._
+The `plugin` branch work is now merged into `main`. Ongoing work is stabilization:
+OpenAPI/runtime drift enforcement, e2e hardening, and plan/progress governance sync.
 
 ---
 
@@ -64,7 +65,7 @@ _Update once merge to `main` is done._
 | Field | Content |
 | --- | --- |
 | **Status** | done |
-| **Done** | Branch `plugin`; this progress file; [`featureFlags.ts`](../../apps/ui/src/lib/platform/featureFlags.ts) with `ui.palette.v2` (default on branch), `ui.drag.enhanced`, `ui.registry.v2`; Vitest for flags. |
+| **Done** | Branch `plugin`; this progress file; [`featureFlags.ts`](../../apps/ui/src/lib/platform/featureFlags.ts) with `ui.palette.v2`; Vitest for flag env override/default behaviour. |
 | **Remaining** | Optional Playwright extensions. |
 | **Verification** | `bash scripts/check_app.sh`; `npm run check:ui-unit` |
 | **Notes / risks** | — |
@@ -101,7 +102,7 @@ _Update once merge to `main` is done._
 | **Done** | Recursive `GroupChild` / v3 layout types + Zod + normalize; `migrateV2ToV3` + golden fixtures + `layout_validate.py` + `specs/dashboard/layout.schema.json` + OpenAPI; `layoutJsonUnsupportedVersionMessage` for v3; nested read host (`DashboardReadNestedHost`, no deprecated `<svelte:self>`); `DashboardHost` + `gridPlacement` / DnD / `layoutTree` / `groupDndFinalize` / undo paths for nested groups; Vitest coverage on enforced paths for migration, strip-legacy, placement, Zod, layout store cap; Playwright `dashboardNested.e2e.ts` (seeded v3 nested layout) + e2e fixture helpers; persisted layout version **3** in parent-move spec. |
 | **Remaining** | Optional blueprint touch-up if reviewers want prose parity with shipped behaviour. |
 | **Verification** | `bash scripts/check_app.sh`; `npm run check:ui-unit`; `npm run check:ui-e2e` |
-| **Notes / risks** | Plugin isolation e2e expects `VITE_E2E_THROWING=1` (Playwright `webServer` sets it). With `PW_REUSE_DEV_SERVER=1`, start the same dev command with that env or the spec **skips** after probing `globalThis.__KEA_FABRIC_E2E_THROWING`. Palette e2e accepts both legacy and `ui.palette.v2` test ids. |
+| **Notes / risks** | Plugin isolation e2e expects `VITE_E2E_THROWING=1` (Playwright `webServer` sets it). With `PW_REUSE_DEV_SERVER=1`, start the same dev command with that env or the spec fails fast with a clear message. |
 
 ---
 

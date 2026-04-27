@@ -1,6 +1,6 @@
 ---
 name: UI v2 plugin branch
-overview: "Dashboard engine and UI v2 on branch `plugin`: Phase 2 (v3 nested groups) is the next coordinated slice—schema, migration, host/placement, server validation—so later DnD and features do not rework the tree. Phases 0–1, 3–10 are largely landed; progress lives in docs/planning/UI_PLUGIN_BRANCH_PROGRESS.md."
+overview: "Dashboard engine and UI v2 on branch `plugin`: core phases are now landed and merged; current follow-up is stabilization (OpenAPI drift enforcement, e2e hardening, governance sync). Progress lives in docs/planning/UI_PLUGIN_BRANCH_PROGRESS.md."
 todos:
   - id: branch-plugin
     content: Cut `plugin` from main; add docs/planning/UI_PLUGIN_BRANCH_PROGRESS.md template + Before snapshot
@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: phase-2-nested-containers
     content: "Phase 2: Layout schema for nested groups (v3), recursive host/tree/placement, v2→v3 migration, depth limits"
-    status: in_progress
+    status: completed
   - id: phase-3-palette-model
     content: "Phase 3: PaletteItem union (plugin + core), catalog builder, drag payload codec; unit tests"
     status: completed
@@ -189,7 +189,7 @@ Rough top-to-bottom responsibility; **lower layers must not import higher layers
 1. Create branch **`plugin`** from `origin/main`.
 2. Add [`docs/planning/UI_PLUGIN_BRANCH_PROGRESS.md`](../../docs/planning/UI_PLUGIN_BRANCH_PROGRESS.md) with template + **Before** section (audit: list every entrypoint that reads/writes layout or runs migration).
 3. **Baseline checklist** (manual or automated): app boot, dashboard render, edit mode, add tile click/drag, add/move container, move tile root/group, tile/group settings overlays, save/reset, flush on nav, disabled/unknown/invalid-option tile fallbacks. Optional automation: extend Playwright specs under [`apps/ui/tests/e2e/`](../../apps/ui/tests/e2e/).
-4. Optional: add [`apps/ui/src/lib/platform/featureFlags.ts`](../../apps/ui/src/lib/platform/featureFlags.ts) (create the `platform/` directory if adopting this pattern) or env-based flags for `ui.palette.v2`, `ui.drag.enhanced`, `ui.registry.v2` — no behaviour change until later phases wire flags.
+4. Optional: add [`apps/ui/src/lib/platform/featureFlags.ts`](../../apps/ui/src/lib/platform/featureFlags.ts) (create the `platform/` directory if adopting this pattern) or env-based flag for `ui.palette.v2` — no behaviour change until later phases wire flags.
 5. In the progress doc, add a short **“Layer ownership”** subsection: either copy the table from [Architectural layers](#architectural-layers-ownership-and-further-considerations) or link to this plan — plus placeholders for **server vs client layout policy** and **undo vs remote refresh** to be resolved by end of Phases 1 and 8 respectively.
 
 **Acceptance:** progress doc committed; baseline checklist passes on `plugin` at Phase 0 tag (commit hash noted in doc).

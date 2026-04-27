@@ -19,10 +19,10 @@ test("throwing plugin tile shows error fallback and neighbours still render", as
   const throwingProbe = await page.evaluate(() =>
     Boolean((globalThis as unknown as { __KEA_FABRIC_E2E_THROWING?: boolean }).__KEA_FABRIC_E2E_THROWING),
   );
-  test.skip(
-    !throwingProbe,
-    "E2E throwing resolver not registered: use Playwright's webServer (default) or start dev with VITE_E2E_THROWING=1 when PW_REUSE_DEV_SERVER=1.",
-  );
+  expect(
+    throwingProbe,
+    "E2E throwing resolver not registered: use Playwright webServer defaults or start dev with VITE_E2E_THROWING=1 when PW_REUSE_DEV_SERVER=1.",
+  ).toBe(true);
 
   const errorFallback = page.locator('[data-testid="tile-fallback"][data-fallback-reason="error"]');
   await expect(errorFallback.getByText("e2e.throwing")).toBeVisible();

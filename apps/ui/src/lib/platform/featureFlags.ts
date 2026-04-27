@@ -2,13 +2,11 @@
  * Central feature flags for dashboard / shell experiments.
  * Defaults are off until a phase wires behaviour behind a flag.
  */
-export type UiFeatureFlagName = "ui.palette.v2" | "ui.drag.enhanced" | "ui.registry.v2";
+export type UiFeatureFlagName = "ui.palette.v2";
 
 const DEFAULTS: Record<UiFeatureFlagName, boolean> = {
   /** On the `plugin` branch the new palette ships by default; override with `VITE_UI_PALETTE_V2=false`. */
   "ui.palette.v2": true,
-  "ui.drag.enhanced": false,
-  "ui.registry.v2": false,
 };
 
 function readEnvFlag(name: UiFeatureFlagName): boolean | undefined {
