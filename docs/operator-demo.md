@@ -64,7 +64,8 @@ VITE_API_AUTH_TOKEN=same-value-as-KEA_FABRIC_API_TOKEN
 ```
 
 `DataGateway` sends `Authorization: Bearer …` on fetch and `access_token=…` on SSE
-(`EventSource` cannot set headers).
+(`EventSource` cannot set headers). The SSE query token path is for local/lab use and
+is scheduled for hardening in the platform security phases.
 
 ## Playwright (`npm run check:ui-e2e`)
 

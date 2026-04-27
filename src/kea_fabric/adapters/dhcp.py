@@ -5,8 +5,8 @@ from __future__ import annotations
 import copy
 from typing import Any, Protocol
 
-from kea_fabric.api import state
 from kea_fabric.api.perf_simulate import perf_summary_for_tick
+from kea_fabric.api.state import get_perf_tick
 from kea_fabric.api.stub_data import STUB_PLUGINS
 from kea_fabric.api.stub_mock_tables import (
     STUB_CLIENTS,
@@ -69,7 +69,7 @@ class MockDhcpAdapter:
         return copy.deepcopy(STUB_PLUGINS)
 
     def perf_payload(self) -> dict[str, Any]:
-        return copy.deepcopy(perf_summary_for_tick(state.get_perf_tick()))
+        return copy.deepcopy(perf_summary_for_tick(get_perf_tick()))
 
     def update_client(
         self,
@@ -94,3 +94,11 @@ class MockDhcpAdapter:
                 self._reservations["items"][idx] = updated
                 return copy.deepcopy(updated)
         return None
+
+
+class KeaDhcpAdapter(MockDhcpAdapter):
+    """Placeholder real-adapter seam; keeps the same contract as mock for now."""
+
+    def __init__(self, *, endpoint: str | None = None) -> None:
+        super().__init__()
+        self.endpoint = endpoint

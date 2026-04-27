@@ -38,11 +38,13 @@
     dashboardEditorRootFlipMs,
     readPrefersReducedMotion,
   } from "./interactions/dndEditorFeedback";
+  import { editorGroupInPlay, editorTileInPlay } from "./interactions/editorSelection";
   import {
     createPaletteRootDropController,
     type PaletteRootInsertPreview,
   } from "./interactions/editorPaletteRootDrop";
   import { dedupeById } from "./layoutTree";
+  import { noWrapReadRowGroups } from "./readModeLayout";
   import { stripScrollportObserve } from "./stripWidth";
   import type {
     DashboardGroup,
@@ -99,14 +101,6 @@
     "editor-chrome-drag editor-chrome-top absolute left-2 z-50 flex h-6 w-6 cursor-grab touch-none items-center justify-center rounded-md border border-slate-200/80 bg-slate-50/95 shadow-sm backdrop-blur-[2px] focus-visible:ring-2 focus-visible:ring-primary-500/60 active:cursor-grabbing dark:border-gray-600 dark:bg-gray-900/85 dark:hover:bg-gray-800";
   const CHROME_EDIT_SM =
     "editor-chrome-edit editor-chrome-top absolute right-2 z-50 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-slate-200/80 bg-slate-50/95 shadow-sm backdrop-blur-[2px] hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-primary-500/60 dark:border-gray-600 dark:bg-gray-900/90 dark:hover:bg-gray-800";
-
-  function editorTileInPlay(id: string): boolean {
-    return editLayout && activeEditorKind === "tile" && activeEditorId === id;
-  }
-
-  function editorGroupInPlay(id: string): boolean {
-    return editLayout && activeEditorKind === "group" && activeEditorId === id;
-  }
 
   let dndRoot = $state<DndListItem[]>([]);
   let dndByGroup = $state<Record<string, DndListItem[]>>({});
@@ -231,16 +225,6 @@
    * Read view, Auto wrap off: a **single** horizontal scroller, not one strip per `grid.row`.
    * Splitting by row made multi-row grid data look like wrapped flex; order follows row then col.
    */
-  function noWrapReadRowGroups(tiles: DashboardTile[]): DashboardTile[][] {
-    if (tiles.length === 0) return [];
-    const unique = dedupeById(tiles);
-    const sorted = [...unique].sort(
-      (a, b) =>
-        (a.grid?.row ?? 0) - (b.grid?.row ?? 0) || (a.grid?.col ?? 0) - (b.grid?.col ?? 0),
-    );
-    return [sorted];
-  }
-
   function handleRootConsider(e: DndConsiderFinalize) {
     paletteRootDrop.clearPreview();
     if (e.detail.info.source === SOURCES.POINTER) {
@@ -374,8 +358,8 @@
       onRootFinalize={handleRootFinalize}
       onGroupConsider={handleGroupConsider}
       onGroupFinalize={handleGroupFinalize}
-      editorTileInPlay={editorTileInPlay}
-      editorGroupInPlay={editorGroupInPlay}
+      editorTileInPlay={(id) => editorTileInPlay(editLayout, activeEditorKind, activeEditorId, id)}
+      editorGroupInPlay={(id) => editorGroupInPlay(editLayout, activeEditorKind, activeEditorId, id)}
       onAddTileToGroup={onAddTileToGroup}
       onAddGroupToGroup={onAddGroupToGroup}
       onEditGroup={onEditGroup}

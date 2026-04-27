@@ -1,0 +1,74 @@
+{
+  "/api/v1/plugins": {
+    "top": [
+      "items"
+    ],
+    "item_keys": [
+      "capabilities",
+      "enabled",
+      "id",
+      "name",
+      "ui_dashboard",
+      "version"
+    ]
+  },
+  "/api/v1/dhcp/pools": {
+    "top": [
+      "items"
+    ],
+    "item_keys": [
+      "dns_domain",
+      "id",
+      "range_end",
+      "range_start",
+      "subnet_cidr"
+    ]
+  },
+  "/api/v1/dhcp/clients": {
+    "top": [
+      "items"
+    ],
+    "item_keys": [
+      "assigned_address",
+      "client_category",
+      "hardware_address",
+      "hostname",
+      "id",
+      "lease_expires_at",
+      "lease_started_at",
+      "pool_id",
+      "scan_status",
+      "services",
+      "subnet_cidr",
+      "vendor_name"
+    ]
+  },
+  "/api/v1/dhcp/reservations": {
+    "top": [
+      "items"
+    ],
+    "item_keys": [
+      "category",
+      "hardware_address",
+      "hostname",
+      "id",
+      "reserved_address",
+      "scan_status",
+      "services",
+      "subnet_cidr",
+      "vendor_name"
+    ]
+  },
+  "/api/v1/discovery/records": {
+    "top": [
+      "items"
+    ],
+    "item_keys": [
+      "addresses",
+      "id",
+      "labels",
+      "last_seen_at",
+      "state"
+    ]
+  }
+}
