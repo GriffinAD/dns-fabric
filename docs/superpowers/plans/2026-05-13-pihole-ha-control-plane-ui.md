@@ -139,7 +139,7 @@ Expected: commit created; message ends with `Signed-off-by: GriffinAD <nigel.sur
 
 **Goal:** Finish the Phase 1 items deferred after Task 4: **`widgets`** on **`GET /dashboard`**, parallel section assembly with bounded waits, **`sections.pihole_runtime`**, **`sections.kea_dhcp`** (read-only JSON), **`sections.schedules`**, **`sections.dnscrypt`**, **`sections.keepalived`** VIP TCP probe + LAN hint (still not full VRRP), **`GET /v1/meta`**, **`POST /v1/mutations/*`** stubs (**403** / **501**), optional **file** log stream + catalogue entry, shared Docker client for stack inspect + dashboard, compose binds for **`/ro/kea-etc`** and maintenance log, preflight **`mkdir`/`touch`** for log path.
 
-**`pihole-ha`:** branch **`feat/control-plane-stub`** — land commits on that branch and open/refresh the PR to **`main`**.
+**`pihole-ha`:** branch **`feat/control-plane-stub`**, commit **`ecdcaf7`** — land via PR to **`main`**.
 
 - [x] **Step 1:** Adapters + sections + dashboard parallel merge + **`CONTROL_PLANE_VERSION` 0.4.0**.
 - [x] **Step 2:** Compose volumes + env (`CONTROL_PLANE_MAINTENANCE_LOG`, `CONTROL_PLANE_API_TOKEN`) + preflight host file ensure + CI **`pip`** test deps + compose validate **`mkdir`** / **`touch`**.
