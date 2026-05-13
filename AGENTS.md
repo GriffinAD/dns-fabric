@@ -13,7 +13,7 @@
 
 - Local identity and DCO: see `.cursor/rules/commits.mdc`.
 - Hooks: `git config core.hooksPath .githooks`
-- **Remotes:** **`origin`** → **`GriffinAD/kea-fabric`** (product). **`poc`** → **`GriffinAD/kea-fabric-poc`** (optional). See [README.md](README.md) **Git remotes** and [docs/_governance/NAMING.md](docs/_governance/NAMING.md).
+- **Remotes:** **`dns-fabric`** → **`GriffinAD/dns-fabric`** (primary — default **`git push`** via **`remote.pushDefault`**). **`origin`** → **`GriffinAD/kea-fabric`** (related upstream; use **`git push origin`** only on purpose). **`poc`** → **`GriffinAD/kea-fabric-poc`** (optional). See [README.md](README.md) **Git remotes** and [docs/_governance/NAMING.md](docs/_governance/NAMING.md).
 
 ## Coverage
 

@@ -48,16 +48,21 @@ See [docs/operator-demo.md](docs/operator-demo.md) for the full local demo path.
 
 | Remote | URL | Purpose |
 | --- | --- | --- |
-| **`origin`** | **`https://github.com/GriffinAD/kea-fabric.git`** | **Product** repository (this tree). |
+| **`dns-fabric`** | **`https://github.com/GriffinAD/dns-fabric.git`** | **Primary development** — clone and day‑to‑day **`git push`** target (repo-local **`remote.pushDefault`**). |
+| **`origin`** | **`https://github.com/GriffinAD/kea-fabric.git`** | Related **`kea-fabric`** tree — use **`git push origin …`** only when you **intend** to update that GitHub repo (not the default). |
 | **`poc`** | **`https://github.com/GriffinAD/kea-fabric-poc.git`** | Earlier PoC; optional `git fetch poc` for comparison. |
 
-Clone:
+Clone (recommended for ongoing work):
 
 ```bash
-git clone https://github.com/GriffinAD/kea-fabric.git
-cd kea-fabric
+git clone https://github.com/GriffinAD/dns-fabric.git
+cd dns-fabric
+git remote add origin https://github.com/GriffinAD/kea-fabric.git   # optional: related upstream
 git remote add poc https://github.com/GriffinAD/kea-fabric-poc.git   # optional
+git config remote.pushDefault dns-fabric
 ```
+
+If you cloned **`kea-fabric`** instead, add **`dns-fabric`** and set **`pushDefault`** as above so routine pushes do not land on **`origin`** by mistake.
 
 See [docs/_governance/NAMING.md](docs/_governance/NAMING.md) for naming rules.
 
