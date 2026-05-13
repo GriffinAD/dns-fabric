@@ -123,4 +123,16 @@ Expected: commit created; message ends with `Signed-off-by: GriffinAD <nigel.sur
 
 ---
 
-**After Task 3:** Next slices are **VIP / Keepalived summary**, **Pi-hole HTTP read models**, **auth on mutations**, and richer **widget layout** — track in a follow-on plan when you pick the next priority.
+### Task 4: HA / Pi-hole config / stack dashboard + static UI
+
+**Goal:** **`/dashboard`** adds **`sections.ha`** (from compose-injected `.env`), **`pihole_dns`** (read-only **`pihole.toml`** via **`/ro/pihole-etc`** bind), **`stack`** (Nebula/DNSCrypt/Kea rows + Nebula **`CRON`** from inspect), **`keepalived`** placeholder; ship **`/dashboard.html`** operator console.
+
+**`pihole-ha`:** branch **`feat/control-plane-stub`**, commits **`7135a9f`**, **`f87ba04`**.
+
+- [x] **Step 1:** Compose env passthrough + Pi-hole **`etc-pihole`** read-only mount + **`extra_hosts`**.
+- [x] **Step 2:** Python sections + **`dashboard.build_dashboard`**; static **`dashboard.html`**.
+- [x] **Step 3:** Tests, preflight dir warn, CI **`mkdir`** for compose validate; operator doc refresh.
+
+---
+
+**After Task 4:** Next options — **host Keepalived/VIP probe** (script + JSON drop or host-network sidecar), **Pi-hole HTTP/API** reads (needs auth strategy), **mutations + DCO-grade audit**, **splitting UI to a built SPA** when the widget set stabilises.
