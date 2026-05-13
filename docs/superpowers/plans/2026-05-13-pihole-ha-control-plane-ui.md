@@ -16,7 +16,7 @@
 |----------|------------------|
 | `docs/superpowers/specs/2026-05-13-pihole-ha-control-plane-ui-design.md` | Normative design (committed in Task 1) |
 | `pihole-ha` `platform/core/docker-compose.control-plane.override.yml` + `platform/control-plane/` | **Done (Task 2):** optional per-node service, env contract, published port — branch `feat/control-plane-stub` |
-| `pihole-ha` ops smoke / install docs | Documented curl/SSE smoke for `/dashboard`, `/logs/catalog` |
+| `pihole-ha` ops smoke / install docs | **`/dashboard`**, **`/logs/catalog`**, SSE curl examples in **`docs/operations/control-plane-ui.md`** (Task 3) |
 | `pi-fabric` `src/kea_fabric/` (or new package) | Reusable API + static mount pattern **only if** code is shared here; otherwise adapters stay in `pihole-ha` image source |
 
 ---
@@ -111,4 +111,16 @@ Expected: commit created; message ends with `Signed-off-by: GriffinAD <nigel.sur
 
 ---
 
-**After Task 2:** Next slices are **live adapters** (Docker, VIP, Pi-hole read models) and **`GET /logs/stream/{id}`** (SSE) — track as Task 3+ in this plan or a new dated plan when scope is locked.
+### Task 3: Docker read model + log catalogue + SSE (Phase 1)
+
+**Goal:** **`/dashboard`** exposes a **Docker** section (watched containers). **`/logs/catalog`** lists allowlisted streams; **`GET /logs/stream/{id}`** tails Docker logs over **SSE**. Control-plane mounts **`/var/run/docker.sock`** read-only.
+
+**`pihole-ha`:** branch **`feat/control-plane-stub`**, commits **`fab68ad`**, **`9a5f5c8`** (and earlier **`ebbc3f7`** for compose helper).
+
+- [x] **Step 1:** Docker SDK + socket mount + `adapters/docker_state.py` + dashboard `sections.docker`.
+- [x] **Step 2:** `logs/catalog.py` + SSE stream route + `tests/test_control_plane.py`.
+- [x] **Step 3:** Preflight **WARN** when toggle on but **`docker.sock`** missing; operator doc updates.
+
+---
+
+**After Task 3:** Next slices are **VIP / Keepalived summary**, **Pi-hole HTTP read models**, **auth on mutations**, and richer **widget layout** — track in a follow-on plan when you pick the next priority.
