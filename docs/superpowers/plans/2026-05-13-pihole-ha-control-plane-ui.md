@@ -98,16 +98,17 @@ Expected: commit created; message ends with `Signed-off-by: GriffinAD <nigel.sur
 - `platform/control-plane/Dockerfile` — image build
 - `platform/control-plane/app/main.py` — `/health`, `/dashboard`, `/logs/catalog`; static `index.html`
 - `platform/core/docker-compose.control-plane.override.yml` — `control-plane` service + host port
-- `ops/lib/compose-core.sh` — append override when `CONTROL_PLANE_UI_ENABLED=1`
+- `ops/lib/compose-core.sh` — append override when `CONTROL_PLANE_UI_ENABLED=1`; **`pihole_ha_docker_compose_up_core_stack`** builds + `up`s **`control-plane`** with **`pihole`** on refresh/upgrade/bootstrap/DHCP reconcile paths
 - `ops/install/preflight.sh` — port + file checks when enabled
 - `docs/operations/control-plane-ui.md` — toggle, apply, smoke curls (links back to this repo’s **design spec**)
 
-**Operator reminder:** `pihole-ha-upgrade.sh` still reconciles **`pihole`** / dnscrypt only; after enabling the control plane, use the **`docker compose build` / `up control-plane`** snippet in **`control-plane-ui.md`** until upgrade scripts include that service.
+**Operator reminder:** disabling **`CONTROL_PLANE_UI_ENABLED`** removes the override from **`CORE_COMPOSE_FILES`**; an already-running **`control-plane`** container may remain until you **`docker compose … rm -f control-plane`** (or **`down`**) with the previous file list — document a clean disable path later if needed.
 
 - [x] **Step 1:** Implement stub stack and docs in **`pihole-ha`** (see commit on `feat/control-plane-stub`).
 - [x] **Step 2:** Push **`feat/control-plane-stub`** to **`origin`** on **`GriffinAD/pihole-ha`**.
-- [x] **Step 3:** Record Task 2 in **this** plan file (`pi-fabric`) so **`pi-fabric`** stays the coordination anchor for design + plan.
+- [x] **Step 3:** Record Task 2 in **this** plan file (**dns-fabric**) so design + plan stay anchored here.
+- [x] **Step 4:** Wire **`pihole_ha_docker_compose_up_core_stack`** through refresh/upgrade/bootstrap/DHCP reconcile (see **`pihole-ha`** commit **`ebbc3f7`** on the same branch).
 
 ---
 
-**After Task 2:** Next slices are **live adapters** (Docker, VIP, Pi-hole read models), **`GET /logs/stream/{id}`** (SSE), and wiring **`pihole-ha-upgrade.sh`** to **`up`** **`control-plane`** when enabled — track as Task 3+ in this plan or a new dated plan when scope is locked.
+**After Task 2:** Next slices are **live adapters** (Docker, VIP, Pi-hole read models) and **`GET /logs/stream/{id}`** (SSE) — track as Task 3+ in this plan or a new dated plan when scope is locked.
