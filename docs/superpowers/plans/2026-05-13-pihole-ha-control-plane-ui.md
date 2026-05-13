@@ -135,4 +135,16 @@ Expected: commit created; message ends with `Signed-off-by: GriffinAD <nigel.sur
 
 ---
 
-**After Task 4:** Next options — **host Keepalived/VIP probe** (script + JSON drop or host-network sidecar), **Pi-hole HTTP/API** reads (needs auth strategy), **mutations + DCO-grade audit**, **splitting UI to a built SPA** when the widget set stabilises.
+### Task 5: Phase 1 read-path completion (parallel dashboard, Kea + maintenance binds, VIP probe, schedules, DNSCrypt section, mutation stubs, file SSE)
+
+**Goal:** Finish the Phase 1 items deferred after Task 4: **`widgets`** on **`GET /dashboard`**, parallel section assembly with bounded waits, **`sections.pihole_runtime`**, **`sections.kea_dhcp`** (read-only JSON), **`sections.schedules`**, **`sections.dnscrypt`**, **`sections.keepalived`** VIP TCP probe + LAN hint (still not full VRRP), **`GET /v1/meta`**, **`POST /v1/mutations/*`** stubs (**403** / **501**), optional **file** log stream + catalogue entry, shared Docker client for stack inspect + dashboard, compose binds for **`/ro/kea-etc`** and maintenance log, preflight **`mkdir`/`touch`** for log path.
+
+**`pihole-ha`:** branch **`feat/control-plane-stub`** — land commits on that branch and open/refresh the PR to **`main`**.
+
+- [x] **Step 1:** Adapters + sections + dashboard parallel merge + **`CONTROL_PLANE_VERSION` 0.4.0**.
+- [x] **Step 2:** Compose volumes + env (`CONTROL_PLANE_MAINTENANCE_LOG`, `CONTROL_PLANE_API_TOKEN`) + preflight host file ensure + CI **`pip`** test deps + compose validate **`mkdir`** / **`touch`**.
+- [x] **Step 3:** Unit tests (`TestClient` for mutations/meta), operator doc refresh, static **`dashboard.html`** widgets panel.
+
+---
+
+**After Task 5 (Phase 2+):** Host Keepalived/VRRP export (agent or sidecar), Pi-hole HTTP/API reads (auth strategy), real mutations with audit, SPA UI when the widget set stabilises.
