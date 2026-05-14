@@ -36,7 +36,7 @@ The normative spec **explicitly** names **`pi-fabric`** as the place where the *
 | `apps/ui/src/lib/piholeCp/PiholeCpGateway.ts` | `fetch` + Zod parse + typed errors (mirror `GatewayError` shape) |
 | `apps/ui/src/lib/piholeCp/PiholeOperatorApp.svelte` | Shell: node banner, peer link from **`/v1/meta`**, refresh button |
 | `apps/ui/src/lib/piholeCp/PiholeLayoutGrid.svelte` | **Read/edit** grid using **`dragHandleZone`** for **widget tiles** only (reuse patterns from `DashboardEditRootGrid.svelte`, not the full plugin palette) |
-| `apps/ui/src/lib/piholeCp/SectionJsonTile.svelte` | Renders one **`widgets[]`** entry → bound **`sections[section]`** as pretty JSON |
+| `apps/ui/src/lib/piholeCp/SectionDashboardTile.svelte` | Renders one **`widgets[]`** entry → structured UI per **`sections[section]`** (fallback JSON for unknown keys) |
 | `apps/ui/src/lib/piholeCp/LogStreamPanel.svelte` | `EventSource` to **`/logs/stream/{id}`** (catalogue dropdown) |
 | `apps/ui/vite.config.ts` | Multi-page **`input`** for `main` + `piholeCp` |
 | `apps/ui/src/lib/piholeCp/PiholeCpGateway.test.ts` | Vitest: mock `fetch`, schema pass/fail |
@@ -290,28 +290,17 @@ git commit -s -m "build(ui): add Pi-hole control plane Vite entry"
 
 ---
 
-### Task 4: `PiholeOperatorApp` + `SectionJsonTile` + DnD grid shell
+### Task 4: `PiholeOperatorApp` + `SectionDashboardTile` + DnD grid shell
 
 **Files:**
 
 - Create: `apps/ui/src/lib/piholeCp/PiholeOperatorApp.svelte`
-- Create: `apps/ui/src/lib/piholeCp/SectionJsonTile.svelte`
+- Create: `apps/ui/src/lib/piholeCp/SectionDashboardTile.svelte` (structured UI per `section` key; unknown keys fall back to pretty JSON)
 - Create: `apps/ui/src/lib/piholeCp/PiholeLayoutGrid.svelte`
 
 - [ ] **Step 1: Minimal tile + app (no DnD yet)**
 
-`SectionJsonTile.svelte`:
-
-```svelte
-<script lang="ts">
-  let { title, payload }: { title: string; payload: unknown } = $props();
-</script>
-
-<section class="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-  <h2 class="mb-2 text-sm font-semibold">{title}</h2>
-  <pre class="max-h-64 overflow-auto text-xs">{JSON.stringify(payload, null, 2)}</pre>
-</section>
-```
+`SectionDashboardTile.svelte`: props `section`, `title`, `payload`; render cards / status rows per known `dashboard.py` section keys (see source in repo).
 
 `PiholeOperatorApp.svelte` (load on mount; `baseUrl` from `import.meta.env.VITE_PIHOLE_CP_BASE_URL ?? ""`):
 
@@ -355,7 +344,7 @@ Minimum `dragHandleZone` block:
 <script lang="ts">
   import { dragHandleZone } from "svelte-dnd-action";
   import type { DashboardResponse } from "./dashboardZod";
-  import SectionJsonTile from "./SectionJsonTile.svelte";
+  import SectionDashboardTile from "./SectionDashboardTile.svelte";
 
   let { dashboard }: { dashboard: DashboardResponse } = $props();
 
@@ -384,7 +373,7 @@ Minimum `dragHandleZone` block:
   {#each items as it (it.id)}
     {@const w = dashboard.widgets.find((x) => x.id === it.widgetId)}
     {#if w}
-      <SectionJsonTile title={w.title} payload={dashboard.sections[w.section]} />
+      <SectionDashboardTile section={w.section} title={w.title} payload={dashboard.sections[w.section]} />
     {/if}
   {/each}
 </div>
@@ -397,7 +386,7 @@ Expected: **PASS** (add Vitest for `PiholeLayoutGrid` only if you extract pure r
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/ui/src/lib/piholeCp/PiholeOperatorApp.svelte apps/ui/src/lib/piholeCp/SectionJsonTile.svelte apps/ui/src/lib/piholeCp/PiholeLayoutGrid.svelte
+git add apps/ui/src/lib/piholeCp/PiholeOperatorApp.svelte apps/ui/src/lib/piholeCp/SectionDashboardTile.svelte apps/ui/src/lib/piholeCp/PiholeLayoutGrid.svelte
 git commit -s -m "feat(ui-pihole-cp): operator shell with DnD widget grid"
 ```
 
