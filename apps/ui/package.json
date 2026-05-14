@@ -6,6 +6,7 @@
     "dev": "vite",
     "dev:proxy": "KEA_FABRIC_UI_PROXY_API=1 vite",
     "build": "vite build",
+    "build:pihole-cp-embed": "PIHOLE_CP_UI_EMBED=1 vite build",
     "preview": "vite preview",
     "check:ui-types": "svelte-check",
     "check:ui-unit": "vitest run --coverage",

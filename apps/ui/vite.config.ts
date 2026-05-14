@@ -10,7 +10,11 @@ const piholeCpDevProxyTarget =
   process.env.VITE_PIHOLE_CP_DEV_PROXY ??
   "http://127.0.0.1:8091";
 
+/** When set, build only the Pi-hole CP bundle with `base` `/next/` for embedding under `pihole-ha` `static/next/`. */
+const embedPiholeCpUi = process.env.PIHOLE_CP_UI_EMBED === "1";
+
 export default defineConfig({
+  base: embedPiholeCpUi ? "/next/" : "/",
   resolve: {
     /* Without `browser`, Vitest resolves `svelte` / `svelte/store` to the server entry and `mount()` throws. */
     conditions: ["browser", "import", "module", "default"],
@@ -18,10 +22,12 @@ export default defineConfig({
   plugins: [tailwindcss(), mockApiPlugin(), svelte(), svelteTesting()],
   build: {
     rollupOptions: {
-      input: {
-        main: "./index.html",
-        piholeCp: "./index-pihole-cp.html",
-      },
+      input: embedPiholeCpUi
+        ? { piholeCp: "./index-pihole-cp.html" }
+        : {
+            main: "./index.html",
+            piholeCp: "./index-pihole-cp.html",
+          },
     },
   },
   server: {

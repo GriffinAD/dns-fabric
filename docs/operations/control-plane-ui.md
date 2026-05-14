@@ -24,3 +24,13 @@ npm run build
 ```
 
 Outputs include `dist/index-pihole-cp.html` and hashed assets under `dist/assets/`.
+
+### Embed build for `pihole-ha` (`/next/`)
+
+To produce a bundle that resolves under **`/next/`** on the control-plane host (see **`pihole-ha`** `scripts/sync-pihole-cp-ui.sh` and `docs/operations/control-plane-ui.md`):
+
+```bash
+cd /path/to/pi-fabric/apps/ui
+npm ci
+npm run build:pihole-cp-embed
+```
