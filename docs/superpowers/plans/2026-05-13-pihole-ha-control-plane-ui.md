@@ -166,3 +166,12 @@ Expected: commit created; message ends with `Signed-off-by: GriffinAD <nigel.sur
 Design **§8** tracks smaller follow-ons (e.g. **200 + per-section errors vs 207**, **SSE reconnect / cursor** policy).
 
 **When starting Phase 2+ work:** add a new plan slice or ADR per chosen thread; keep this file as the **Phase 1 bootstrap** record unless you explicitly supersede it.
+
+**Per-phase implementation plans (dns-fabric):**
+
+| Design §7 phase | Plan file |
+|-------------------|-----------|
+| **1** (hardening / spec closure) | [`2026-05-13-pihole-ha-control-plane-phase-1-hardening.md`](2026-05-13-pihole-ha-control-plane-phase-1-hardening.md) |
+| **2** (DNS / Pi-hole write risk) | [`2026-05-13-pihole-ha-control-plane-phase-2-dns-write-risk.md`](2026-05-13-pihole-ha-control-plane-phase-2-dns-write-risk.md) |
+| **3** (mutations + auth + audit) | [`2026-05-13-pihole-ha-control-plane-phase-3-mutations-audit.md`](2026-05-13-pihole-ha-control-plane-phase-3-mutations-audit.md) |
+| **4** (aggregation, optional) | [`2026-05-13-pihole-ha-control-plane-phase-4-aggregation-optional.md`](2026-05-13-pihole-ha-control-plane-phase-4-aggregation-optional.md) |

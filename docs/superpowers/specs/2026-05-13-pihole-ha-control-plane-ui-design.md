@@ -129,6 +129,8 @@ Documentation-first management plane with **operator API** and **UI** patterns (
 | **3** | DNSCrypt / refresh-script class mutations with **auth + audit** |
 | **4** | Optional centralisation or peer aggregation **only** if requirements re-open Section 1 |
 
+Per-phase **implementation plans** (checklists, commands, code): see **`docs/superpowers/plans/2026-05-13-pihole-ha-control-plane-phase-*`** and the index table in **`docs/superpowers/plans/2026-05-13-pihole-ha-control-plane-ui.md`** (Phase 2+ roadmap section).
+
 ---
 
 ## 8. Open decisions (for implementation plan, not blockers for this spec)
