@@ -1,11 +1,11 @@
 ---
 title: "ADR-0052: Pi-hole HA control plane Phase 3 — mutations, authentication, and audit"
 adr: "0052"
-status: Proposed
+status: Accepted
 date: 2026-05-13
 owner: GriffinAD
 peer_reviewer: GriffinAD
-deciders: []
+deciders: [GriffinAD]
 due_date: null
 re_entry_criteria: null
 touch_points:
@@ -21,7 +21,8 @@ touch_points:
 
 ## Status
 
-`Proposed` — draft; open for review.
+`Accepted` — Phase 3 policy locked; **`pihole-ha`** implements auditable mutations and
+**202** host-deferred responses per **Decision outcome** below.
 
 ## Context
 
@@ -49,8 +50,11 @@ DNS/Pi-hole write surface; this ADR records how Phase 3 layers **auth** and
 
 ## Decision outcome
 
-Chosen direction for the first **Proposed** revision: **Option A** framing with
-concrete policy bullets carried forward from the Phase 3 plan until acceptance:
+**Chosen option: Option A** (minimal HTTP attack surface) with **202** responses
+that defer DNSCrypt and full-stack refresh to **host `.env` + documented scripts**
+(no HTTP-mediated DNSCrypt toggle until this ADR is revised).
+
+Concrete policy:
 
 - **Authentication:** reuse **`CONTROL_PLANE_API_TOKEN`**; reject missing or
   invalid tokens with **403** and **do not echo** secrets or token material in
@@ -110,3 +114,4 @@ concrete policy bullets carried forward from the Phase 3 plan until acceptance:
 | Date | Status | Reviewer | Notes |
 |---|---|---|---|
 | 2026-05-13 | Proposed | GriffinAD | Initial draft from Phase 3 plan Task 1 bullets. |
+| 2026-05-14 | Accepted | GriffinAD | Option A + 202 host-deferred mutations; audit mount path as implemented in `pihole-ha`. |
