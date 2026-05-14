@@ -66,4 +66,14 @@ describe("PiholeLayoutGrid", () => {
     expect(headings[0]?.textContent?.trim()).toBe("HA");
     expect(headings[1]?.textContent?.trim()).toBe("DNS");
   });
+
+  it("hides drag handles when layout edit mode is off", () => {
+    render(PiholeLayoutGrid, { props: { dashboard, layoutEditMode: false } });
+    expect(screen.queryByTestId("pihole-cp-widget-drag-handle")).toBeNull();
+  });
+
+  it("shows drag handles when layout edit mode is on", () => {
+    render(PiholeLayoutGrid, { props: { dashboard, layoutEditMode: true } });
+    expect(screen.getAllByTestId("pihole-cp-widget-drag-handle")).toHaveLength(2);
+  });
 });
