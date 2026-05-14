@@ -17,7 +17,7 @@
 | `docs/superpowers/specs/2026-05-13-pihole-ha-control-plane-ui-design.md` | Normative design (committed in Task 1) |
 | `pihole-ha` `platform/core/docker-compose.control-plane.override.yml` + `platform/control-plane/` | **Done (Tasks 2–5):** optional per-node service on **`pihole-ha`** **`main`** (merged from `feat/control-plane-stub`; tip includes **`ecdcaf7`**) |
 | `pihole-ha` ops smoke / install docs | **`/dashboard`**, **`/logs/catalog`**, SSE curl examples in **`docs/operations/control-plane-ui.md`** (Task 3) |
-| `pi-fabric` `src/kea_fabric/` (or new package) | Reusable API + static mount pattern **only if** code is shared here; otherwise adapters stay in `pihole-ha` image source |
+| `pi-fabric` `apps/ui` + `docs/architecture/dashboard-plugin-blueprint.md` | **Primary venue** for the **rich Svelte DnD dashboard** (see [`2026-05-13-pihole-ha-control-plane-ui-svelte-dashboard.md`](2026-05-13-pihole-ha-control-plane-ui-svelte-dashboard.md)); build output is **shipped into** the **`pihole-ha`** image per design §3.1. |
 
 ---
 

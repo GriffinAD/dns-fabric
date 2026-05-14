@@ -4,7 +4,9 @@
 
 **Goal:** Deliver an **operator dashboard UI** for the **`pihole-ha`** control plane that **reuses the same drag-and-drop stack** as Kea Fabric (`svelte-dnd-action`, 20-column grid contracts, editor DOM attributes) documented in **`docs/architecture/dashboard-plugin-blueprint.md`**, while **reading** the Pi-hole JSON API (`GET /dashboard`, `GET /logs/catalog`, SSE) instead of the Kea **`DataGateway`** OpenAPI surface.
 
-**Architecture:** Add a **second Vite entry** under **`apps/ui/`** that mounts a **small Svelte 5 app** (`PiholeOperatorApp`). Layout persistence starts as **`localStorage`** (same-origin when the bundle is served from the control-plane container); optional later **`POST`** persistence waits for **Phase 3** auth/audit. **Do not** import **`DataGateway`** for Pi-hole data — it is bound to **`openapiZod`** types for Kea Fabric; use a **`PiholeCpGateway`** with a **dedicated Zod** schema for **`/dashboard`**.
+**Architecture:** This work is implemented **in this repository** under **`apps/ui/`** — that is the **intended starting point** named in the normative design (`docs/superpowers/specs/2026-05-13-pihole-ha-control-plane-ui-design.md` §2.2, §5.4): **rich UI here**, **API + probes in `pihole-ha`**. Add a **second Vite entry** that mounts **`PiholeOperatorApp`**. Layout persistence starts as **`localStorage`** when the bundle is served same-origin from the control-plane container; optional later **`POST`** persistence waits for **Phase 3** auth/audit. **Do not** import **`DataGateway`** for Pi-hole data — it is bound to **`openapiZod`** types for Kea Fabric; use a **`PiholeCpGateway`** with a **dedicated Zod** schema for **`/dashboard`**.
+
+**Deployment:** After `vite build`, the **`dist/`** output is **copied or multi-stage-built** into **`pihole-ha`** `platform/control-plane/` static assets (see plan Task 6) so §3.1 “one process, one port” remains true on the node.
 
 **Tech stack:** Svelte 5, `svelte-dnd-action`, Vite multi-page build, Zod, Vitest, Tailwind (existing **`apps/ui`** pipeline).
 
@@ -15,6 +17,10 @@
 - Reference implementation: `apps/ui/src/lib/dashboard/DashboardHost.svelte`, `DashboardEditRootGrid.svelte`, `gridPlacement.ts`
 
 **Relationship to `2026-05-13-pihole-ha-control-plane-ui.md`:** Bootstrap **Tasks 2–5** already shipped **`dashboard.html`** (static JSON viewer) on **`pihole-ha`** **`main`**. This plan **adds** the rich Svelte UI **without removing** the static shell until the new bundle is vetted.
+
+## Why `pi-fabric` / `dns-fabric` first (design intent)
+
+The normative spec **explicitly** names **`pi-fabric`** as the place where the **dashboard shell and UI engineering patterns** live (§2.2, §5.4). The earlier phase plans focused on **`pihole-ha`** because they tracked **§7 Phase 1–4** items that are mostly **API / compose / ops**; that was **not** a downgrade of this repo — it separated **runtime on the Pi** from **UI source of truth here**. This file is the **implementation plan for the “good starting point” UI**; treat **`apps/ui`** as the default working tree until an ADR moves shared code to a package.
 
 ---
 

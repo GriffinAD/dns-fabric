@@ -33,6 +33,8 @@ Two-node HA Pi-hole with **Keepalived** VIP, **Docker Compose** stacks, **Nebula
 
 Documentation-first management plane with **operator API** and **UI** patterns (OpenAPI, SSE-style streaming, strict checks). This design **does not** require renaming Kea Fabric; it defines a **sibling product** or **striped-down reuse** of UI/API scaffolding **without** contradicting accepted Kea Fabric ADRs for the Kea product unless a future ADR explicitly merges scope.
 
+**Dashboard implementation starting point:** The **authoritative codebase** for a **rich** operator dashboard (Svelte 5, **`svelte-dnd-action`**, layout editor contracts, Vitest patterns, Tailwind shell) is **`pi-fabric` `apps/ui`** — see **`docs/architecture/dashboard-plugin-blueprint.md`** and `apps/ui/src/lib/dashboard/DashboardHost.svelte`. Pi-hole control plane **HTTP JSON + SSE** and **host probes** ship in **`pihole-ha`**; the **built static bundle** from this repo is what you **embed or co-serve** on each node so §3.1 “one process, one port” still holds.
+
 ---
 
 ## 3. Architectural options (recorded decision)
@@ -90,8 +92,8 @@ Documentation-first management plane with **operator API** and **UI** patterns (
 
 ### 5.4 Repository split
 
-- **`pihole-ha`:** compose, volumes, env contract, catalogue contents, ops smoke docs.
-- **`pi-fabric`:** reusable UI shell and API scaffolding patterns; Pi-hole-specific probes ship in **`pihole-ha`** unless a later decision vendors shared libraries.
+- **`pihole-ha`:** compose, volumes, env contract, catalogue contents, ops smoke docs, **FastAPI control plane process** (read models + SSE), and **serving** the operator UI bundle on the same port (§3.1).
+- **`pi-fabric`:** **Primary development venue** for the **rich dashboard shell** (widget layout, drag-and-drop, accessibility patterns) and shared UI engineering discipline; **Pi-hole-specific data bindings** (`PiholeCpGateway`, Zod for `/dashboard`) also live here unless a later ADR vendors a shared package. **Pi-hole-specific probes** that touch Docker/host paths remain in **`pihole-ha`** unless explicitly shared.
 
 ---
 
