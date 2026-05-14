@@ -1,5 +1,14 @@
 <script lang="ts">
-  import { asRecord, boolish, str } from "./sectionUi";
+  import {
+    asRecord,
+    boolish,
+    containerHealthSuffix,
+    containerLifecycleLabel,
+    containerLifecycleTone,
+    filterDeployedContainerRows,
+    isDeployedContainerRow,
+    str,
+  } from "./sectionUi";
 
   let { section, title, payload }: { section: string; title: string; payload: unknown } = $props();
 
@@ -89,40 +98,41 @@
       <p class="mb-2 text-xs text-red-600 dark:text-red-400">{p.error}</p>
     {/if}
     {#if Array.isArray(p.containers)}
-      <ul class="space-y-2 text-xs">
-        {#each p.containers as row (String((row as { name?: string }).name))}
-          {@const r = asRecord(row)}
-          {#if r}
-            <li
-              class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-100 px-2 py-1.5 dark:border-gray-800"
-            >
-              <span class="font-mono font-medium text-slate-800 dark:text-gray-200">{str(r.name) ?? "?"}</span>
-              <span class="flex flex-wrap gap-1">
-                {#if typeof r.status === "string"}
+      {@const deployed = filterDeployedContainerRows(p.containers)}
+      {#if deployed.length === 0}
+        <p class="text-xs text-slate-600 dark:text-gray-400">No deployed containers from the watched list on this node.</p>
+      {:else}
+        <ul class="space-y-2 text-xs">
+          {#each deployed as row (String((row as { name?: string }).name))}
+            {@const r = asRecord(row)}
+            {#if r}
+              {@const life = containerLifecycleLabel(row)}
+              {@const tone = containerLifecycleTone(row)}
+              {@const healthX = containerHealthSuffix(row)}
+              <li
+                class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-100 px-2 py-1.5 dark:border-gray-800"
+              >
+                <span class="font-mono font-medium text-slate-800 dark:text-gray-200">{str(r.name) ?? "?"}</span>
+                <span class="flex flex-wrap items-center gap-1.5">
                   <span
-                    class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] uppercase text-slate-700 dark:bg-gray-800 dark:text-gray-300"
-                    >{r.status}</span
+                    class="rounded px-1.5 py-0.5 font-mono text-[10px] capitalize {tone === 'ok'
+                      ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200'
+                      : tone === 'bad'
+                        ? 'bg-red-100 text-red-900 dark:bg-red-950/50 dark:text-red-200'
+                        : tone === 'warn'
+                          ? 'bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100'
+                          : 'bg-slate-100 text-slate-800 dark:bg-gray-800 dark:text-gray-200'}"
+                    >{life}</span
                   >
-                {/if}
-                {#if r.running === true}
-                  <span class="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
-                    >running</span
-                  >
-                {:else if r.running === false}
-                  <span class="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-700 dark:bg-gray-700 dark:text-gray-300"
-                    >stopped</span
-                  >
-                {/if}
-                {#if typeof r.health === "string"}
-                  <span class="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-800 dark:bg-blue-950/50 dark:text-blue-200"
-                    >{r.health}</span
-                  >
-                {/if}
-              </span>
-            </li>
-          {/if}
-        {/each}
-      </ul>
+                  {#if healthX}
+                    <span class="text-[10px] text-slate-600 dark:text-gray-400">· {healthX}</span>
+                  {/if}
+                </span>
+              </li>
+            {/if}
+          {/each}
+        </ul>
+      {/if}
     {/if}
   {:else if section === "pihole_dns" && p}
     <div class="mb-2 flex items-center gap-2">
@@ -247,40 +257,42 @@
       <p class="text-xs text-red-600 dark:text-red-400">{p.error}</p>
     {/if}
     {#if boolish(p.ok)}
-      <ul class="space-y-2 text-xs">
-        {#each ["nebula_sync", "dnscrypt_proxy", "kea_dhcp4", "kea_ctrl_agent"] as key (key)}
-          {@const row = asRecord(p[key])}
-          {#if row}
-            <li
-              class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-100 px-2 py-1.5 dark:border-gray-800"
-            >
-              <span class="font-mono text-slate-800 dark:text-gray-200">{str(row.name) ?? key}</span>
-              <span class="flex flex-wrap gap-1">
-                {#if typeof row.status === "string"}
+      {@const stackKeys = ["nebula_sync", "dnscrypt_proxy", "kea_dhcp4", "kea_ctrl_agent"] as const}
+      {@const stackRows = stackKeys.map((k) => asRecord(p[k])).filter((row): row is Record<string, unknown> => Boolean(row && isDeployedContainerRow(row)))}
+      {#if stackRows.length === 0}
+        <p class="text-xs text-slate-600 dark:text-gray-400">No optional stack services from the watched list on this node.</p>
+      {:else}
+        <ul class="space-y-2 text-xs">
+          {#each stackKeys as key (key)}
+            {@const row = asRecord(p[key])}
+            {#if row && isDeployedContainerRow(row)}
+              {@const life = containerLifecycleLabel(row)}
+              {@const tone = containerLifecycleTone(row)}
+              {@const healthX = containerHealthSuffix(row)}
+              <li
+                class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-100 px-2 py-1.5 dark:border-gray-800"
+              >
+                <span class="font-mono text-slate-800 dark:text-gray-200">{str(row.name) ?? key}</span>
+                <span class="flex flex-wrap items-center gap-1.5">
                   <span
-                    class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] uppercase text-slate-700 dark:bg-gray-800 dark:text-gray-300"
-                    >{row.status}</span
+                    class="rounded px-1.5 py-0.5 font-mono text-[10px] capitalize {tone === 'ok'
+                      ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200'
+                      : tone === 'bad'
+                        ? 'bg-red-100 text-red-900 dark:bg-red-950/50 dark:text-red-200'
+                        : tone === 'warn'
+                          ? 'bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100'
+                          : 'bg-slate-100 text-slate-800 dark:bg-gray-800 dark:text-gray-200'}"
+                    >{life}</span
                   >
-                {/if}
-                {#if row.running === true}
-                  <span class="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
-                    >running</span
-                  >
-                {:else if row.running === false}
-                  <span class="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-700 dark:bg-gray-700 dark:text-gray-300"
-                    >stopped</span
-                  >
-                {/if}
-                {#if typeof row.health === "string"}
-                  <span class="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-800 dark:bg-blue-950/50 dark:text-blue-200"
-                    >{row.health}</span
-                  >
-                {/if}
-              </span>
-            </li>
-          {/if}
-        {/each}
-      </ul>
+                  {#if healthX}
+                    <span class="text-[10px] text-slate-600 dark:text-gray-400">· {healthX}</span>
+                  {/if}
+                </span>
+              </li>
+            {/if}
+          {/each}
+        </ul>
+      {/if}
       {#if asRecord(p.nebula_cron) && str(asRecord(p.nebula_cron)!.cron)}
         <p class="mt-2 text-xs text-slate-600 dark:text-gray-400">
           Nebula CRON env: <span class="font-mono">{str(asRecord(p.nebula_cron)!.cron)}</span>
@@ -337,28 +349,29 @@
         </div>
       {/if}
     </dl>
-    {#if asRecord(p.container)}
+    {#if asRecord(p.container) && isDeployedContainerRow(p.container)}
       {@const c = asRecord(p.container)!}
+      {@const life = containerLifecycleLabel(c)}
+      {@const tone = containerLifecycleTone(c)}
+      {@const healthX = containerHealthSuffix(c)}
       <p class="text-xs font-medium text-slate-700 dark:text-gray-300">Container</p>
-      <div class="mt-1 flex flex-wrap gap-1 text-xs">
-        {#if typeof c.status === "string"}
-          <span
-            class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] uppercase dark:bg-gray-800 dark:text-gray-300"
-            >{c.status}</span
-          >
-        {/if}
-        {#if c.running === true}
-          <span class="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] dark:bg-emerald-900/40 dark:text-emerald-200"
-            >running</span
-          >
-        {:else if c.running === false}
-          <span class="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] dark:bg-gray-700 dark:text-gray-300"
-            >stopped</span
-          >
+      <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+        <span
+          class="rounded px-1.5 py-0.5 font-mono text-[10px] capitalize {tone === 'ok'
+            ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200'
+            : tone === 'bad'
+              ? 'bg-red-100 text-red-900 dark:bg-red-950/50 dark:text-red-200'
+              : tone === 'warn'
+                ? 'bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100'
+                : 'bg-slate-100 text-slate-800 dark:bg-gray-800 dark:text-gray-200'}"
+          >{life}</span
+        >
+        {#if healthX}
+          <span class="text-[10px] text-slate-600 dark:text-gray-400">· {healthX}</span>
         {/if}
       </div>
     {:else}
-      <p class="text-xs text-slate-500 dark:text-gray-500">No container row (see core stack)</p>
+      <p class="text-xs text-slate-500 dark:text-gray-500">DNSCrypt container not present on this node.</p>
     {/if}
   {:else}
     <p class="mb-2 text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-gray-500">

@@ -24,6 +24,26 @@ describe("SectionDashboardTile", () => {
     expect(screen.getByText("VIP")).toBeTruthy();
   });
 
+  it("docker omits not_found rows and shows a single lifecycle label", () => {
+    render(SectionDashboardTile, {
+      props: {
+        section: "docker",
+        title: "Core",
+        payload: {
+          ok: true,
+          containers: [
+            { name: "pihole", status: "running", running: true, health: "healthy" },
+            { name: "kea-dhcp4", status: "not_found" },
+          ],
+        },
+      },
+    });
+    expect(screen.getByText("pihole")).toBeTruthy();
+    expect(screen.getByText("running")).toBeTruthy();
+    expect(screen.queryByText("kea-dhcp4")).toBeNull();
+    expect(screen.queryByText("not_found")).toBeNull();
+  });
+
   it("falls back to JSON for unknown section ids", () => {
     render(SectionDashboardTile, {
       props: {
