@@ -8,6 +8,22 @@ describe("LogStreamPanel", () => {
     vi.unstubAllGlobals();
   });
 
+  it("reloads catalogue when dataRefreshEpoch increments", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        logs: [{ id: "docker_pihole", label: "Pi-hole (container)", kind: "docker_logs" }],
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { rerender } = render(LogStreamPanel, { props: { baseUrl: "", dataRefreshEpoch: 0 } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const n1 = fetchMock.mock.calls.length;
+    rerender({ baseUrl: "", dataRefreshEpoch: 1 });
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(n1));
+  });
+
   it("loads catalogue and shows stream controls", async () => {
     vi.stubGlobal(
       "fetch",

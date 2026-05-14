@@ -44,22 +44,24 @@ afterEach(() => {
 
 describe("PiholeCpGateway", () => {
   it("loads dashboard", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          node: "pi2",
-          version: "0.4.0",
-          widgets: [{ id: "ha_summary", title: "HA", section: "ha" }],
-          sections: { ha: { ok: true } },
-        }),
-      })),
-    );
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        node: "pi2",
+        version: "0.4.0",
+        widgets: [{ id: "ha_summary", title: "HA", section: "ha" }],
+        sections: { ha: { ok: true } },
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
     const gw = new PiholeCpGateway("");
     const dash = await gw.getDashboard();
     expect(dash.node).toBe("pi2");
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/dashboard"),
+      expect.objectContaining({ cache: "no-store" }),
+    );
   });
 
   it("throws GatewayError on HTTP failure", async () => {

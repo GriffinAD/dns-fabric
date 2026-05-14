@@ -4,7 +4,7 @@
   import { PiholeCpGateway } from "./PiholeCpGateway";
   import type { LogsCatalogResponse } from "./dashboardZod";
 
-  let { baseUrl }: { baseUrl: string } = $props();
+  let { baseUrl, dataRefreshEpoch = 0 }: { baseUrl: string; dataRefreshEpoch?: number } = $props();
 
   let catalog = $state<LogsCatalogResponse | null>(null);
   let catalogError = $state<string | null>(null);
@@ -27,18 +27,24 @@
     }
   }
 
+  function stopStream() {
+    source?.close();
+    source = null;
+  }
+
   onMount(() => {
-    void loadCatalog();
     return () => {
       source?.close();
       source = null;
     };
   });
 
-  function stopStream() {
-    source?.close();
-    source = null;
-  }
+  $effect(() => {
+    void baseUrl;
+    void dataRefreshEpoch;
+    stopStream();
+    void loadCatalog();
+  });
 
   function startStream() {
     streamError = null;

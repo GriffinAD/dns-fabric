@@ -12,35 +12,45 @@
   let error = $state<string | null>(null);
   let dashboard = $state<DashboardResponse | null>(null);
   let meta = $state<PiholeCpMeta | null>(null);
-  let layoutEditMode = $state(false);
+  let layoutEditMode = $state(true);
+  let refreshing = $state(false);
+  /** Bumps when the user hits Refresh so LogStreamPanel reloads its catalogue. */
+  let dataRefreshEpoch = $state(0);
 
   const baseUrl =
     typeof import.meta.env.VITE_PIHOLE_CP_BASE_URL === "string"
       ? import.meta.env.VITE_PIHOLE_CP_BASE_URL
       : "";
 
-  async function loadAll() {
+  async function loadAll(opts?: { userRefresh?: boolean }) {
+    const userRefresh = opts?.userRefresh === true;
     error = null;
+    if (userRefresh) refreshing = true;
     const gw = new PiholeCpGateway(baseUrl);
     try {
       const [dash, m] = await Promise.all([gw.getDashboard(), gw.getMeta()]);
       dashboard = dash;
       meta = m;
+      if (userRefresh) {
+        dataRefreshEpoch += 1;
+      }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
+    } finally {
+      if (userRefresh) refreshing = false;
     }
   }
 
+  /** Unlocked unless the operator explicitly chose "Done" (stored `"0"`). */
   function readLayoutEditMode(): boolean {
-    if (typeof localStorage === "undefined") return false;
-    return localStorage.getItem(LAYOUT_EDIT_LS) === "1";
+    if (typeof localStorage === "undefined") return true;
+    return localStorage.getItem(LAYOUT_EDIT_LS) !== "0";
   }
 
   function setLayoutEditMode(next: boolean) {
     layoutEditMode = next;
     if (typeof localStorage !== "undefined") {
-      if (next) localStorage.setItem(LAYOUT_EDIT_LS, "1");
-      else localStorage.removeItem(LAYOUT_EDIT_LS);
+      localStorage.setItem(LAYOUT_EDIT_LS, next ? "1" : "0");
     }
   }
 
@@ -91,10 +101,12 @@
     {/if}
     <button
       type="button"
-      class="rounded border border-slate-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:text-gray-100"
-      onclick={() => void loadAll()}
+      class="rounded border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-gray-600 dark:text-gray-100"
+      disabled={refreshing}
+      data-testid="pihole-cp-refresh"
+      onclick={() => void loadAll({ userRefresh: true })}
     >
-      Refresh
+      {refreshing ? "Refreshing…" : "Refresh"}
     </button>
   </div>
 </header>
@@ -105,5 +117,5 @@
   <p class="p-4 text-slate-600 dark:text-gray-400">Loading…</p>
 {:else}
   <PiholeLayoutGrid {dashboard} layoutEditMode={layoutEditMode} />
-  <LogStreamPanel {baseUrl} />
+  <LogStreamPanel {baseUrl} dataRefreshEpoch={dataRefreshEpoch} />
 {/if}

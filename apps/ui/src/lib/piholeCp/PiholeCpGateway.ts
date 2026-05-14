@@ -25,7 +25,10 @@ export class PiholeCpGateway {
   }
 
   private async getJsonValidated<T>(path: string, schema: z.ZodType<T>): Promise<T> {
-    const res = await fetch(this.url(path), { headers: { Accept: "application/json" } });
+    const res = await fetch(this.url(path), {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
     if (!res.ok) {
       throw new GatewayError({
         code: "http_error",
