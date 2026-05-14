@@ -35,6 +35,13 @@ npm ci
 npm run build:pihole-cp-embed
 ```
 
+### ADR compliance (Phase 2–3)
+
+- **Phase 2 (no DNS/Pi-hole HTTP config writes):** [ADR-0051](../adr/ADR-0051-pihole-ha-control-plane-phase2-dns-writes.md) — **Option A** (**Accepted**).
+- **Phase 3 (mutations, token, audit):** [ADR-0052](../adr/ADR-0052-pihole-ha-control-plane-phase3-mutations-auth-audit.md) — **Option A** (**Accepted**).
+
+Operator truth table on the node: **`pihole-ha`** [control-plane-mutations.md](https://github.com/GriffinAD/pihole-ha/blob/main/docs/operations/control-plane-mutations.md).
+
 ### Push embed to a Pi from macOS (example)
 
 After **`npm run build:pihole-cp-embed`** (or use the wrapper in **`pihole-ha`**), copy **`static/next/`** to the node and rebuild **`control-plane`**. **`GriffinAD/pihole-ha`** ships **`scripts/push-cp-ui-to-pi2.sh`** (defaults include **`PI_FABRIC_APPS_UI=/Volumes/Data/piHole/pi-fabric/apps/ui`**, **`griffin@192.168.2.4`**, **`--pull-remote`** to **`git pull`** on the Pi before refresh). See that repo’s **`docs/operations/control-plane-ui.md`**.

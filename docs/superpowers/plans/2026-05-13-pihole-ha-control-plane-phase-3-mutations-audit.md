@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Execution status (2026-05-14):** **ADR-0052** is **`Accepted`** (**Option A** — no HTTP DNSCrypt toggle). **`pihole-ha`** ships **`audit_log.py`**, **`routes/mutations.py`** (**403** / **202**), compose audit bind, **`docs/operations/control-plane-mutations.md`**, and **`tests/test_control_plane.py`** mutation + audit coverage. **ADR-0051** (**Option A**, no Pi-hole/DNS config writes over HTTP) is reflected in the same mutations doc. Further work is policy revisions only unless ADRs change.
+
 **Goal:** Deliver design **Phase 3**: **DNSCrypt / refresh-script class mutations with authentication + audit** (`docs/superpowers/specs/2026-05-13-pihole-ha-control-plane-ui-design.md` §7). Replace **501** “not implemented” with **real, auditable operator actions** that still respect **GitOps + host scripts** as the ultimate source of truth unless ADR explicitly expands scope.
 
 **Architecture:** **Bearer / `X-Api-Token`** (already partially used) + **append-only audit file** on a host bind mount + **idempotent** mutations that either (a) call **`docker exec`** on allowlisted containers, or (b) return **202** with a **machine-readable** reminder to run a **named host script** (choose one strategy per ADR-0052 — this plan ships **(a) + (b) documented** so operators can pick).
