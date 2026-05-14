@@ -23,7 +23,11 @@ def test_emit_and_path(tmp_path: Path) -> None:
 
 def test_query_empty_when_file_missing(tmp_path: Path) -> None:
     logger = GlobalStructuredLogger(data_dir=tmp_path)
-    assert logger.query(LogsQuery()) == {"items": [], "next_cursor": None, "total_count": 0}
+    assert logger.query(LogsQuery()) == {
+        "items": [],
+        "next_cursor": None,
+        "total_count": 0,
+    }
 
 
 def test_query_filters_and_cursor(tmp_path: Path) -> None:
@@ -128,6 +132,25 @@ def test_query_skips_bad_rows_and_bad_ts_filter(tmp_path: Path) -> None:
     assert len(res["items"]) == 1
     assert res["next_cursor"] is None
     assert res["total_count"] == 1
+
+
+def test_query_respects_limit_with_more_matches(tmp_path: Path) -> None:
+    """When limit is reached, further matches increment total but are not appended."""
+    logger = GlobalStructuredLogger(data_dir=tmp_path)
+    for i in range(3):
+        logger.emit(
+            level="INFO",
+            event=f"e{i}",
+            message="m",
+            service="svc",
+            operation="op",
+            subcategory="c",
+            mode=None,
+        )
+    res = logger.query(LogsQuery(service="svc", cursor=0, limit=2))
+    assert len(res["items"]) == 2
+    assert res["total_count"] == 3
+    assert res["next_cursor"] == 2
 
 
 def test_query_time_range_filters(tmp_path: Path) -> None:

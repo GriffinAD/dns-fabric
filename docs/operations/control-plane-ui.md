@@ -34,3 +34,7 @@ cd /path/to/pi-fabric/apps/ui
 npm ci
 npm run build:pihole-cp-embed
 ```
+
+### Push embed to a Pi from macOS (example)
+
+After **`npm run build:pihole-cp-embed`** (or use the wrapper in **`pihole-ha`**), copy **`static/next/`** to the node and rebuild **`control-plane`**. **`GriffinAD/pihole-ha`** ships **`scripts/push-cp-ui-to-pi2.sh`** (defaults include **`PI_FABRIC_APPS_UI=/Volumes/Data/piHole/pi-fabric/apps/ui`**, **`griffin@192.168.2.4`**, **`--pull-remote`** to **`git pull`** on the Pi before refresh). See that repo’s **`docs/operations/control-plane-ui.md`**.

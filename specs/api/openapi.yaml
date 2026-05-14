@@ -101,6 +101,14 @@ paths:
           - type: 'null'
           title: To
       - in: query
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - in: query
         name: cursor
         required: false
         schema:
@@ -109,22 +117,25 @@ paths:
           title: Cursor
           type: integer
       - in: query
-        name: limit
-        required: false
-        schema:
-          default: 100
-          maximum: 500
-          minimum: 1
-          title: Limit
-          type: integer
-      - in: query
-        name: access_token
+        name: page_size
         required: false
         schema:
           anyOf:
-          - type: string
+          - maximum: 500
+            minimum: 1
+            type: integer
           - type: 'null'
-          title: Access Token
+          title: Page Size
+      - in: query
+        name: limit
+        required: false
+        schema:
+          anyOf:
+          - maximum: 500
+            minimum: 1
+            type: integer
+          - type: 'null'
+          title: Limit
       - in: header
         name: Authorization
         required: false

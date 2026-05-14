@@ -8,14 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from kea_fabric.api.deps import (
-    PageParams,
     AuthRole,
+    PageParams,
     get_fabric_service,
     get_global_logger,
     paged_items_response,
     require_operator,
-    resolve_page_params,
     resolve_auth_role,
+    resolve_page_params,
 )
 from kea_fabric.api.event_stream import fabric_sse_lines
 from kea_fabric.services.fabric import FabricService

@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Execution status (2026-05-14):** Tasks **1–4** are **complete** on **`pihole-ha`** **`main`**: OpenAPI export + checked-in **`spec/openapi.json`**, CI drift **`cmp`**, **`docs/operations/control-plane-ui.md`** contracts, **`TestLogCatalogSecurity`**, **`docs/operations/control-plane-smoke.md`** + link from the operator doc.
+
 **Goal:** Close the remaining **Phase 1** gaps from the normative design (`docs/superpowers/specs/2026-05-13-pihole-ha-control-plane-ui-design.md` §6.2–§6.3, §8) without adding write surfaces: **contracted OpenAPI**, **documented error + SSE policy**, **stronger catalogue security tests**, **repeatable smoke**.
 
 **Architecture:** Runtime stays in **`pihole-ha`** (`platform/control-plane/`). Contract artefacts live beside the image source; **dns-fabric** only receives doc/ADR pointers if you choose to mirror policy there.

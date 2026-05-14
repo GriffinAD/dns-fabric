@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import ceil
-from typing import Annotated, Literal, TypeVar, cast
+from typing import Annotated, Literal, cast
 
 from fastapi import Depends, Header, HTTPException, Query, Request
 
@@ -23,9 +23,6 @@ class PageParams:
     page_size: int = DEFAULT_PAGE_SIZE
 
 
-TItem = TypeVar("TItem")
-
-
 def get_settings(request: Request) -> ApiSettings:
     return cast(ApiSettings, request.app.state.settings)
 
@@ -40,7 +37,10 @@ def get_global_logger(request: Request) -> GlobalStructuredLogger:
 
 def resolve_page_params(
     cursor: Annotated[int, Query(ge=0)] = 0,
-    page_size: Annotated[int | None, Query(alias="page_size", ge=1, le=MAX_PAGE_SIZE)] = None,
+    page_size: Annotated[
+        int | None,
+        Query(alias="page_size", ge=1, le=MAX_PAGE_SIZE),
+    ] = None,
     limit: Annotated[int | None, Query(ge=1, le=MAX_PAGE_SIZE)] = None,
 ) -> PageParams:
     """Resolve uniform paging args.
@@ -53,7 +53,7 @@ def resolve_page_params(
     return PageParams(cursor=cursor, page_size=effective_page_size)
 
 
-def paged_items_response(
+def paged_items_response[TItem](
     *,
     items: list[TItem],
     total_count: int,
