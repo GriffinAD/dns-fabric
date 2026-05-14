@@ -15,7 +15,7 @@
 | Location | Responsibility |
 |----------|------------------|
 | `docs/superpowers/specs/2026-05-13-pihole-ha-control-plane-ui-design.md` | Normative design (committed in Task 1) |
-| `pihole-ha` `platform/core/docker-compose.control-plane.override.yml` + `platform/control-plane/` | **Done (Task 2):** optional per-node service, env contract, published port — branch `feat/control-plane-stub` |
+| `pihole-ha` `platform/core/docker-compose.control-plane.override.yml` + `platform/control-plane/` | **Done (Tasks 2–5):** optional per-node service on **`pihole-ha`** **`main`** (merged from `feat/control-plane-stub`; tip includes **`ecdcaf7`**) |
 | `pihole-ha` ops smoke / install docs | **`/dashboard`**, **`/logs/catalog`**, SSE curl examples in **`docs/operations/control-plane-ui.md`** (Task 3) |
 | `pi-fabric` `src/kea_fabric/` (or new package) | Reusable API + static mount pattern **only if** code is shared here; otherwise adapters stay in `pihole-ha` image source |
 
@@ -90,8 +90,7 @@ Expected: commit created; message ends with `Signed-off-by: GriffinAD <nigel.sur
 
 **Upstream (product runtime repo):**
 
-- Branch (pushed): `https://github.com/GriffinAD/pihole-ha/tree/feat/control-plane-stub`
-- Open a PR from that branch: `https://github.com/GriffinAD/pihole-ha/compare/feat/control-plane-stub`
+- **Merged to `main`:** `https://github.com/GriffinAD/pihole-ha` (control-plane work landed via **`feat/control-plane-stub`**; branch may still exist for cleanup only).
 
 **Notable paths in `pihole-ha`:**
 
@@ -139,7 +138,7 @@ Expected: commit created; message ends with `Signed-off-by: GriffinAD <nigel.sur
 
 **Goal:** Finish the Phase 1 items deferred after Task 4: **`widgets`** on **`GET /dashboard`**, parallel section assembly with bounded waits, **`sections.pihole_runtime`**, **`sections.kea_dhcp`** (read-only JSON), **`sections.schedules`**, **`sections.dnscrypt`**, **`sections.keepalived`** VIP TCP probe + LAN hint (still not full VRRP), **`GET /v1/meta`**, **`POST /v1/mutations/*`** stubs (**403** / **501**), optional **file** log stream + catalogue entry, shared Docker client for stack inspect + dashboard, compose binds for **`/ro/kea-etc`** and maintenance log, preflight **`mkdir`/`touch`** for log path.
 
-**`pihole-ha`:** branch **`feat/control-plane-stub`**, commit **`ecdcaf7`** — land via PR to **`main`**.
+**`pihole-ha`:** merged to **`main`** (includes commit **`ecdcaf7`** from **`feat/control-plane-stub`**).
 
 - [x] **Step 1:** Adapters + sections + dashboard parallel merge + **`CONTROL_PLANE_VERSION` 0.4.0**.
 - [x] **Step 2:** Compose volumes + env (`CONTROL_PLANE_MAINTENANCE_LOG`, `CONTROL_PLANE_API_TOKEN`) + preflight host file ensure + CI **`pip`** test deps + compose validate **`mkdir`** / **`touch`**.
@@ -147,4 +146,23 @@ Expected: commit created; message ends with `Signed-off-by: GriffinAD <nigel.sur
 
 ---
 
-**After Task 5 (Phase 2+):** Host Keepalived/VRRP export (agent or sidecar), Pi-hole HTTP/API reads (auth strategy), real mutations with audit, SPA UI when the widget set stabilises.
+## Phase 2+ roadmap (forward reference — not numbered tasks in this bootstrap plan)
+
+**Phase 1 in this file** = **Tasks 2–5** above (**complete** on **`pihole-ha`** **`main`**). Normative **phase names 2–4** and boundaries live in the design spec **§7 — Phased delivery** (`docs/superpowers/specs/2026-05-13-pihole-ha-control-plane-ui-design.md`).
+
+| Design phase | What it means (spec §7) |
+|--------------|-------------------------|
+| **2** | Pi-hole / DNS **write** paths (if any) with explicit **risk review**. |
+| **3** | DNSCrypt and refresh-script-class **mutations** with **authentication + audit** (replaces today’s **`POST /v1/mutations/*`** **403/501** stubs in **`pihole-ha`**). |
+| **4** | Optional **centralisation** or **peer aggregation** only if Section 1 topology is reopened. |
+
+**Cross-cutting backlog** (called out in spec/plan but not a separate numbered design phase):
+
+- **Keepalived / VRRP:** authoritative host HA state (today: VIP TCP probe + explicit “not exported” gap); likely **host agent**, **read-only `/run` mount**, or **sidecar**.
+- **Pi-hole HTTP / API reads:** dashboard data from Pi-hole’s API — needs **auth + secret-handling** decisions first.
+- **UI:** richer operator shell or **built SPA** when the widget set is stable.
+- **Packaging (optional):** publish a **prebuilt control-plane image** from **dns-fabric** CI and switch **`pihole-ha`** compose to **`image:`** instead of **`build:`**.
+
+Design **§8** tracks smaller follow-ons (e.g. **200 + per-section errors vs 207**, **SSE reconnect / cursor** policy).
+
+**When starting Phase 2+ work:** add a new plan slice or ADR per chosen thread; keep this file as the **Phase 1 bootstrap** record unless you explicitly supersede it.

@@ -1,6 +1,6 @@
 # Pi-hole HA per-node control plane and dashboard UI — design
 
-**Status:** Phase 1 read path implemented in **`pihole-ha`** (`feat/control-plane-stub`); this document remains normative for Phase 2+ (mutations with auth/audit, Pi-hole writes, richer HA).  
+**Status:** Phase 1 read path implemented on **`pihole-ha`** **`main`** (lineage includes **`ecdcaf7`**); this document remains normative for Phase 2+ (mutations with auth/audit, Pi-hole writes, richer HA).  
 **Date:** 2026-05-13  
 **Scope:** Docker-based **UI layer** and **HTTP API control plane** that runs **on each node** of the **`pihole-ha`** deployment (operator clone path often `/Volumes/Data/piHole/pihole-ha` or `/opt/pihole-ha` on nodes), integrating with **local** host and container state. **`pi-fabric` (Kea Fabric)** supplies reusable patterns (OpenAPI-backed API, dashboard composition, log streaming); **product-specific probes and compose contracts** live with **`pihole-ha`** or a clearly versioned adjunct.
 
