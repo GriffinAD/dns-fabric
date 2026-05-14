@@ -1,23 +1,28 @@
 ---
 title: "ADR-0051: Pi-hole HA control plane Phase 2 — DNS / Pi-hole HTTP write surface"
 adr: "0051"
-status: Proposed
+status: Accepted
 date: 2026-05-13
 owner: GriffinAD
 peer_reviewer: GriffinAD
-deciders: []
+deciders: [GriffinAD]
 due_date: null
 re_entry_criteria: null
 touch_points:
   - GriffinAD/pihole-ha
   - GriffinAD/dns-fabric
+  - docs/adr/ADR-0052-pihole-ha-control-plane-phase3-mutations-auth-audit.md
 ---
 
 # ADR-0051: Pi-hole HA control plane Phase 2 — DNS / Pi-hole HTTP write surface
 
 ## Status
 
-`Proposed` — requires human acceptance before any **`pihole-ha`** write API ships.
+`Accepted` — **Option A** recorded below. No HTTP-mediated **writes** to Pi-hole or
+DNS **configuration** are exposed from the control plane under this decision.
+**ADR-0052** governs separate **mutation** endpoints that **defer** to host scripts
+(**202**); they do **not** change Pi-hole/DNS config files from the container and
+are out of scope for Phase 2 “write surface”.
 
 ## Context
 
@@ -42,17 +47,54 @@ Forces:
 
 ## Decision outcome
 
-**Human must record the chosen option here before implementation tasks proceed.**
+**Chosen option: Option A** — **No** HTTP routes that **write** Pi-hole or DNS
+configuration from the control plane. Stack-changing operations remain **host
+GitOps + `pihole-ha-refresh.sh` / `pihole-ha-upgrade.sh`**.
 
-Default recommendation for operators: **Option A** until Phase 3 is accepted.
+Re-opening Phase 2 scope (Option B or C) requires a **new ADR revision** or
+superseding ADR with explicit allowlist, tests, and hazard sign-off.
 
-### Validation
+### Positive consequences
 
-- ADR **`Accepted`** with chosen option recorded.
-- **`pihole-ha`** `docs/operations/control-plane-mutations.md` lists forbidden vs allowed HTTP actions matching the ADR.
-- If Option B/C: contract tests prove **no path outside allowlist** and **no unauthenticated** route.
+- Smallest LAN attack surface for DNS-breaking mistakes.
+- Clear separation: Phase 2 “writes” question is **closed** without shipping risky APIs.
+
+### Negative consequences
+
+- Operators cannot drive Pi-hole/DNS **disk** changes through this HTTP API; host workflows only.
+
+## Validation
+
+- ADR **`Accepted`** with **Option A** recorded — satisfied.
+- **`pihole-ha`** `docs/operations/control-plane-mutations.md` lists forbidden vs allowed HTTP actions matching this ADR — operator truth table updated on acceptance.
+- **Option B/C:** not selected; no additional contract tests required for disallowed write routes.
+
+## Pros and cons of the options
+
+### Option A
+
+- ✅ Lowest risk; matches home-LAN deployment reality.
+- ❌ No HTTP convenience for Pi-hole/DNS file edits.
+
+### Option B
+
+- ✅ Could offer safe reload-only automation when paired with audit.
+- ❌ Not selected; would need new acceptance cycle.
+
+### Option C
+
+- ✅ Could unlock specific allowlisted edits when fully specified.
+- ❌ Not selected; highest review burden.
 
 ## Links
 
 - Spec: `docs/superpowers/specs/2026-05-13-pihole-ha-control-plane-ui-design.md` §7 Phase 2
+- Phase 3 ADR: `docs/adr/ADR-0052-pihole-ha-control-plane-phase3-mutations-auth-audit.md`
 - Phase 3 plan: `docs/superpowers/plans/2026-05-13-pihole-ha-control-plane-phase-3-mutations-audit.md`
+
+## Change Log
+
+| Date | Status | Reviewer | Notes |
+|---|---|---|---|
+| 2026-05-13 | Proposed | GriffinAD | Initial draft. |
+| 2026-05-14 | Accepted | GriffinAD | Option A: no Pi-hole/DNS HTTP write surface; truth table updated in `pihole-ha`. |
