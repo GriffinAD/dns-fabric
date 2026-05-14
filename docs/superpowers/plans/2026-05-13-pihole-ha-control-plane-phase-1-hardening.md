@@ -25,6 +25,8 @@ The **bootstrap plan** in this repo already records **Phase 1 runtime** as **don
 
 **Task 1** in the bootstrap file (procedural checkboxes for the original docs landing) is **orthogonal**; you may still tick those for housekeeping or leave them as historical.
 
+**Rich UI (Svelte drag-and-drop):** tracked separately in **`docs/superpowers/plans/2026-05-13-pihole-ha-control-plane-ui-svelte-dashboard.md`** (`apps/ui`, `svelte-dnd-action`); not part of this hardening checklist.
+
 ---
 
 ## File map (this phase)

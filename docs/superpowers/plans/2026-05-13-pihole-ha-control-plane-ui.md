@@ -160,7 +160,7 @@ Expected: commit created; message ends with `Signed-off-by: GriffinAD <nigel.sur
 
 - **Keepalived / VRRP:** authoritative host HA state (today: VIP TCP probe + explicit “not exported” gap); likely **host agent**, **read-only `/run` mount**, or **sidecar**.
 - **Pi-hole HTTP / API reads:** dashboard data from Pi-hole’s API — needs **auth + secret-handling** decisions first.
-- **UI:** richer operator shell or **built SPA** when the widget set is stable.
+- **UI:** richer operator shell or **built SPA** when the widget set is stable — see **[Svelte DnD dashboard plan](2026-05-13-pihole-ha-control-plane-ui-svelte-dashboard.md)** (`apps/ui`, `svelte-dnd-action`, `docs/architecture/dashboard-plugin-blueprint.md`).
 - **Packaging (optional):** publish a **prebuilt control-plane image** from **dns-fabric** CI and switch **`pihole-ha`** compose to **`image:`** instead of **`build:`**.
 
 Design **§8** tracks smaller follow-ons (e.g. **200 + per-section errors vs 207**, **SSE reconnect / cursor** policy).
@@ -170,8 +170,9 @@ Design **§8** tracks smaller follow-ons (e.g. **200 + per-section errors vs 207
 **Per-phase implementation plans (dns-fabric):** each plan below **assumes** the bootstrap **Tasks 2–5** work is already merged on **`pihole-ha`** **`main`** (see checked **`[x]`** steps above). They add **new** work (hardening, ADRs, Phase 3+ behaviour), they do **not** re-specify the original stub stack.
 
 | Design §7 phase | Plan file |
-|-------------------|-----------|
+|-----------------|-----------|
 | **1** (hardening / spec closure) | [`2026-05-13-pihole-ha-control-plane-phase-1-hardening.md`](2026-05-13-pihole-ha-control-plane-phase-1-hardening.md) |
 | **2** (DNS / Pi-hole write risk) | [`2026-05-13-pihole-ha-control-plane-phase-2-dns-write-risk.md`](2026-05-13-pihole-ha-control-plane-phase-2-dns-write-risk.md) |
 | **3** (mutations + auth + audit) | [`2026-05-13-pihole-ha-control-plane-phase-3-mutations-audit.md`](2026-05-13-pihole-ha-control-plane-phase-3-mutations-audit.md) |
 | **4** (aggregation, optional) | [`2026-05-13-pihole-ha-control-plane-phase-4-aggregation-optional.md`](2026-05-13-pihole-ha-control-plane-phase-4-aggregation-optional.md) |
+| **UI** (Svelte DnD shell, cross-cutting) | [`2026-05-13-pihole-ha-control-plane-ui-svelte-dashboard.md`](2026-05-13-pihole-ha-control-plane-ui-svelte-dashboard.md) |
