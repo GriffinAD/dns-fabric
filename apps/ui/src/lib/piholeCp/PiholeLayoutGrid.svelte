@@ -5,7 +5,7 @@
   import type { DndEvent } from "svelte-dnd-action";
 
   import type { DashboardResponse } from "./dashboardZod";
-  import SectionJsonTile from "./SectionJsonTile.svelte";
+  import SectionDashboardTile from "./SectionDashboardTile.svelte";
 
   const LS_ORDER_KEY = "pihole-cp.widget-order.v1";
 
@@ -99,7 +99,7 @@
         >
           <GripVertical class="h-4 w-4" aria-hidden="true" />
         </button>
-        <SectionJsonTile title={w.title} payload={dashboard.sections[w.section]} />
+        <SectionDashboardTile section={w.section} title={w.title} payload={dashboard.sections[w.section]} />
       </div>
     {/if}
   {/each}
