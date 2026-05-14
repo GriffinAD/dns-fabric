@@ -10,6 +10,10 @@
 
 **Normative spec:** Design §7 Phase 4; §4 “no follow-the-VIP” (v1).
 
+## Relationship to `2026-05-13-pihole-ha-control-plane-ui.md` (bootstrap plan)
+
+That bootstrap plan’s **Tasks 2–5** established **per-node** control plane (design §4 Option A). **Phase 4** is **explicitly out of scope** until Section 1 topology is reopened; this file does not alter bootstrap deliverables.
+
 ---
 
 ## File map (this phase)

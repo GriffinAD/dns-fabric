@@ -10,6 +10,10 @@
 
 **Normative spec:** Design spec §7 Phase 2; §5.3 Pi-hole row (“write strategy deferred”).
 
+## Relationship to `2026-05-13-pihole-ha-control-plane-ui.md` (bootstrap plan)
+
+**Tasks 2–5** in that file are **`[x]`** and correspond to **Phase 1 read-path + stubs** already on **`pihole-ha`** **`main`** (including **`POST /v1/mutations/*`** **403/501** stubs). **This Phase 2 plan does not repeat that work**; it only adds **ADR-0051**, operator truth-table docs, and **optional** HTTP write routes **if** the ADR accepts them.
+
 ---
 
 ## File map (this phase)

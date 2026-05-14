@@ -10,6 +10,10 @@
 
 **Normative spec:** Design §7 Phase 3; §6.1 mutations; §6.2 **403** without leaking internals.
 
+## Relationship to `2026-05-13-pihole-ha-control-plane-ui.md` (bootstrap plan)
+
+**Task 5** in that file shipped mutation **stubs** (`403` / `501`) on **`pihole-ha`** **`main`**. **Phase 3** **replaces or extends** those routes **only** per **ADR-0052**; it assumes the **read path** from Tasks **2–5** remains intact.
+
 ---
 
 ## File map (this phase)

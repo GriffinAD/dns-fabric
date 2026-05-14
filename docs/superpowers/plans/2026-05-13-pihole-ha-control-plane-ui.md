@@ -167,7 +167,7 @@ Design **§8** tracks smaller follow-ons (e.g. **200 + per-section errors vs 207
 
 **When starting Phase 2+ work:** add a new plan slice or ADR per chosen thread; keep this file as the **Phase 1 bootstrap** record unless you explicitly supersede it.
 
-**Per-phase implementation plans (dns-fabric):**
+**Per-phase implementation plans (dns-fabric):** each plan below **assumes** the bootstrap **Tasks 2–5** work is already merged on **`pihole-ha`** **`main`** (see checked **`[x]`** steps above). They add **new** work (hardening, ADRs, Phase 3+ behaviour), they do **not** re-specify the original stub stack.
 
 | Design §7 phase | Plan file |
 |-------------------|-----------|

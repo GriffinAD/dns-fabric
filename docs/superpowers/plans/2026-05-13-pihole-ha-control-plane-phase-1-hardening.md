@@ -10,6 +10,21 @@
 
 **Normative spec:** `docs/superpowers/specs/2026-05-13-pihole-ha-control-plane-ui-design.md` §6–§8.
 
+## Relationship to `2026-05-13-pihole-ha-control-plane-ui.md` (bootstrap plan)
+
+The **bootstrap plan** in this repo already records **Phase 1 runtime** as **done**:
+
+| Bootstrap | Status on `pihole-ha` `main` | What it delivered (do **not** re-implement in this hardening plan) |
+|-----------|------------------------------|----------------------------------------------------------------------|
+| **Task 2** | `[x]` | Optional compose service, `CORE_COMPOSE_FILES`, `pihole_ha_docker_compose_up_core_stack`, preflight file/port gates, initial operator doc. |
+| **Task 3** | `[x]` | `adapters/docker_state.py`, `logs/catalog.py`, Docker SSE, `docker.sock`, `tests/test_control_plane.py` baseline, CI `mkdir` for compose validate, `pip` test deps. |
+| **Task 4** | `[x]` | `sections.*` for `ha`, `pihole_dns`, `stack`, `keepalived` (initial), `dashboard.html`, compose env + mounts. |
+| **Task 5** | `[x]` | Parallel `build_dashboard`, `widgets`, `pihole_runtime`, `kea_dhcp`, `schedules`, `dnscrypt`, VIP probe, `/v1/meta`, mutation **stubs**, file SSE, Kea + maintenance binds, version **0.4.0**. |
+
+**This hardening plan** = **delta only**: design **§6.3 contract** (checked-in OpenAPI + drift CI), **§8** policy written down for operators, **extra catalogue security tests**, and a **dedicated smoke** doc. It **extends** Tasks 2–5; it does **not** replace or reopen them.
+
+**Task 1** in the bootstrap file (procedural checkboxes for the original docs landing) is **orthogonal**; you may still tick those for housekeeping or leave them as historical.
+
 ---
 
 ## File map (this phase)
