@@ -5,12 +5,25 @@ import { defineConfig } from "vitest/config";
 
 import { mockApiPlugin } from "./vite-plugin-mock-api";
 
+const piholeCpDevProxyTarget =
+  process.env.PIHOLE_CP_DEV_PROXY_TARGET ??
+  process.env.VITE_PIHOLE_CP_DEV_PROXY ??
+  "http://127.0.0.1:8091";
+
 export default defineConfig({
   resolve: {
     /* Without `browser`, Vitest resolves `svelte` / `svelte/store` to the server entry and `mount()` throws. */
     conditions: ["browser", "import", "module", "default"],
   },
   plugins: [tailwindcss(), mockApiPlugin(), svelte(), svelteTesting()],
+  build: {
+    rollupOptions: {
+      input: {
+        main: "./index.html",
+        piholeCp: "./index-pihole-cp.html",
+      },
+    },
+  },
   server: {
     /* Default `host: "localhost"` can make the dev server unreachable from Cursor’s embedded
      * browser (and some IDE previews) while Safari/Chrome work. Listen on all interfaces. */
@@ -23,6 +36,22 @@ export default defineConfig({
     proxy: {
       "/api": {
         target: "http://127.0.0.1:8080",
+        changeOrigin: true,
+      },
+      "/dashboard": {
+        target: piholeCpDevProxyTarget,
+        changeOrigin: true,
+      },
+      "/v1": {
+        target: piholeCpDevProxyTarget,
+        changeOrigin: true,
+      },
+      "/logs": {
+        target: piholeCpDevProxyTarget,
+        changeOrigin: true,
+      },
+      "/health": {
+        target: piholeCpDevProxyTarget,
         changeOrigin: true,
       },
     },

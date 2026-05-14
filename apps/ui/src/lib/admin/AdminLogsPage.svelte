@@ -176,8 +176,7 @@
       totalCount = responsePage.totalCount;
       totalPages = Math.max(
         1,
-        responsePage.totalPages ??
-          (responsePage.totalCount ? Math.ceil(responsePage.totalCount / pageSize) : 1),
+        responsePage.totalCount ? Math.ceil(responsePage.totalCount / pageSize) : 1,
       );
     } catch (e: unknown) {
       if (queryId !== activeQueryId) return;
