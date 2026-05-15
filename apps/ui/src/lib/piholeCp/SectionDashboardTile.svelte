@@ -1,18 +1,41 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+
   import {
     asRecord,
     boolish,
     containerHealthSuffix,
     containerLifecycleLabel,
     containerLifecycleTone,
+    containerUptimeLabel,
     filterDeployedContainerRows,
     isDeployedContainerRow,
     str,
   } from "./sectionUi";
 
-  let { section, title, payload }: { section: string; title: string; payload: unknown } = $props();
+  let {
+    section,
+    title,
+    payload,
+    view,
+  }: { section: string; title: string; payload: unknown; view?: string } = $props();
+
+  /** Wall clock for live container uptime (rows expose `started_at` or `uptime_seconds` from the API). */
+  let nowMs = $state(Date.now());
+  onMount(() => {
+    const id = setInterval(() => {
+      nowMs = Date.now();
+    }, 30_000);
+    return () => clearInterval(id);
+  });
 
   const p = $derived(asRecord(payload));
+  /** `ha` section: optional slice from `/dashboard` widgets so each slice is its own dashboard tile. */
+  const haSlice = $derived.by(() => {
+    if (!view) return "full";
+    if (view === "ha_status" || view === "ha_network" || view === "ha_services") return view;
+    return "full";
+  });
 </script>
 
 <section
@@ -21,27 +44,77 @@
   <h2 class="mb-3 text-sm font-semibold text-slate-900 dark:text-gray-100">{title}</h2>
 
   {#if section === "ha" && p}
-    <div class="mb-2 flex items-center gap-2">
-      <span
-        class="inline-flex h-2 w-2 rounded-full {boolish(p.ok)
-          ? 'bg-emerald-500'
-          : 'bg-red-500'}"
-        aria-hidden="true"
-      ></span>
-      <span class="text-xs font-medium text-slate-600 dark:text-gray-400">
-        {boolish(p.ok) ? "OK" : "Issue"}
-      </span>
-    </div>
-    <dl class="grid gap-2 text-xs">
-      {#each [["VIP", str(p.vip)], ["Router", str(p.router)], ["Pi1", str(p.node_primary_ip)], ["Pi2", str(p.node_secondary_ip)], ["HA node env", str(p.pihole_ha_node)], ["DHCP mode", str(p.dhcp_mode)], ["DNSCrypt enabled", p.dnscrypt_enabled === true ? "yes" : "no"]] as [k, v] (k)}
-        {#if v}
-          <div class="flex justify-between gap-3 border-b border-slate-100 pb-1 dark:border-gray-800">
-            <dt class="text-slate-500 dark:text-gray-500">{k}</dt>
-            <dd class="font-mono text-right text-slate-800 dark:text-gray-200">{v}</dd>
-          </div>
-        {/if}
-      {/each}
-    </dl>
+    {#if haSlice === "full" || haSlice === "ha_status" || haSlice === "ha_network" || haSlice === "ha_services"}
+      <div class="mb-2 flex items-center gap-2">
+        <span
+          class="inline-flex h-2 w-2 rounded-full {boolish(p.ok)
+            ? 'bg-emerald-500'
+            : 'bg-red-500'}"
+          aria-hidden="true"
+        ></span>
+        <span class="text-xs font-medium text-slate-600 dark:text-gray-400">
+          {boolish(p.ok) ? "OK" : "Issue"}
+        </span>
+      </div>
+    {/if}
+    {#if haSlice === "full"}
+      <dl class="grid gap-2 text-xs">
+        {#each [["VIP", str(p.vip)], ["Router", str(p.router)], ["Pi1", str(p.node_primary_ip)], ["Pi2", str(p.node_secondary_ip)], ["HA node env", str(p.pihole_ha_node)], ["DHCP mode", str(p.dhcp_mode)], ["DNSCrypt enabled", p.dnscrypt_enabled === true ? "yes" : "no"]] as [k, v] (k)}
+          {#if v}
+            <div class="flex justify-between gap-3 border-b border-slate-100 pb-1 dark:border-gray-800">
+              <dt class="text-slate-500 dark:text-gray-500">{k}</dt>
+              <dd class="font-mono text-right text-slate-800 dark:text-gray-200">{v}</dd>
+            </div>
+          {/if}
+        {/each}
+      </dl>
+    {:else if haSlice === "ha_status"}
+      {#if typeof p.error === "string"}
+        <p class="text-xs text-red-600 dark:text-red-400">{p.error}</p>
+      {/if}
+    {:else if haSlice === "ha_network"}
+      <dl class="grid gap-2 text-xs">
+        {#each [["VIP", str(p.vip)], ["Router", str(p.router)], ["Pi1", str(p.node_primary_ip)], ["Pi2", str(p.node_secondary_ip)]] as [k, v] (k)}
+          {#if v}
+            <div class="flex justify-between gap-3 border-b border-slate-100 pb-1 dark:border-gray-800">
+              <dt class="text-slate-500 dark:text-gray-500">{k}</dt>
+              <dd class="font-mono text-right text-slate-800 dark:text-gray-200">{v}</dd>
+            </div>
+          {/if}
+        {/each}
+      </dl>
+    {:else if haSlice === "ha_services"}
+      <dl class="grid gap-2 text-xs">
+        {#each [["HA node env", str(p.pihole_ha_node)], ["DHCP mode", str(p.dhcp_mode)], ["DNSCrypt enabled", p.dnscrypt_enabled === true ? "yes" : "no"]] as [k, v] (k)}
+          {#if v}
+            <div class="flex justify-between gap-3 border-b border-slate-100 pb-1 dark:border-gray-800">
+              <dt class="text-slate-500 dark:text-gray-500">{k}</dt>
+              <dd class="font-mono text-right text-slate-800 dark:text-gray-200">{v}</dd>
+            </div>
+          {/if}
+        {/each}
+      </dl>
+    {/if}
+  {:else if (section === "peer_telemetry" || section === "peer_dhcp") && p}
+    <p class="mb-2 text-xs text-slate-600 dark:text-gray-400">{str(p.detail) ?? "—"}</p>
+    {#if str(p.peer_ui_base_url)}
+      <p class="mb-2 text-xs text-slate-500 dark:text-gray-500">
+        Opens the Kea Fabric operator (same LAN URL as the control plane <code class="font-mono">peer</code> hint).
+      </p>
+      <a
+        class="inline-block rounded border border-blue-300 px-3 py-1.5 text-sm text-blue-700 underline hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-gray-800"
+        href={str(p.peer_ui_base_url)!}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Open fabric peer UI
+      </a>
+    {:else}
+      <p class="text-xs text-amber-800 dark:text-amber-200">
+        Set <span class="font-mono">CONTROL_PLANE_PEER_UI_BASE_URL</span> on the control plane host to enable the
+        link (same value as <span class="font-mono">/v1/meta.peer_ui_base_url</span>).
+      </p>
+    {/if}
   {:else if section === "keepalived" && p}
     <div class="mb-2 flex items-center gap-2">
       <span
@@ -109,6 +182,7 @@
               {@const life = containerLifecycleLabel(row)}
               {@const tone = containerLifecycleTone(row)}
               {@const healthX = containerHealthSuffix(row)}
+              {@const up = containerUptimeLabel(row, nowMs)}
               <li
                 class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-100 px-2 py-1.5 dark:border-gray-800"
               >
@@ -126,6 +200,11 @@
                   >
                   {#if healthX}
                     <span class="text-[10px] text-slate-600 dark:text-gray-400">· {healthX}</span>
+                  {/if}
+                  {#if up}
+                    <span class="text-[10px] text-slate-600 dark:text-gray-400" title="Uptime since container start"
+                      >· up {up}</span
+                    >
                   {/if}
                 </span>
               </li>
@@ -269,6 +348,7 @@
               {@const life = containerLifecycleLabel(row)}
               {@const tone = containerLifecycleTone(row)}
               {@const healthX = containerHealthSuffix(row)}
+              {@const up = containerUptimeLabel(row, nowMs)}
               <li
                 class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-100 px-2 py-1.5 dark:border-gray-800"
               >
@@ -286,6 +366,11 @@
                   >
                   {#if healthX}
                     <span class="text-[10px] text-slate-600 dark:text-gray-400">· {healthX}</span>
+                  {/if}
+                  {#if up}
+                    <span class="text-[10px] text-slate-600 dark:text-gray-400" title="Uptime since container start"
+                      >· up {up}</span
+                    >
                   {/if}
                 </span>
               </li>

@@ -223,6 +223,35 @@ describe("createLayoutStore", () => {
     expect(get(ls.layout).items[0]).toMatchObject({ kind: "tile", pluginId: "perf.cpu" });
   });
 
+  it("addRootTile injects Pi-hole palette options for pihole_ha.<section> ids", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout({ version: 2, items: [] });
+    ls.addRootTile("pihole_ha.docker");
+    const t = get(ls.layout).items[0];
+    expect(t?.kind).toBe("tile");
+    if (t?.kind !== "tile") return;
+    expect(t.pluginId).toBe("pihole_ha.docker");
+    expect(t.options).toMatchObject({
+      section: "docker",
+      title: "Docker",
+    });
+    expect(typeof (t.options as { widgetId?: string }).widgetId).toBe("string");
+  });
+
+  it("addRootTile injects legacy Pi-hole section defaults for pihole_ha.section", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout({ version: 2, items: [] });
+    ls.addRootTile("pihole_ha.section");
+    const t = get(ls.layout).items[0];
+    expect(t?.kind).toBe("tile");
+    if (t?.kind !== "tile") return;
+    expect(t.options).toMatchObject({ section: "ha", title: "Ha" });
+  });
+
   it("addGroup appends a group", () => {
     const gw = new DataGateway("");
     vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
@@ -355,6 +384,25 @@ describe("createLayoutStore", () => {
       const child = g.children[0];
       expect(child && "pluginId" in child ? child.pluginId : undefined).toBe("dhcp.clients");
     }
+  });
+
+  it("addTileToGroup injects Pi-hole palette options for pihole_ha.<section> ids", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout({
+      version: 3,
+      items: [{ kind: "group", id: "g1", showBorder: true, children: [] }],
+    });
+    ls.addTileToGroup("g1", "pihole_ha.docker");
+    const g = get(ls.layout).items[0];
+    expect(g?.kind).toBe("group");
+    if (g?.kind !== "group") return;
+    expect(g.children.length).toBe(1);
+    const c = g.children[0];
+    expect(c && "pluginId" in c ? c.pluginId : undefined).toBe("pihole_ha.docker");
+    if (!c || !("pluginId" in c)) return;
+    expect(c.options).toMatchObject({ section: "docker", title: "Docker" });
   });
 
   it("applyStructure records loadError when normalize throws", () => {
@@ -521,5 +569,60 @@ describe("createLayoutStore", () => {
     ls.undo();
     ls.redo();
     expect(get(ls.layout)).toBeDefined();
+  });
+
+  it("skipServerLayoutPersist skips debounced PUT on edits", async () => {
+    vi.useFakeTimers();
+    const gw = new DataGateway("");
+    const put = vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({
+      gateway: gw,
+      skipServerLayoutPersist: true,
+      initialLayout: minimalLayout(),
+    });
+    ls.openEditor();
+    ls.addRootTile("perf.cpu");
+    await vi.advanceTimersByTimeAsync(500);
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it("skipServerLayoutPersist saveLayoutToFile skips POST", async () => {
+    const gw = new DataGateway("");
+    const postSave = vi.spyOn(gw, "postDashboardLayoutSaveFile");
+    const ls = createLayoutStore({
+      gateway: gw,
+      skipServerLayoutPersist: true,
+      initialLayout: minimalLayout(),
+    });
+    await ls.saveLayoutToFile();
+    expect(postSave).not.toHaveBeenCalled();
+  });
+
+  it("skipServerLayoutPersist resetToBaseline sets loadError without calling gateway", async () => {
+    const gw = new DataGateway("");
+    const reset = vi.spyOn(gw, "resetDashboardLayout");
+    const ls = createLayoutStore({
+      gateway: gw,
+      skipServerLayoutPersist: true,
+      initialLayout: minimalLayout(),
+    });
+    await ls.resetToBaseline();
+    expect(reset).not.toHaveBeenCalled();
+    expect(get(ls.loadError)).toBe("Reset to server baseline is not available in this workspace.");
+  });
+
+  it("persists layout to custom layoutStorageKey", () => {
+    const saveLocal = vi.spyOn(layoutStorage, "saveDashboardLayout");
+    const gw = new DataGateway("");
+    const key = "custom-layout-key";
+    const ls = createLayoutStore({
+      gateway: gw,
+      layoutStorageKey: key,
+      skipServerLayoutPersist: true,
+      initialLayout: minimalLayout(),
+    });
+    ls.openEditor();
+    ls.addRootTile("perf.cpu");
+    expect(saveLocal.mock.calls.some((c) => c[1] === key)).toBe(true);
   });
 });

@@ -105,6 +105,44 @@ describe("tileOptionsSchemaForPlugin", () => {
     expect(r.success).toBe(false);
   });
 
+  it("accepts pihole_ha.section options with optional view", () => {
+    const r = tileOptionsSchemaForPlugin("pihole_ha.section").safeParse({
+      section: "ha",
+      title: "HA",
+      widgetId: "w1",
+      view: "ha_network",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts pihole_ha.section options shape", () => {
+    const r = tileOptionsSchemaForPlugin("pihole_ha.section").safeParse({
+      section: "ha",
+      title: "HA",
+      widgetId: "w1",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects unknown keys on pihole_ha.section (strict)", () => {
+    const r = tileOptionsSchemaForPlugin("pihole_ha.section").safeParse({
+      section: "ha",
+      title: "HA",
+      widgetId: "w1",
+      extra: 1,
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts the same options shape for per-section pihole_ha.<section> plugin ids", () => {
+    const r = tileOptionsSchemaForPlugin("pihole_ha.docker").safeParse({
+      section: "docker",
+      title: "Docker",
+      widgetId: "w9",
+    });
+    expect(r.success).toBe(true);
+  });
+
   it("integrates with layout Zod for each built-in id", () => {
     for (const pluginId of BUILTIN_PLUGIN_IDS) {
       const tile = {

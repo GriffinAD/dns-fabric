@@ -35,11 +35,13 @@ export function clearLayoutLocalPersistGate(): void {
 }
 
 /** Remove stored layout and allow local saves again (e.g. user acknowledges incompatible client). */
-export function clearStoredDashboardLayoutAndUnlock(): void {
+export function clearStoredDashboardLayoutAndUnlock(
+  storageKey: string = DASHBOARD_LAYOUT_STORAGE_KEY,
+): void {
   resetLayoutLocalPersistGate();
   try {
     if (typeof localStorage !== "undefined") {
-      localStorage.removeItem(DASHBOARD_LAYOUT_STORAGE_KEY);
+      localStorage.removeItem(storageKey);
     }
   } catch {
     /* ignore */
@@ -100,11 +102,13 @@ export function downloadDashboardLayoutFile(layout: DashboardLayout, downloadFil
   URL.revokeObjectURL(url);
 }
 
-export function loadDashboardLayout(): DashboardLayout | null {
+export function loadDashboardLayout(
+  storageKey: string = DASHBOARD_LAYOUT_STORAGE_KEY,
+): DashboardLayout | null {
   if (typeof localStorage === "undefined") return null;
   resetLayoutLocalPersistGate();
   try {
-    const raw = localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
     const unsup = layoutJsonUnsupportedVersionMessage(parsed);
@@ -120,7 +124,10 @@ export function loadDashboardLayout(): DashboardLayout | null {
   }
 }
 
-export function saveDashboardLayout(layout: DashboardLayout): void {
+export function saveDashboardLayout(
+  layout: DashboardLayout,
+  storageKey: string = DASHBOARD_LAYOUT_STORAGE_KEY,
+): void {
   if (typeof localStorage === "undefined") return;
   if (layoutLocalPersistBlocked) {
     console.warn(
@@ -128,6 +135,6 @@ export function saveDashboardLayout(layout: DashboardLayout): void {
     );
     return;
   }
-  localStorage.setItem(DASHBOARD_LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+  localStorage.setItem(storageKey, JSON.stringify(layout));
 }
 

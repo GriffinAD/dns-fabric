@@ -60,3 +60,39 @@ export function containerLifecycleTone(row: unknown): ContainerTone {
   if (label.includes("restart")) return "warn";
   return "neutral";
 }
+
+/** Short human label for elapsed time (e.g. `2d 4h`, `38m`, `9s`). */
+export function formatElapsedMs(elapsedMs: number): string {
+  if (!Number.isFinite(elapsedMs) || elapsedMs < 0) return "—";
+  const sec = Math.floor(elapsedMs / 1000);
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 48) {
+    const remM = min % 60;
+    return remM === 0 ? `${hrs}h` : `${hrs}h ${remM}m`;
+  }
+  const days = Math.floor(hrs / 24);
+  const remH = hrs % 24;
+  return remH === 0 ? `${days}d` : `${days}d ${remH}h`;
+}
+
+/**
+ * Uptime label for a Docker/stack row when the API includes `started_at` (RFC3339) or
+ * `uptime_seconds`. Only shown while lifecycle resolves to `running`. `nowMs` is the viewer clock.
+ */
+export function containerUptimeLabel(row: unknown, nowMs: number): string | null {
+  const r = asRecord(row);
+  if (!r) return null;
+  if (containerLifecycleLabel(r).trim().toLowerCase() !== "running") return null;
+  const upSec = r.uptime_seconds;
+  if (typeof upSec === "number" && Number.isFinite(upSec) && upSec >= 0) {
+    return formatElapsedMs(upSec * 1000);
+  }
+  const started = typeof r.started_at === "string" ? r.started_at.trim() : "";
+  if (started.length === 0) return null;
+  const t = Date.parse(started);
+  if (!Number.isFinite(t)) return null;
+  return formatElapsedMs(nowMs - t);
+}

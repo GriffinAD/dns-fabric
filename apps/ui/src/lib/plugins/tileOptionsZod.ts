@@ -49,9 +49,21 @@ const nonPerfTileOptionsSchema = z
 
 const PERF_PREFIX = "perf.";
 
+const piholeHaSectionTileOptionsSchema = z
+  .object({
+    section: z.string().min(1),
+    title: z.string().min(1),
+    widgetId: z.string().min(1),
+    view: z.string().min(1).optional(),
+  })
+  .strict();
+
 export function tileOptionsSchemaForPlugin(pluginId: string): z.ZodType<unknown> {
   if (pluginId.startsWith(PERF_PREFIX)) {
     return perfTileOptionsSchema;
+  }
+  if (pluginId.startsWith("pihole_ha.")) {
+    return piholeHaSectionTileOptionsSchema;
   }
   return nonPerfTileOptionsSchema;
 }

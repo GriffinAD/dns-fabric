@@ -12,6 +12,19 @@ const dashboardJson = {
   sections: { ha: { ok: true } },
 };
 
+const nodePerfJson = {
+  cpu_percent_total: 10,
+  cpu_core_percent: [10, 9],
+  memory_used_percent: 40,
+  memory_used_bytes: 100,
+  memory_total_bytes: 1000,
+  network_in_mbps: null,
+  network_out_mbps: null,
+  disk_used_percent: 50,
+  disk_volumes: [{ label: "/", used_percent: 50 }],
+  collected_at: "2026-01-01T00:00:00Z",
+};
+
 describe("PiholeOperatorApp", () => {
   let lsStore: Record<string, string>;
 
@@ -60,8 +73,20 @@ describe("PiholeOperatorApp", () => {
             headers: { "Content-Type": "application/json" },
           });
         }
+        if (u.includes("/v1/node/perf/summary")) {
+          return new Response(JSON.stringify(nodePerfJson), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
         if (u.includes("/logs/catalog")) {
           return new Response(JSON.stringify({ logs: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        if (u.includes("/api/v1/plugins")) {
+          return new Response(JSON.stringify({ items: [] }), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           });
@@ -75,22 +100,25 @@ describe("PiholeOperatorApp", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders theme controls and toggles layout edit mode (drag handles)", async () => {
+  it("renders theme controls and shared dashboard palette when Edit layout is on", async () => {
     render(PiholeOperatorApp);
     await waitFor(() => {
-      expect(screen.getByTestId("pihole-cp-widget-drag-handle")).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "HA" })).toBeTruthy();
     });
 
     expect(screen.getByTestId("pihole-cp-theme-controls")).toBeTruthy();
     expect(screen.getByTestId("theme-appearance-toggle")).toBeTruthy();
 
     fireEvent.click(screen.getByTestId("pihole-cp-layout-edit-toggle"));
-    await tick();
-    expect(screen.queryByTestId("pihole-cp-widget-drag-handle")).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByTestId("layout-edit-palette-v2")).toBeTruthy();
+    });
+    expect(screen.getByTestId("dashboard-editor-toolbar")).toBeTruthy();
 
     fireEvent.click(screen.getByTestId("pihole-cp-layout-edit-toggle"));
+    await tick();
     await waitFor(() => {
-      expect(screen.getByTestId("pihole-cp-widget-drag-handle")).toBeTruthy();
+      expect(screen.queryByTestId("layout-edit-palette-v2")).toBeNull();
     });
   });
 
@@ -109,8 +137,20 @@ describe("PiholeOperatorApp", () => {
           headers: { "Content-Type": "application/json" },
         });
       }
+      if (u.includes("/v1/node/perf/summary")) {
+        return new Response(JSON.stringify(nodePerfJson), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
       if (u.includes("/logs/catalog")) {
         return new Response(JSON.stringify({ logs: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (u.includes("/api/v1/plugins")) {
+        return new Response(JSON.stringify({ items: [] }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });

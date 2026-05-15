@@ -6,7 +6,9 @@ import {
   containerHealthSuffix,
   containerLifecycleLabel,
   containerLifecycleTone,
+  containerUptimeLabel,
   filterDeployedContainerRows,
+  formatElapsedMs,
   isDeployedContainerRow,
   str,
 } from "./sectionUi";
@@ -65,5 +67,31 @@ describe("sectionUi", () => {
     expect(containerLifecycleTone({ status: "docker socket error" })).toBe("bad");
     expect(containerLifecycleTone({ status: "restarting" })).toBe("warn");
     expect(containerLifecycleTone({ status: "exited" })).toBe("neutral");
+  });
+
+  it("formatElapsedMs", () => {
+    expect(formatElapsedMs(3_500)).toBe("3s");
+    expect(formatElapsedMs(90_000)).toBe("1m");
+    expect(formatElapsedMs(3_600_000)).toBe("1h");
+    expect(formatElapsedMs(3_660_000)).toBe("1h 1m");
+    expect(formatElapsedMs(172_800_000)).toBe("2d");
+    expect(formatElapsedMs(176_400_000)).toBe("2d 1h");
+    expect(formatElapsedMs(-1)).toBe("—");
+    expect(formatElapsedMs(Number.NaN)).toBe("—");
+  });
+
+  it("containerUptimeLabel prefers uptime_seconds when running", () => {
+    expect(containerUptimeLabel({ status: "running", uptime_seconds: 125 }, 0)).toBe("2m");
+    expect(containerUptimeLabel({ status: "exited", uptime_seconds: 999 }, 0)).toBeNull();
+  });
+
+  it("containerUptimeLabel uses started_at when running", () => {
+    const now = Date.parse("2026-05-13T12:00:00.000Z");
+    const row = { status: "running", started_at: "2026-05-13T11:58:00.000Z" };
+    expect(containerUptimeLabel(row, now)).toBe("2m");
+  });
+
+  it("containerUptimeLabel returns null without timing fields", () => {
+    expect(containerUptimeLabel({ status: "running" }, Date.now())).toBeNull();
   });
 });

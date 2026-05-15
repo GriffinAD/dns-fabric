@@ -4,6 +4,42 @@ import { describe, expect, it } from "vitest";
 import SectionDashboardTile from "./SectionDashboardTile.svelte";
 
 describe("SectionDashboardTile", () => {
+  it("renders HA network slice without DHCP mode row", () => {
+    render(SectionDashboardTile, {
+      props: {
+        section: "ha",
+        title: "HA — VIP & nodes",
+        view: "ha_network",
+        payload: {
+          ok: true,
+          vip: "192.168.2.2",
+          router: "192.168.2.1",
+          node_primary_ip: "192.168.2.3",
+          dhcp_mode: "none",
+        },
+      },
+    });
+    expect(screen.getByText("VIP")).toBeTruthy();
+    expect(screen.queryByText("DHCP mode")).toBeNull();
+  });
+
+  it("renders peer telemetry hint and link when URL present", () => {
+    render(SectionDashboardTile, {
+      props: {
+        section: "peer_telemetry",
+        title: "Performance",
+        payload: {
+          ok: true,
+          detail: "Use fabric for gauges.",
+          peer_ui_base_url: "https://fabric.example/",
+        },
+      },
+    });
+    expect(screen.getByText(/Use fabric for gauges/i)).toBeTruthy();
+    const link = screen.getByRole("link", { name: /open fabric peer ui/i });
+    expect(link.getAttribute("href")).toBe("https://fabric.example/");
+  });
+
   it("renders HA environment as key/value rows", () => {
     render(SectionDashboardTile, {
       props: {
@@ -42,6 +78,21 @@ describe("SectionDashboardTile", () => {
     expect(screen.getByText("running")).toBeTruthy();
     expect(screen.queryByText("kea-dhcp4")).toBeNull();
     expect(screen.queryByText("not_found")).toBeNull();
+  });
+
+  it("docker shows uptime when started_at is present for a running container", () => {
+    const started = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    render(SectionDashboardTile, {
+      props: {
+        section: "docker",
+        title: "Core",
+        payload: {
+          ok: true,
+          containers: [{ name: "pihole", status: "running", started_at: started }],
+        },
+      },
+    });
+    expect(screen.getByText(/up 3m/i)).toBeTruthy();
   });
 
   it("falls back to JSON for unknown section ids", () => {

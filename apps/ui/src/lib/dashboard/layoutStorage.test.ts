@@ -362,6 +362,15 @@ describe("localStorage persistence", () => {
     expect((loaded as DashboardLayoutV3).items.length).toBe(DEFAULT_DASHBOARD_LAYOUT.items.length);
   });
 
+  it("save and load honor custom storage key", () => {
+    const customKey = "pihole-cp-test-layout-key";
+    saveDashboardLayout(DEFAULT_DASHBOARD_LAYOUT, customKey);
+    expect(store[customKey]).toBeDefined();
+    expect(loadDashboardLayout()).toBeNull();
+    const loaded = loadDashboardLayout(customKey);
+    expect(loaded?.version).toBe(DEFAULT_DASHBOARD_LAYOUT.version);
+  });
+
   it("loadDashboardLayout returns null on invalid JSON", () => {
     store["kea-fabric-dashboard-layout"] = "{";
     expect(loadDashboardLayout()).toBeNull();

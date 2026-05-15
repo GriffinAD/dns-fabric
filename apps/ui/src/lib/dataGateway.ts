@@ -68,14 +68,42 @@ export type DataGatewayOptions = {
 };
 
 export class DataGateway {
-  private readonly resolvedBaseUrl: string;
+  private resolvedBaseUrl: string;
   private readonly authToken: string | undefined;
 
   constructor(baseUrl = "", options?: DataGatewayOptions) {
-    const envBase = import.meta.env.VITE_API_BASE_URL;
-    this.resolvedBaseUrl = baseUrl || (typeof envBase === "string" ? envBase : "");
+    const explicit = baseUrl.trim().replace(/\/$/, "");
+    const envKea = import.meta.env.VITE_KEA_FABRIC_API_BASE_URL;
+    const envApi = import.meta.env.VITE_API_BASE_URL;
+    const fromEnvK =
+      typeof envKea === "string" && envKea.trim() ? envKea.trim().replace(/\/$/, "") : "";
+    const fromEnvA =
+      typeof envApi === "string" && envApi.trim() ? envApi.trim().replace(/\/$/, "") : "";
+    this.resolvedBaseUrl = explicit || fromEnvK || fromEnvA || "";
     const envTok = import.meta.env.VITE_API_AUTH_TOKEN;
     this.authToken = options?.authToken ?? (typeof envTok === "string" ? envTok : undefined);
+  }
+
+  /**
+   * Repoint perf/DHCP/discovery HTTP and fabric SSE to another origin (no trailing slash).
+   * When `url` is empty, falls back to `VITE_KEA_FABRIC_API_BASE_URL` then `VITE_API_BASE_URL`
+   * (same rule as the constructor). Used by the Pi-hole CP bundle after `/v1/meta` returns
+   * `kea_fabric_api_base_url`.
+   */
+  setKeaFabricApiBaseUrl(url?: string | null): void {
+    const explicit = (url ?? "").trim().replace(/\/$/, "");
+    const envKea = import.meta.env.VITE_KEA_FABRIC_API_BASE_URL;
+    const envApi = import.meta.env.VITE_API_BASE_URL;
+    const fromEnvK =
+      typeof envKea === "string" && envKea.trim() ? envKea.trim().replace(/\/$/, "") : "";
+    const fromEnvA =
+      typeof envApi === "string" && envApi.trim() ? envApi.trim().replace(/\/$/, "") : "";
+    this.resolvedBaseUrl = explicit || fromEnvK || fromEnvA || "";
+  }
+
+  /** Current HTTP/SSE origin (no trailing slash). Exposed for embedded bundles that reconnect SSE after repointing. */
+  getResolvedApiBaseUrl(): string {
+    return this.resolvedBaseUrl;
   }
 
   private url(path: string): string {

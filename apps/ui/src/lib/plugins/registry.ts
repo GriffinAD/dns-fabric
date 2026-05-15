@@ -176,6 +176,14 @@ const TILE_RESOLVERS: Record<string, (ctx: TileHostContext) => ResolvedPluginMou
 
 const dynamicResolvers: Record<string, (ctx: TileHostContext) => ResolvedPluginMount> = {};
 
+type PrefixPluginResolver = {
+  prefix: string;
+  except: Set<string>;
+  fn: (ctx: TileHostContext) => ResolvedPluginMount;
+};
+
+const prefixPluginResolvers: PrefixPluginResolver[] = [];
+
 export function registerDynamicPluginResolver(
   id: string,
   resolver: (ctx: TileHostContext) => ResolvedPluginMount,
@@ -188,8 +196,35 @@ export function registerDynamicPluginResolver(
   };
 }
 
+/**
+ * When `tile.pluginId` is not an exact built-in or dynamic id, match the first prefix entry
+ * where `pluginId.startsWith(prefix)` and `pluginId` is not in `exceptIds`.
+ */
+export function registerDynamicPluginPrefixResolver(
+  prefix: string,
+  exceptIds: readonly string[],
+  resolver: (ctx: TileHostContext) => ResolvedPluginMount,
+): () => void {
+  const except = new Set(exceptIds);
+  const entry: PrefixPluginResolver = { prefix, except, fn: resolver };
+  prefixPluginResolvers.push(entry);
+  return () => {
+    const i = prefixPluginResolvers.indexOf(entry);
+    if (i >= 0) prefixPluginResolvers.splice(i, 1);
+  };
+}
+
 export function resolvePluginTileMount(ctx: TileHostContext): ResolvedPluginMount | null {
   const tile = applyPerfCompactAsPercentOnly(ctx.tile);
-  const fn = TILE_RESOLVERS[tile.pluginId] ?? dynamicResolvers[tile.pluginId];
+  let fn: ((c: TileHostContext) => ResolvedPluginMount) | undefined =
+    TILE_RESOLVERS[tile.pluginId] ?? dynamicResolvers[tile.pluginId];
+  if (!fn) {
+    for (const pr of prefixPluginResolvers) {
+      if (tile.pluginId.startsWith(pr.prefix) && !pr.except.has(tile.pluginId)) {
+        fn = pr.fn;
+        break;
+      }
+    }
+  }
   return fn ? fn({ ...ctx, tile }) : null;
 }

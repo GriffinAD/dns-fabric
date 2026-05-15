@@ -1,18 +1,18 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, setContext } from "svelte";
 
-  import ThemeControls from "../theme/ThemeControls.svelte";
+  import type { PluginEntry } from "../api/types";
+  import { createFabricEventBus, FABRIC_EVENT_BUS } from "../dashboard/eventBus";
   import type { DashboardResponse } from "./dashboardZod";
-  import { PiholeCpGateway, type PiholeCpMeta } from "./PiholeCpGateway";
   import LogStreamPanel from "./LogStreamPanel.svelte";
-  import PiholeLayoutGrid from "./PiholeLayoutGrid.svelte";
-
-  const LAYOUT_EDIT_LS = "pihole-cp.layout-edit.v1";
+  import { mergeOperatorPluginsForPiholeCp } from "./operatorBaselinePlugins";
+  import { PiholeCpGateway, type PiholeCpMeta } from "./PiholeCpGateway";
+  import PiholeCpDashboardShell from "./PiholeCpDashboardShell.svelte";
+  import { PiholeCpDashboardGateway } from "./PiholeCpDashboardGateway";
 
   let error = $state<string | null>(null);
   let dashboard = $state<DashboardResponse | null>(null);
   let meta = $state<PiholeCpMeta | null>(null);
-  let layoutEditMode = $state(true);
   let refreshing = $state(false);
   /** Bumps when the user hits Refresh so LogStreamPanel reloads its catalogue. */
   let dataRefreshEpoch = $state(0);
@@ -22,6 +22,38 @@
       ? import.meta.env.VITE_PIHOLE_CP_BASE_URL
       : "";
 
+  /** Kea API + layout no-op; perf gauges use the control-plane `/v1/node/perf/summary`. */
+  const gateway = new PiholeCpDashboardGateway(baseUrl);
+  const fabricEventBus = createFabricEventBus(gateway);
+  setContext(FABRIC_EVENT_BUS, fabricEventBus);
+
+  let apiPlugins = $state<PluginEntry[] | null>(null);
+
+  const plugins = $derived(mergeOperatorPluginsForPiholeCp(apiPlugins, dashboard, meta));
+
+  let fabricSseRelease: (() => void) | null = null;
+  let lastKeaApiOrigin = "";
+
+  function syncFabricSseAfterKeaBaseChange(): void {
+    const next = gateway.getResolvedApiBaseUrl().trim();
+    if (!next) {
+      fabricSseRelease?.();
+      fabricSseRelease = null;
+      lastKeaApiOrigin = "";
+      return;
+    }
+    if (fabricSseRelease == null) {
+      fabricSseRelease = fabricEventBus.connect();
+      lastKeaApiOrigin = next;
+      return;
+    }
+    if (next !== lastKeaApiOrigin) {
+      fabricSseRelease();
+      fabricSseRelease = fabricEventBus.connect();
+      lastKeaApiOrigin = next;
+    }
+  }
+
   async function loadAll(opts?: { userRefresh?: boolean }) {
     const userRefresh = opts?.userRefresh === true;
     error = null;
@@ -29,6 +61,16 @@
     const gw = new PiholeCpGateway(baseUrl);
     try {
       const [dash, m] = await Promise.all([gw.getDashboard(), gw.getMeta()]);
+      gateway.setKeaFabricApiBaseUrl(m.kea_fabric_api_base_url ?? "");
+      syncFabricSseAfterKeaBaseChange();
+      void gateway
+        .listPlugins()
+        .then((r) => {
+          apiPlugins = r.items;
+        })
+        .catch(() => {
+          apiPlugins = [];
+        });
       dashboard = dash;
       meta = m;
       if (userRefresh) {
@@ -41,81 +83,31 @@
     }
   }
 
-  /** Unlocked unless the operator explicitly chose "Done" (stored `"0"`). */
-  function readLayoutEditMode(): boolean {
-    if (typeof localStorage === "undefined") return true;
-    return localStorage.getItem(LAYOUT_EDIT_LS) !== "0";
-  }
-
-  function setLayoutEditMode(next: boolean) {
-    layoutEditMode = next;
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(LAYOUT_EDIT_LS, next ? "1" : "0");
-    }
-  }
-
   onMount(() => {
-    layoutEditMode = readLayoutEditMode();
     void loadAll();
+    return () => {
+      fabricSseRelease?.();
+    };
   });
 </script>
 
-<header
-  class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900"
->
-  <div class="min-w-0">
-    <h1 class="text-lg font-semibold text-slate-900 dark:text-gray-100">Pi-hole HA control plane</h1>
-    {#if dashboard}
-      <p class="truncate text-sm text-slate-600 dark:text-gray-400">
-        Node <span class="font-mono">{meta?.node ?? dashboard.node}</span>
-        · v<span class="font-mono">{dashboard.version}</span>
-      </p>
-    {:else if !error}
-      <p class="text-sm text-slate-600 dark:text-gray-400">Loading…</p>
-    {/if}
-  </div>
-  <div class="flex flex-wrap items-center gap-2">
-    <div class="flex items-center gap-1" data-testid="pihole-cp-theme-controls">
-      <ThemeControls showAccent={false} showGaugeSegmentToggle={false} />
+<main class="min-h-screen bg-slate-100 dark:bg-gray-900">
+  {#if error}
+    <p class="p-4 text-red-600">{error}</p>
+  {:else if !dashboard}
+    <p class="p-4 text-slate-600 dark:text-gray-400">Loading…</p>
+  {:else}
+    <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-8">
+      <PiholeCpDashboardShell
+        {dashboard}
+        {meta}
+        {gateway}
+        {plugins}
+        dataRefreshEpoch={dataRefreshEpoch}
+        {refreshing}
+        onRefresh={() => void loadAll({ userRefresh: true })}
+      />
+      <LogStreamPanel {baseUrl} dataRefreshEpoch={dataRefreshEpoch} />
     </div>
-    <button
-      type="button"
-      class="rounded border border-slate-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:text-gray-100"
-      aria-pressed={layoutEditMode}
-      aria-label={layoutEditMode ? "Done editing layout" : "Edit layout"}
-      title={layoutEditMode ? "Done editing layout" : "Edit layout — drag widgets to reorder"}
-      data-testid="pihole-cp-layout-edit-toggle"
-      onclick={() => setLayoutEditMode(!layoutEditMode)}
-    >
-      {layoutEditMode ? "Done" : "Edit layout"}
-    </button>
-    {#if meta?.peer_ui_base_url}
-      <a
-        class="text-sm text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-        href={meta.peer_ui_base_url}
-        target="_blank"
-        rel="noreferrer"
-      >
-        Peer UI
-      </a>
-    {/if}
-    <button
-      type="button"
-      class="rounded border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-gray-600 dark:text-gray-100"
-      disabled={refreshing}
-      data-testid="pihole-cp-refresh"
-      onclick={() => void loadAll({ userRefresh: true })}
-    >
-      {refreshing ? "Refreshing…" : "Refresh"}
-    </button>
-  </div>
-</header>
-
-{#if error}
-  <p class="p-4 text-red-600">{error}</p>
-{:else if !dashboard}
-  <p class="p-4 text-slate-600 dark:text-gray-400">Loading…</p>
-{:else}
-  <PiholeLayoutGrid {dashboard} layoutEditMode={layoutEditMode} />
-  <LogStreamPanel {baseUrl} dataRefreshEpoch={dataRefreshEpoch} />
-{/if}
+  {/if}
+</main>

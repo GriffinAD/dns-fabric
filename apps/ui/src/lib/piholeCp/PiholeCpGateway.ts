@@ -9,7 +9,13 @@ import {
   type LogsCatalogResponse,
 } from "./dashboardZod";
 
-export type PiholeCpMeta = { peer_ui_base_url: string | null; node: string };
+export type PiholeCpMeta = {
+  peer_ui_base_url: string | null;
+  node: string;
+  kea_fabric_api_base_url: string | null;
+  /** From `DHCP_MODE` on the node; `kea` means Kea DHCP tiles are offered in the embedded UI. */
+  dhcp_mode: string | null;
+};
 
 /** Join control-plane base URL with an API path (leading `/` optional). Exported for unit tests. */
 export function joinControlPlaneUrl(baseUrl: string, path: string): string {
@@ -72,6 +78,8 @@ export class PiholeCpGateway {
     return {
       peer_ui_base_url: m.peer_ui_base_url ?? null,
       node: m.node ?? "unknown",
+      kea_fabric_api_base_url: m.kea_fabric_api_base_url ?? null,
+      dhcp_mode: m.dhcp_mode ?? null,
     };
   }
 }

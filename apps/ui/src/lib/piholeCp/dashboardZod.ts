@@ -4,6 +4,8 @@ const widgetSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   section: z.string().min(1),
+  /** Optional slice for `section` (e.g. multiple HA tiles share `sections.ha`). */
+  view: z.string().min(1).optional(),
 });
 
 export const dashboardResponseSchema = z
@@ -36,6 +38,10 @@ export const metaResponseSchema = z
   .object({
     peer_ui_base_url: z.string().nullable().optional(),
     node: z.string().optional(),
+    /** When set, perf/DHCP/discovery tiles call this Kea Fabric API origin (see `DataGateway.setKeaFabricApiBaseUrl`). */
+    kea_fabric_api_base_url: z.string().min(1).nullable().optional(),
+    /** Mirrors stack `DHCP_MODE` (e.g. `kea`); UI hides Kea DHCP / Fabric-only operator tiles when not `kea`. */
+    dhcp_mode: z.string().min(1).nullable().optional(),
   })
   .strict();
 

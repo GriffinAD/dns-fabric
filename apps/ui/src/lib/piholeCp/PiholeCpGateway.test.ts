@@ -167,6 +167,8 @@ describe("PiholeCpGateway", () => {
     const meta = await gw.getMeta();
     expect(meta.node).toBe("unknown");
     expect(meta.peer_ui_base_url).toBeNull();
+    expect(meta.kea_fabric_api_base_url).toBeNull();
+    expect(meta.dhcp_mode).toBeNull();
   });
 
   it("loads meta with explicit fields", async () => {
@@ -185,6 +187,44 @@ describe("PiholeCpGateway", () => {
     const meta = await gw.getMeta();
     expect(meta.node).toBe("pi1");
     expect(meta.peer_ui_base_url).toBe("http://peer:8091");
+    expect(meta.kea_fabric_api_base_url).toBeNull();
+    expect(meta.dhcp_mode).toBeNull();
+  });
+
+  it("loads meta with kea_fabric_api_base_url", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          peer_ui_base_url: null,
+          node: "pi2",
+          kea_fabric_api_base_url: "http://192.0.2.10:8080",
+        }),
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    const meta = await gw.getMeta();
+    expect(meta.kea_fabric_api_base_url).toBe("http://192.0.2.10:8080");
+  });
+
+  it("loads meta with dhcp_mode", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          peer_ui_base_url: null,
+          node: "pi2",
+          dhcp_mode: "kea",
+        }),
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    const meta = await gw.getMeta();
+    expect(meta.dhcp_mode).toBe("kea");
   });
 
   it("throws on meta HTTP error", async () => {

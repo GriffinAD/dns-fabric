@@ -139,6 +139,9 @@ Per-phase **implementation plans** (checklists, commands, code): see **`docs/sup
 
 - Exact **error envelope** (200 + sections vs 207).
 - **SSE** reconnect policy (cursor vs “tail from now”).
+- **Env / settings UI:** **ADR-0053** is **Accepted**; implementation plan
+  `docs/superpowers/plans/2026-05-15-pihole-ha-control-plane-env-mutations-impl.md`
+  covers HTTP + Svelte settings panel. Until shipped, display remains read-only.
 
 ---
 

@@ -1,10 +1,12 @@
 import { get, writable } from "svelte/store";
 
 import { DataGateway } from "../dataGateway";
+import { defaultPaletteOptionsForPiholeHaPlugin } from "../piholeCp/piholeHaPluginIds";
 import { cloneLayoutJson, placementForNewEmptyNestedGroup } from "./gridPlacement";
 import { normalizeLayoutStrict } from "./layoutNormalize";
 import {
   clearLayoutLocalPersistGate,
+  DASHBOARD_LAYOUT_STORAGE_KEY,
   isLayoutLocalPersistBlocked,
   getLayoutLocalPersistBlockedReason,
   parseDashboardLayout,
@@ -39,6 +41,12 @@ export type CreateLayoutStoreOptions = {
   gateway: DataGateway;
   /** @default "default" */
   dashboardId?: string;
+  /** @default `DASHBOARD_LAYOUT_STORAGE_KEY` (Kea Fabric dashboard cache). */
+  layoutStorageKey?: string;
+  /** When set, seed the store instead of `initialDashboardLayout()` (which reads the default storage key). */
+  initialLayout?: DashboardLayout;
+  /** When true, layout edits persist to localStorage only; no debounced PUT / save-file / reset to Kea APIs. */
+  skipServerLayoutPersist?: boolean;
 };
 
 export type LayoutStore = ReturnType<typeof createLayoutStore>;
@@ -50,8 +58,12 @@ export type LayoutStore = ReturnType<typeof createLayoutStore>;
 export function createLayoutStore(options: CreateLayoutStoreOptions) {
   const gateway = options.gateway;
   const dashboardId = options.dashboardId ?? "default";
+  const layoutStorageKey = options.layoutStorageKey ?? DASHBOARD_LAYOUT_STORAGE_KEY;
+  const skipServerLayoutPersist = options.skipServerLayoutPersist === true;
+  const initialLayoutV3 =
+    options.initialLayout != null ? ensureLayoutV3(options.initialLayout) : initialDashboardLayout();
 
-  const layout = writable<DashboardLayoutV3>(initialDashboardLayout());
+  const layout = writable<DashboardLayoutV3>(initialLayoutV3);
   /** Validation failures, reset errors, and other blocking issues (not PUT failures). */
   const loadError = writable<string | null>(null);
   /** Last dashboard layout PUT failure; dashboard may still be usable from cache. */
@@ -88,6 +100,10 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
 
   async function flushPersist(): Promise<void> {
     clearDebounce();
+    if (skipServerLayoutPersist) {
+      persistError.set(null);
+      return;
+    }
     const current = get(layout);
     try {
       await flushLayoutToServer(gateway, dashboardId, current);
@@ -98,6 +114,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
   }
 
   function schedulePersist() {
+    if (skipServerLayoutPersist) return;
     clearDebounce();
     debounceTimer = setTimeout(() => {
       debounceTimer = null;
@@ -120,7 +137,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
         undoFuture = [];
       }
       layout.set(normalized);
-      saveDashboardLayout(normalized);
+      saveDashboardLayout(normalized, layoutStorageKey);
       schedulePersist();
     } catch (e: unknown) {
       loadError.set(e instanceof Error ? e.message : String(e));
@@ -141,7 +158,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
       clearUndoStacks();
       const v3 = ensureLayoutV3(next);
       layout.set(v3);
-      saveDashboardLayout(v3);
+      saveDashboardLayout(v3, layoutStorageKey);
       layoutSource.set("server");
       loadError.set(null);
     },
@@ -166,7 +183,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
       const prev = undoPast.pop()!;
       undoFuture.unshift(cur);
       layout.set(prev);
-      saveDashboardLayout(prev);
+      saveDashboardLayout(prev, layoutStorageKey);
       schedulePersist();
     },
 
@@ -176,7 +193,7 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
       const nxt = undoFuture.shift()!;
       undoPast.push(cur);
       layout.set(nxt);
-      saveDashboardLayout(nxt);
+      saveDashboardLayout(nxt, layoutStorageKey);
       schedulePersist();
     },
 
@@ -199,10 +216,15 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
       clearDebounce();
       loadError.set(null);
       const current = get(layout);
+      if (skipServerLayoutPersist) {
+        persistError.set(null);
+        saveDashboardLayout(current, layoutStorageKey);
+        return;
+      }
       try {
         await postLayoutSaveFileSnapshot(gateway, dashboardId, current);
         persistError.set(null);
-        saveDashboardLayout(current);
+        saveDashboardLayout(current, layoutStorageKey);
       } catch (e: unknown) {
         persistError.set(e instanceof Error ? e.message : String(e));
       }
@@ -212,12 +234,14 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
       const L = get(layout);
       const n = L.items.length;
       const id = `tile-${n + 1}-${Date.now()}`;
+      const piholeOpts = defaultPaletteOptionsForPiholeHaPlugin(pluginId);
       const next: RootLayoutItem = {
         kind: "tile",
         id,
         pluginId,
         hostControl: "single-panel",
         displayMode: "full",
+        ...(piholeOpts ? { options: piholeOpts } : {}),
       };
       const items = [...L.items];
       const at =
@@ -270,11 +294,13 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
     addTileToGroup(groupId: string, pluginId: string) {
       const L = get(layout);
       const tId = `tile-in-${groupId}-${Date.now()}`;
+      const piholeOpts = defaultPaletteOptionsForPiholeHaPlugin(pluginId);
       const newTile: DashboardTile = {
         id: tId,
         pluginId,
         hostControl: "single-panel",
         displayMode: "full",
+        ...(piholeOpts ? { options: piholeOpts } : {}),
       };
       applyStructure({
         version: 3,
@@ -285,6 +311,10 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
     async resetToBaseline() {
       loadError.set(null);
       persistError.set(null);
+      if (skipServerLayoutPersist) {
+        loadError.set("Reset to server baseline is not available in this workspace.");
+        return;
+      }
       try {
         const raw = await gateway.resetDashboardLayout(dashboardId);
         const parsed = parseDashboardLayout(raw);

@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 
 import type { DashboardTile } from "../dashboard/types";
 import type { DataGateway } from "../dataGateway";
+import type { TileHostContext } from "./registry";
 import DhcpClientsTile from "./DhcpClientsTile.svelte";
 import DhcpPoolsTile from "./DhcpPoolsTile.svelte";
 import DhcpReservationsTile from "./DhcpReservationsTile.svelte";
 import {
   manifestRegistry,
+  registerDynamicPluginPrefixResolver,
   registerDynamicPluginResolver,
   resolvePluginTileMount,
   resolvePluginTileSettings,
@@ -200,5 +202,23 @@ describe("registerDynamicPluginResolver", () => {
     teardown();
     expect(resolvePluginTileMount({ gateway, tile: tile(id), editLayout: false })).toBeNull();
     expect(manifestRegistry.get(id)).toBeUndefined();
+  });
+});
+
+describe("registerDynamicPluginPrefixResolver", () => {
+  it("resolves ids under prefix except excluded ids", () => {
+    const mount = (ctx: TileHostContext) => ({
+      component: DhcpPoolsTile as Component<Record<string, unknown>>,
+      props: { gateway: ctx.gateway, tile: ctx.tile },
+    });
+    const exactId = `pfx.${Math.random().toString(36).slice(2, 8)}.root`;
+    const childId = `pfx.${Math.random().toString(36).slice(2, 8)}.child`;
+    const unregExact = registerDynamicPluginResolver(exactId, mount);
+    const unregPrefix = registerDynamicPluginPrefixResolver("pfx.", [exactId], mount);
+    expect(resolvePluginTileMount({ gateway, tile: tile(exactId), editLayout: false })).not.toBeNull();
+    expect(resolvePluginTileMount({ gateway, tile: tile(childId), editLayout: false })).not.toBeNull();
+    unregPrefix();
+    expect(resolvePluginTileMount({ gateway, tile: tile(childId), editLayout: false })).toBeNull();
+    unregExact();
   });
 });

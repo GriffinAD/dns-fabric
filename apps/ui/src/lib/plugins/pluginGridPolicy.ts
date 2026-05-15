@@ -17,6 +17,7 @@ const BUILTIN_DEFAULT_COL_SPAN: Record<string, number> = {
   "perf.ram": 1,
   "perf.network": 1,
   "perf.disk": 1,
+  "pihole_ha.section": 10,
 };
 
 /** Perf tiles that only grow colSpan from hints — never force-shrink when a gauge reports fewer columns (e.g. CPU total = one gauge) than the user set in the editor. */

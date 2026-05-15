@@ -37,6 +37,39 @@ describe("DataGateway", () => {
     expect(fetch).toHaveBeenCalledWith("https://api.example/api/v1/meta", { headers: {} });
   });
 
+  it("prefers VITE_KEA_FABRIC_API_BASE_URL over VITE_API_BASE_URL when baseUrl is empty", async () => {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example");
+    vi.stubEnv("VITE_KEA_FABRIC_API_BASE_URL", "https://kea.example");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ api_version: "1.0.0", service: "kea-fabric" }),
+      }),
+    );
+    const gw = new DataGateway("");
+    await gw.getMeta();
+    expect(fetch).toHaveBeenCalledWith("https://kea.example/api/v1/meta", { headers: {} });
+  });
+
+  it("setKeaFabricApiBaseUrl switches request origin for subsequent calls", async () => {
+    vi.stubEnv("VITE_API_BASE_URL", "https://ignored.example");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ api_version: "1.0.0", service: "kea-fabric" }),
+      }),
+    );
+    const gw = new DataGateway("");
+    await gw.getMeta();
+    expect(fetch).toHaveBeenCalledWith("https://ignored.example/api/v1/meta", { headers: {} });
+    vi.mocked(fetch).mockClear();
+    gw.setKeaFabricApiBaseUrl("https://kea-other.example");
+    await gw.getMeta();
+    expect(fetch).toHaveBeenCalledWith("https://kea-other.example/api/v1/meta", { headers: {} });
+  });
+
   it("uses VITE_API_AUTH_TOKEN when options omit authToken", async () => {
     vi.stubEnv("VITE_API_AUTH_TOKEN", "from-env");
     vi.stubGlobal(

@@ -67,6 +67,11 @@ Concrete policy:
 - **DNSCrypt policy:** **not via HTTP until this ADR is revised** — operators use
   host `.env` and the documented refresh scripts instead of an HTTP toggle in
   the initial Phase 3 scope.
+- **Env / feature toggles (Tier-1):** see **`ADR-0053`** — when **Accepted**,
+  supersedes the “no HTTP DNSCrypt toggle” bullet **only** for allowlisted `.env`
+  keys and routes documented there. Tier-2/Tier-3 keys remain host-deferred
+  (**202**). Until ADR-0053 is **Accepted**, Phase 3 behaviour remains as
+  shipped (all mutations **202**).
 
 ### Positive consequences
 
@@ -105,7 +110,8 @@ Concrete policy:
 
 ## Links
 
-- Related ADRs: `docs/adr/ADR-0051-pihole-ha-control-plane-phase2-dns-writes.md`
+- Related ADRs: `docs/adr/ADR-0051-pihole-ha-control-plane-phase2-dns-writes.md`,
+  `docs/adr/ADR-0053-pihole-ha-control-plane-env-mutations.md` (**Accepted**)
 - Related docs: `docs/superpowers/plans/2026-05-13-pihole-ha-control-plane-phase-3-mutations-audit.md`
 - Related specs: `docs/superpowers/specs/2026-05-13-pihole-ha-control-plane-ui-design.md` §7 Phase 3
 
@@ -115,3 +121,4 @@ Concrete policy:
 |---|---|---|---|
 | 2026-05-13 | Proposed | GriffinAD | Initial draft from Phase 3 plan Task 1 bullets. |
 | 2026-05-14 | Accepted | GriffinAD | Option A + 202 host-deferred mutations; audit mount path as implemented in `pihole-ha`. |
+| 2026-05-15 | Accepted (note) | GriffinAD | ADR-0053 **Accepted**; Tier-1 env routes per ADR-0053 impl plan. |

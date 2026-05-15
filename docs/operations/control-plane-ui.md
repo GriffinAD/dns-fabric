@@ -8,9 +8,20 @@ Rich operator UI lives in this repository under `apps/ui/`. Build the Pi-hole bu
 
 Point the Vite dev server at the node API using `VITE_PIHOLE_CP_BASE_URL` (browser `fetch` / `EventSource` base). Proxy rules in `apps/ui/vite.config.ts` forward `/dashboard`, `/v1`, `/logs`, and `/health` to a local control plane when `VITE_PIHOLE_CP_BASE_URL` is empty; set **`PIHOLE_CP_DEV_PROXY_TARGET`** (or `VITE_PIHOLE_CP_DEV_PROXY`) if the API is not on `http://127.0.0.1:8091`.
 
+Perf **CPU / RAM / Network / Disk** gauges in the Pi-hole CP bundle call **`GET /v1/node/perf/summary`** on the **same control-plane origin** (host metrics via psutil; the container uses **`pid: host`** in compose so readings match the Pi). **DHCP**, **discovery**, and **fabric SSE** still use the **Kea Fabric** HTTP API (`/api/v1/…`) when a Kea origin is configured. Configure Kea via:
+
+| Mechanism | Purpose |
+| --- | --- |
+| **`VITE_KEA_FABRIC_API_BASE_URL`** | Build-time default Kea origin (DHCP / discovery / SSE). |
+| **`VITE_API_BASE_URL`** | Same as the main operator app; used if `VITE_KEA_FABRIC_API_BASE_URL` is unset. |
+| **`CONTROL_PLANE_KEA_FABRIC_API_BASE_URL`** (on the node, in **`.env`**) | Passed into the **`control-plane`** container and published in **`GET /v1/meta`** as `kea_fabric_api_base_url`. **Required** for DHCP/discovery when those tiles should talk to Kea Fabric; perf does **not** depend on it. |
+| **`GET /v1/meta`** `dhcp_mode` | Mirrors stack **`DHCP_MODE`**. DHCP operator tiles (pools, clients, reservations) are listed only when `dhcp_mode` is **`kea`**; discovery still follows Kea when configured. |
+
 ```bash
 cd /path/to/pi-fabric/apps/ui
-VITE_PIHOLE_CP_BASE_URL=http://192.0.2.4:8091 npm run dev -- --port 5174
+VITE_PIHOLE_CP_BASE_URL=http://192.0.2.4:8091 \
+VITE_KEA_FABRIC_API_BASE_URL=http://192.0.2.10:8080 \
+npm run dev -- --port 5174
 ```
 
 Open `index-pihole-cp.html` (Vite serves it at `/index-pihole-cp.html`).
