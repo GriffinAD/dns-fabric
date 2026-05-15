@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_KEA_FABRIC_API_BASE_URL?: string;
   /** Pi-hole control plane HTTP origin (`/dashboard`, `/v1/meta`, …). */
   readonly VITE_PIHOLE_CP_BASE_URL?: string;
+  /** Control-plane mutation token (dev only; prefer session entry in settings UI). */
+  readonly VITE_PIHOLE_CP_API_TOKEN?: string;
   readonly VITE_API_AUTH_TOKEN?: string;
   /** When `"1"`, registers `e2e.throwing` tile for Playwright (see `tests/e2e/pluginIsolation.e2e.ts`). */
   readonly VITE_E2E_THROWING?: string;

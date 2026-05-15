@@ -8,6 +8,7 @@
   import { mergeOperatorPluginsForPiholeCp } from "./operatorBaselinePlugins";
   import { PiholeCpGateway, type PiholeCpMeta } from "./PiholeCpGateway";
   import PiholeCpDashboardShell from "./PiholeCpDashboardShell.svelte";
+  import PiholeCpEnvSettings from "./PiholeCpEnvSettings.svelte";
   import { PiholeCpDashboardGateway } from "./PiholeCpDashboardGateway";
 
   let error = $state<string | null>(null);
@@ -98,6 +99,7 @@
     <p class="p-4 text-slate-600 dark:text-gray-400">Loading…</p>
   {:else}
     <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-8">
+      <PiholeCpEnvSettings {baseUrl} onApplied={() => void loadAll({ userRefresh: true })} />
       <PiholeCpDashboardShell
         {dashboard}
         {meta}

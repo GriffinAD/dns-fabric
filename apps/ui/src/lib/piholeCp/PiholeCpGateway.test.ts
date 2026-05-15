@@ -244,6 +244,147 @@ describe("PiholeCpGateway", () => {
     });
   });
 
+  it("patchEnvConfig stages changes with token", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 202,
+        json: async () => ({
+          staged: { DNSCRYPT_PROXY_ENABLED: "1" },
+          pending: { DNSCRYPT_PROXY_ENABLED: "1" },
+        }),
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    const res = await gw.patchEnvConfig({ DNSCRYPT_PROXY_ENABLED: "1" }, "secret");
+    expect(res.staged.DNSCRYPT_PROXY_ENABLED).toBe("1");
+  });
+
+  it("loads env schema and config", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).includes("/schema")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              keys: [
+                {
+                  key: "DNSCRYPT_PROXY_ENABLED",
+                  tier: 1,
+                  type: "boolean",
+                  label: "DNSCrypt",
+                  requires_apply: true,
+                },
+              ],
+            }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ effective: { DNSCRYPT_PROXY_ENABLED: "0" }, pending: null }),
+        };
+      }),
+    );
+    const gw = new PiholeCpGateway("");
+    const schema = await gw.getEnvSchema();
+    expect(schema.keys[0]?.key).toBe("DNSCRYPT_PROXY_ENABLED");
+    const cfg = await gw.getEnvConfig();
+    expect(cfg.effective.DNSCRYPT_PROXY_ENABLED).toBe("0");
+  });
+
+  it("applyEnvConfig accepts 202 host_action_required", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 202,
+        json: async () => ({
+          kind: "host_action_required",
+          policy_ref: "ADR-0053",
+          mutation: "mutations.env.apply",
+          summary: "Run script",
+          next_steps: { scripts: ["/usr/local/bin/pihole-ha-apply-env-patch.sh"] },
+        }),
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    const res = await gw.applyEnvConfig("secret");
+    expect(res.status).toBe(202);
+    expect(res.summary).toContain("Run");
+  });
+
+  it("rollbackEnvConfig accepts 202", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 202,
+        json: async () => ({
+          kind: "host_action_required",
+          policy_ref: "ADR-0053",
+          mutation: "mutations.env.rollback",
+          summary: "Rollback",
+          next_steps: { scripts: ["/usr/local/bin/pihole-ha-apply-env-patch.sh"], example: "sudo x" },
+        }),
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    const res = await gw.rollbackEnvConfig("secret");
+    expect(res.example).toBe("sudo x");
+  });
+
+  it("patchEnvConfig throws http_error when response shape is valid but status is not ok", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 403,
+        json: async () => ({ staged: {}, pending: null }),
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    await expect(gw.patchEnvConfig({ DNSCRYPT_PROXY_ENABLED: "1" }, "bad")).rejects.toMatchObject({
+      code: "http_error",
+      status: 403,
+    });
+  });
+
+  it("patchEnvConfig throws parse_failed when JSON does not match env patch schema", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ detail: "not a patch response" }),
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    await expect(gw.patchEnvConfig({ DNSCRYPT_PROXY_ENABLED: "1" }, "secret")).rejects.toMatchObject({
+      code: "parse_failed",
+    });
+  });
+
+  it("patchEnvConfig throws parse_failed when body is not JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 202,
+        json: async () => {
+          throw new Error("not json");
+        },
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    await expect(gw.patchEnvConfig({ DNSCRYPT_PROXY_ENABLED: "1" }, "secret")).rejects.toMatchObject({
+      code: "parse_failed",
+    });
+  });
+
   it("rejects unknown keys in meta JSON", async () => {
     vi.stubGlobal(
       "fetch",

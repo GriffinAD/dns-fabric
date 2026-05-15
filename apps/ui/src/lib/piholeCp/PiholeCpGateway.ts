@@ -1,6 +1,14 @@
-import { z } from "zod";
+import { z, type ZodType } from "zod";
 
 import { GatewayError } from "../dataGateway";
+import {
+  envConfigResponseSchema,
+  envPatchResponseSchema,
+  envSchemaResponseSchema,
+  hostActionResponseSchema,
+  type EnvConfigResponse,
+  type EnvSchemaEntry,
+} from "./envConfigZod";
 import {
   dashboardResponseSchema,
   logsCatalogResponseSchema,
@@ -80,6 +88,100 @@ export class PiholeCpGateway {
       node: m.node ?? "unknown",
       kea_fabric_api_base_url: m.kea_fabric_api_base_url ?? null,
       dhcp_mode: m.dhcp_mode ?? null,
+    };
+  }
+
+  async getEnvSchema(): Promise<{ keys: EnvSchemaEntry[] }> {
+    return this.getJsonValidated("/v1/config/env/schema", envSchemaResponseSchema);
+  }
+
+  async getEnvConfig(): Promise<EnvConfigResponse> {
+    return this.getJsonValidated("/v1/config/env", envConfigResponseSchema);
+  }
+
+  private async fetchWithToken<T>(
+    path: string,
+    init: RequestInit,
+    schema: ZodType<T>,
+    apiToken: string,
+  ): Promise<{ status: number; data: T }> {
+    const res = await fetch(this.url(path), {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-Api-Token": apiToken,
+        ...(init.headers as Record<string, string> | undefined),
+      },
+    });
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      throw new GatewayError({
+        code: "parse_failed",
+        path,
+        message: `${init.method ?? "GET"} ${path} returned non-JSON`,
+      });
+    }
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      throw new GatewayError({
+        code: "parse_failed",
+        path,
+        message: `Invalid response shape for ${path}`,
+        zodError: parsed.error,
+      });
+    }
+    if (!res.ok && res.status !== 202) {
+      throw new GatewayError({
+        code: "http_error",
+        path,
+        message: `${init.method ?? "GET"} ${path} failed: ${res.status}`,
+        status: res.status,
+      });
+    }
+    return { status: res.status, data: parsed.data };
+  }
+
+  async patchEnvConfig(
+    changes: Record<string, string>,
+    apiToken: string,
+  ): Promise<{ status: number; staged: Record<string, string> }> {
+    const { status, data } = await this.fetchWithToken(
+      "/v1/config/env",
+      { method: "PATCH", body: JSON.stringify({ changes }) },
+      envPatchResponseSchema,
+      apiToken,
+    );
+    return { status, staged: data.staged };
+  }
+
+  async applyEnvConfig(apiToken: string): Promise<{ status: number; summary: string; example?: string }> {
+    const { status, data } = await this.fetchWithToken(
+      "/v1/mutations/env/apply",
+      { method: "POST", body: "{}" },
+      hostActionResponseSchema,
+      apiToken,
+    );
+    return {
+      status,
+      summary: data.summary,
+      example: data.next_steps.example,
+    };
+  }
+
+  async rollbackEnvConfig(apiToken: string): Promise<{ status: number; summary: string; example?: string }> {
+    const { status, data } = await this.fetchWithToken(
+      "/v1/mutations/env/rollback",
+      { method: "POST", body: "{}" },
+      hostActionResponseSchema,
+      apiToken,
+    );
+    return {
+      status,
+      summary: data.summary,
+      example: data.next_steps.example,
     };
   }
 }
