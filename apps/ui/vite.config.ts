@@ -13,6 +13,15 @@ const piholeCpDevProxyTarget =
 /** When set, build only the Pi-hole CP bundle with `base` `/next/` for embedding under `pihole-ha` `static/next/`. */
 const embedPiholeCpUi = process.env.PIHOLE_CP_UI_EMBED === "1";
 
+/** UTC compact stamp for operator header (`v0.4.{build}`); override with `PIHOLE_CP_UI_BUILD`. */
+function piholeCpUiBuildStamp(): string {
+  const fromEnv = process.env.PIHOLE_CP_UI_BUILD?.trim();
+  if (fromEnv) return fromEnv;
+  const d = new Date();
+  const p = (n: number, w = 2) => String(n).padStart(w, "0");
+  return `${p(d.getUTCFullYear(), 4)}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}${p(d.getUTCHours())}${p(d.getUTCMinutes())}`;
+}
+
 export default defineConfig({
   base: embedPiholeCpUi ? "/next/" : "/",
   resolve: {
@@ -20,6 +29,9 @@ export default defineConfig({
     conditions: ["browser", "import", "module", "default"],
   },
   plugins: [tailwindcss(), mockApiPlugin(), svelte(), svelteTesting()],
+  define: embedPiholeCpUi
+    ? { "import.meta.env.VITE_PIHOLE_CP_UI_BUILD": JSON.stringify(piholeCpUiBuildStamp()) }
+    : undefined,
   build: {
     rollupOptions: {
       input: embedPiholeCpUi

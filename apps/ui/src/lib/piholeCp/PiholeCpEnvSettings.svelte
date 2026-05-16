@@ -1,6 +1,12 @@
 <script lang="ts">
+  import Spinner from "flowbite-svelte/Spinner.svelte";
+  import { tick } from "svelte";
+
   import type { EnvConfigResponse, EnvSchemaEntry } from "./envConfigZod";
-  import { PiholeCpGateway } from "./PiholeCpGateway";
+  import {
+    PiholeCpGateway,
+    waitForHostEnvApplyComplete,
+  } from "./PiholeCpGateway";
   import { readPiholeCpApiToken, writePiholeCpApiToken } from "./piholeCpApiToken";
 
   let {
@@ -8,8 +14,11 @@
     onApplied,
   }: {
     baseUrl: string;
-    onApplied?: () => void;
+    onApplied?: (report?: (label: string) => void) => void | Promise<void>;
   } = $props();
+
+  let busy = $state(false);
+  let busyLabel = $state<string | null>(null);
 
   let schemaKeys = $state<EnvSchemaEntry[]>([]);
   let config = $state<EnvConfigResponse | null>(null);
@@ -17,8 +26,11 @@
   let apiTokenInput = $state(readPiholeCpApiToken());
   let statusMsg = $state<string | null>(null);
   let errorMsg = $state<string | null>(null);
-  let busy = $state(false);
   let open = $state(false);
+
+  function setProgress(label: string | null) {
+    busyLabel = label;
+  }
 
   async function loadConfig() {
     errorMsg = null;
@@ -29,22 +41,30 @@
     draft = { ...env.effective, ...(env.pending ?? {}) };
   }
 
-  async function run(mutate: () => Promise<void>) {
+  /** Persist the password field, then resolve token (session or VITE build default). */
+  function mutationToken(): string {
+    writePiholeCpApiToken(apiTokenInput);
+    return readPiholeCpApiToken();
+  }
+
+  async function run(mutate: () => Promise<void>, initialLabel = "Working…") {
     busy = true;
+    busyLabel = initialLabel;
     errorMsg = null;
     statusMsg = null;
+    await tick();
     try {
-      writePiholeCpApiToken(apiTokenInput);
       await mutate();
     } catch (e) {
       errorMsg = e instanceof Error ? e.message : String(e);
     } finally {
       busy = false;
+      busyLabel = null;
     }
   }
 
   async function saveDraft() {
-    const token = readPiholeCpApiToken();
+    const token = mutationToken();
     if (!token) {
       errorMsg = "API token required for mutations.";
       return;
@@ -65,42 +85,77 @@
     await run(async () => {
       const gw = new PiholeCpGateway(baseUrl);
       const res = await gw.patchEnvConfig(changes, token);
-      statusMsg =
-        res.status === 202
-          ? "Changes staged. Apply runs the host script (or shows the command)."
-          : "Changes staged.";
+      statusMsg = res.status === 202 ? "Changes staged. Use Apply to merge into .env." : "Changes staged.";
       await loadConfig();
     });
+  }
+
+  async function afterHostMutation(
+    res: { applied: boolean; summary: string; example?: string; backupPath?: string },
+    onDone?: (report?: (label: string) => void) => void | Promise<void>,
+  ) {
+    statusMsg = res.applied
+      ? res.backupPath
+        ? `${res.summary} Backup: ${res.backupPath}`
+        : res.summary
+      : res.example
+        ? `${res.summary} Example: ${res.example}`
+        : res.summary;
+    if (res.applied) {
+      const gw = new PiholeCpGateway(baseUrl);
+      setProgress("Updating settings and dashboard…");
+      try {
+        const envTask = (async () => {
+          const env = await waitForHostEnvApplyComplete(baseUrl, gw, { onProgress: setProgress });
+          schemaKeys = (await gw.getEnvSchema()).keys;
+          config = env;
+          draft = { ...env.effective };
+        })();
+        const dashTask = onDone ? Promise.resolve(onDone(setProgress)) : Promise.resolve();
+        await Promise.all([envTask, dashTask]);
+        statusMsg = "Apply finished. Values below are from the running control-plane container.";
+      } catch (e) {
+        const err = e instanceof Error ? e.message : String(e);
+        statusMsg = `${res.summary} ${err}`;
+        errorMsg =
+          "Host apply did not complete. Pending patch was kept so you can retry. On pi2: sudo tail -30 /opt/pihole-ha/data/logs/control-plane-audit.jsonl";
+      }
+      return;
+    }
+    setProgress("Refreshing settings…");
+    try {
+      await loadConfig();
+    } catch {
+      statusMsg = `${statusMsg} Reload the page to refresh the form.`;
+    }
   }
 
   async function applyStaged() {
-    const token = readPiholeCpApiToken();
+    const token = mutationToken();
     if (!token) {
       errorMsg = "API token required.";
       return;
     }
     await run(async () => {
+      setProgress("Submitting apply…");
       const gw = new PiholeCpGateway(baseUrl);
       const res = await gw.applyEnvConfig(token);
-      statusMsg = res.example ? `${res.summary} Example: ${res.example}` : res.summary;
-      await loadConfig();
-      onApplied?.();
-    });
+      await afterHostMutation(res, onApplied);
+    }, "Applying…");
   }
 
   async function rollbackEnv() {
-    const token = readPiholeCpApiToken();
+    const token = mutationToken();
     if (!token) {
       errorMsg = "API token required.";
       return;
     }
     await run(async () => {
+      setProgress("Submitting rollback…");
       const gw = new PiholeCpGateway(baseUrl);
       const res = await gw.rollbackEnvConfig(token);
-      statusMsg = res.example ? `${res.summary} ${res.example}` : res.summary;
-      await loadConfig();
-      onApplied?.();
-    });
+      await afterHostMutation(res, onApplied);
+    }, "Rolling back…");
   }
 
   $effect(() => {
@@ -118,7 +173,21 @@
   }
 </script>
 
-<section class="mb-4 rounded-lg border border-slate-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+<section class="relative mb-4 rounded-lg border border-slate-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+  {#if busy}
+    <div
+      class="env-settings-busy-overlay absolute inset-0 z-50 flex flex-col items-center justify-center gap-3 rounded-lg bg-white/90 dark:bg-gray-900/90"
+      data-testid="env-settings-busy"
+      aria-busy="true"
+      role="status"
+      aria-live="polite"
+    >
+      <Spinner size="12" type="bars" color="blue" />
+      <p class="max-w-[16rem] text-center text-sm font-medium text-slate-800 dark:text-gray-200">
+        {busyLabel ?? "Working…"}
+      </p>
+    </div>
+  {/if}
   <button
     type="button"
     class="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-gray-100"
@@ -130,9 +199,11 @@
     <span class="text-xs font-normal text-slate-500 dark:text-gray-400">{open ? "Hide" : "Show"}</span>
   </button>
   {#if open}
-    <div class="border-t border-slate-100 px-4 py-3 dark:border-gray-800">
+    <div class="min-h-[10rem] border-t border-slate-100 px-4 py-3 dark:border-gray-800">
       <p class="mb-3 text-xs text-slate-600 dark:text-gray-400">
-        Tier-1 keys per ADR-0053. Save stages changes; Apply runs the host script (or shows the command).
+        Tier-1 keys per ADR-0053. Save stages changes; Apply merges into <code class="text-[0.7rem]">.env</code>
+        and restarts the stack. Values below are from the <strong>running</strong> control-plane container
+        (reload the page if they look stale after apply).
       </p>
       <label class="mb-3 block text-xs">
         <span class="text-slate-500 dark:text-gray-500">API token</span>
@@ -141,6 +212,7 @@
           class="mt-1 w-full rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-xs dark:border-gray-700 dark:bg-gray-950"
           bind:value={apiTokenInput}
           autocomplete="off"
+          disabled={busy}
         />
       </label>
       {#if config?.pending}
@@ -158,6 +230,7 @@
                   <select
                     class="w-full rounded border border-slate-200 px-2 py-1 font-mono dark:border-gray-700 dark:bg-gray-950"
                     bind:value={draft[entry.key]}
+                    disabled={busy}
                   >
                     <option value="0">off (0)</option>
                     <option value="1">on (1)</option>
@@ -167,6 +240,7 @@
                     type={inputType(entry)}
                     class="w-full rounded border border-slate-200 px-2 py-1 font-mono dark:border-gray-700 dark:bg-gray-950"
                     bind:value={draft[entry.key]}
+                    disabled={busy}
                   />
                 {/if}
               </dd>

@@ -20,6 +20,7 @@
 </script>
 
 <script lang="ts">
+  import type { Snippet } from "svelte";
   import { get } from "svelte/store";
 
   import type { PluginEntry } from "../api/types";
@@ -41,6 +42,10 @@
   import type { DashboardResponse } from "./dashboardZod";
   import type { PiholeCpMeta } from "./PiholeCpGateway";
   import { piholeCpDashboardData } from "./piholeCpDashboardDataStore";
+  import {
+    formatPiholeCpUiDisplayVersion,
+    readPiholeCpUiBuildFromEnv,
+  } from "./piholeCpUiVersion";
 
   let {
     dashboard,
@@ -48,17 +53,27 @@
     gateway,
     plugins,
     dataRefreshEpoch = 0,
+    layoutResyncEpoch = 0,
     refreshing = false,
     onRefresh,
+    belowHeader,
   }: {
     dashboard: DashboardResponse;
     meta: PiholeCpMeta | null;
     gateway: DataGateway;
     plugins: PluginEntry[];
     dataRefreshEpoch?: number;
+    /** Bumped after env apply so layout is re-derived from server widgets + meta. */
+    layoutResyncEpoch?: number;
     refreshing?: boolean;
     onRefresh: () => void;
+    /** Rendered between the page header and the dashboard grid (e.g. Node settings). */
+    belowHeader?: Snippet;
   } = $props();
+
+  const uiDisplayVersion = $derived(
+    formatPiholeCpUiDisplayVersion(dashboard.version, readPiholeCpUiBuildFromEnv()),
+  );
 
   const stored = loadDashboardLayout(PIHOLE_CP_LAYOUT_STORAGE_KEY);
   /* Layout store is seeded from the first dashboard snapshot; widget-set drift is corrected in `$effect`. */
@@ -106,9 +121,17 @@
 
   $effect(() => {
     void dataRefreshEpoch;
+    void layoutResyncEpoch;
     void dashboard;
     void meta;
     piholeCpDashboardData.set(dashboard);
+    if (layoutResyncEpoch > 0) {
+      const stored = loadDashboardLayout(PIHOLE_CP_LAYOUT_STORAGE_KEY);
+      const fresh = pickInitialPiholeCpLayout(dashboard, stored, meta);
+      ls.applyStructure(stripPiholeCpLayoutWhenKeaDhcpDisabled(fresh, meta, dashboard), {
+        skipHistory: true,
+      });
+    }
     let cur = get(ls.layout);
     if (layoutContainsPiholeCpKeaDisabledTiles(cur, meta, dashboard)) {
       ls.applyStructure(stripPiholeCpLayoutWhenKeaDhcpDisabled(cur, meta, dashboard), { skipHistory: true });
@@ -136,7 +159,7 @@
     <h1 class="text-lg font-semibold text-slate-900 dark:text-gray-100">Pi-hole HA control plane</h1>
     <p class="truncate text-sm text-slate-600 dark:text-gray-400">
       Node <span class="font-mono">{meta?.node ?? dashboard.node}</span>
-      · v<span class="font-mono">{dashboard.version}</span>
+      · v<span class="font-mono" data-testid="pihole-cp-ui-version">{uiDisplayVersion}</span>
     </p>
   </div>
   <div class="flex flex-wrap items-center gap-2">
@@ -175,6 +198,12 @@
     </button>
   </div>
 </header>
+
+{#if belowHeader}
+  <div class="mt-4">
+    {@render belowHeader()}
+  </div>
+{/if}
 
 <!-- Inherited `--dashboard-gap` spaces tiles on `[data-dashboard-tile-grid]` and the layout editor (app.css). -->
 <div class="mt-4 [--dashboard-gap:5px]">

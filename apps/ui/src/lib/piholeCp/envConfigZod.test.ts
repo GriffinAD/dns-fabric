@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { envConfigResponseSchema, envSchemaResponseSchema } from "./envConfigZod";
+import {
+  envConfigResponseSchema,
+  envPatchResponseSchema,
+  envSchemaResponseSchema,
+} from "./envConfigZod";
 
 describe("envConfigZod", () => {
   it("parses env schema response", () => {
@@ -24,5 +28,20 @@ describe("envConfigZod", () => {
       pending: null,
     });
     expect(parsed.effective.DNSCRYPT_PROXY_ENABLED).toBe("0");
+  });
+
+  it("coerces numeric env values to strings", () => {
+    const parsed = envConfigResponseSchema.parse({
+      effective: { CONTROL_PLANE_UI_HOST_PORT: 8091 },
+    });
+    expect(parsed.effective.CONTROL_PLANE_UI_HOST_PORT).toBe("8091");
+  });
+
+  it("parses PATCH response with staged only", () => {
+    const parsed = envPatchResponseSchema.parse({
+      staged: { DNSCRYPT_PROXY_ENABLED: "1" },
+    });
+    expect(parsed.staged.DNSCRYPT_PROXY_ENABLED).toBe("1");
+    expect(parsed.pending).toBeUndefined();
   });
 });

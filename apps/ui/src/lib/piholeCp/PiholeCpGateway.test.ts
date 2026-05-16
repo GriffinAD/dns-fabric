@@ -1,7 +1,125 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { dashboardResponseSchema } from "./dashboardZod";
-import { PiholeCpGateway, joinControlPlaneUrl } from "./PiholeCpGateway";
+import {
+  PiholeCpGateway,
+  controlPlaneErrorMessage,
+  joinControlPlaneUrl,
+  waitForControlPlaneReady,
+  waitForControlPlaneRestart,
+  waitForHostEnvApplyComplete,
+} from "./PiholeCpGateway";
+
+describe("controlPlaneErrorMessage", () => {
+  it("returns fallback for non-objects", () => {
+    expect(controlPlaneErrorMessage(null, "fb")).toBe("fb");
+  });
+
+  it("extracts validation detail arrays", () => {
+    expect(
+      controlPlaneErrorMessage({ detail: [{ msg: "field required" }] }, "fb"),
+    ).toBe("field required");
+  });
+
+  it("extracts error and message fields", () => {
+    expect(
+      controlPlaneErrorMessage({ error: "forbidden_key", message: "not allowed" }, "fb"),
+    ).toBe("forbidden_key: not allowed");
+    expect(controlPlaneErrorMessage({ message: "only message" }, "fb")).toBe("only message");
+  });
+});
+
+describe("waitForHostEnvApplyComplete", () => {
+  it("resolves when pending is cleared", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    vi.spyOn(gw, "getEnvConfig")
+      .mockResolvedValueOnce({
+        effective: { DNSCRYPT_PROXY_ENABLED: "0" },
+        pending: { DNSCRYPT_PROXY_ENABLED: "1" },
+      })
+      .mockResolvedValueOnce({
+        effective: { DNSCRYPT_PROXY_ENABLED: "1" },
+        pending: null,
+      });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+      })),
+    );
+    const env = await waitForHostEnvApplyComplete("http://127.0.0.1:8091", gw, {
+      maxMs: 5000,
+      pollMs: 1,
+    });
+    expect(env.pending).toBeNull();
+  });
+});
+
+describe("waitForControlPlaneRestart", () => {
+  it("waits for health down then up", async () => {
+    let calls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        calls += 1;
+        // grace + polls: ok, ok, fail, fail, ok
+        if (calls <= 2) return { ok: true, status: 200 };
+        if (calls <= 4) return { ok: false, status: 503 };
+        return { ok: true, status: 200 };
+      }),
+    );
+    await waitForControlPlaneRestart("http://127.0.0.1:8091", {
+      graceMs: 1,
+      pollMs: 1,
+      waitForDownMs: 5000,
+      waitForUpAttempts: 5,
+    });
+    expect(calls).toBeGreaterThan(3);
+  });
+
+  it("throws when health never goes down", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+      })),
+    );
+    await expect(
+      waitForControlPlaneRestart("http://127.0.0.1:8091", {
+        graceMs: 1,
+        pollMs: 1,
+        waitForDownMs: 20,
+      }),
+    ).rejects.toMatchObject({ path: "/health" });
+  });
+});
+
+describe("waitForControlPlaneReady", () => {
+  it("resolves when /health returns ok", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+      })),
+    );
+    await waitForControlPlaneReady("http://127.0.0.1:8091", { attempts: 2, delayMs: 1 });
+  });
+
+  it("throws when /health never succeeds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Load failed");
+      }),
+    );
+    await expect(
+      waitForControlPlaneReady("http://127.0.0.1:8091", { attempts: 2, delayMs: 1 }),
+    ).rejects.toMatchObject({ code: "http_error", path: "/health" });
+  });
+});
 
 describe("joinControlPlaneUrl", () => {
   it("joins base and path with single slash boundary", () => {
@@ -62,6 +180,41 @@ describe("PiholeCpGateway", () => {
       expect.stringContaining("/dashboard"),
       expect.objectContaining({ cache: "no-store" }),
     );
+  });
+
+  it("throws GatewayError on HTTP failure with JSON detail", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 404,
+        json: async () => ({ detail: "Not Found" }),
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    await expect(gw.getEnvConfig()).rejects.toMatchObject({
+      code: "http_error",
+      status: 404,
+      message: "Not Found",
+    });
+  });
+
+  it("throws GatewayError on HTTP failure when body is not JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 502,
+        json: async () => {
+          throw new Error("not json");
+        },
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    await expect(gw.getEnvConfig()).rejects.toMatchObject({
+      code: "http_error",
+      status: 502,
+    });
   });
 
   it("throws GatewayError on HTTP failure", async () => {
@@ -296,6 +449,28 @@ describe("PiholeCpGateway", () => {
     expect(cfg.effective.DNSCRYPT_PROXY_ENABLED).toBe("0");
   });
 
+  it("applyEnvConfig accepts 200 applied when host apply runs", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          kind: "applied",
+          policy_ref: "ADR-0053",
+          mutation: "mutations.env.apply",
+          summary: "Tier-1 .env changes applied on the host.",
+          backup_path: "/opt/pihole-ha/.env.bak.1",
+        }),
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    const res = await gw.applyEnvConfig("secret");
+    expect(res.applied).toBe(true);
+    expect(res.summary).toContain("applied");
+    expect(res.backupPath).toContain(".env.bak");
+  });
+
   it("applyEnvConfig accepts 202 host_action_required", async () => {
     vi.stubGlobal(
       "fetch",
@@ -317,6 +492,26 @@ describe("PiholeCpGateway", () => {
     expect(res.summary).toContain("Run");
   });
 
+  it("rollbackEnvConfig accepts 200 applied", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          kind: "applied",
+          policy_ref: "ADR-0053",
+          mutation: "mutations.env.rollback",
+          summary: "Restored the latest .env backup on the host.",
+        }),
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    const res = await gw.rollbackEnvConfig("secret");
+    expect(res.applied).toBe(true);
+    expect(res.summary).toContain("Restored");
+  });
+
   it("rollbackEnvConfig accepts 202", async () => {
     vi.stubGlobal(
       "fetch",
@@ -335,6 +530,23 @@ describe("PiholeCpGateway", () => {
     const gw = new PiholeCpGateway("");
     const res = await gw.rollbackEnvConfig("secret");
     expect(res.example).toBe("sudo x");
+  });
+
+  it("patchEnvConfig surfaces FastAPI detail on 403 instead of invalid shape", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 403,
+        json: async () => ({ detail: "Mutation denied." }),
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    await expect(gw.patchEnvConfig({ DNSCRYPT_PROXY_ENABLED: "1" }, "bad")).rejects.toMatchObject({
+      code: "http_error",
+      status: 403,
+      message: "Mutation denied.",
+    });
   });
 
   it("patchEnvConfig throws http_error when response shape is valid but status is not ok", async () => {

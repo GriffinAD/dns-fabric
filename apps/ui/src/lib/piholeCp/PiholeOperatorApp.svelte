@@ -6,7 +6,11 @@
   import type { DashboardResponse } from "./dashboardZod";
   import LogStreamPanel from "./LogStreamPanel.svelte";
   import { mergeOperatorPluginsForPiholeCp } from "./operatorBaselinePlugins";
-  import { PiholeCpGateway, type PiholeCpMeta } from "./PiholeCpGateway";
+  import {
+    PiholeCpGateway,
+    waitForPiholeCpDashboardCoherent,
+    type PiholeCpMeta,
+  } from "./PiholeCpGateway";
   import PiholeCpDashboardShell from "./PiholeCpDashboardShell.svelte";
   import PiholeCpEnvSettings from "./PiholeCpEnvSettings.svelte";
   import { PiholeCpDashboardGateway } from "./PiholeCpDashboardGateway";
@@ -15,6 +19,8 @@
   let dashboard = $state<DashboardResponse | null>(null);
   let meta = $state<PiholeCpMeta | null>(null);
   let refreshing = $state(false);
+  /** Bumps after env apply so the dashboard shell re-picks layout from server + meta. */
+  let layoutResyncEpoch = $state(0);
   /** Bumps when the user hits Refresh so LogStreamPanel reloads its catalogue. */
   let dataRefreshEpoch = $state(0);
 
@@ -53,6 +59,29 @@
       fabricSseRelease = fabricEventBus.connect();
       lastKeaApiOrigin = next;
     }
+  }
+
+  /** Refresh dashboard/meta after env apply without replacing the whole page with an error banner. */
+  async function reloadDashboardAfterEnvMutation(
+    report?: (label: string) => void,
+  ): Promise<void> {
+    if (!dashboard) return;
+    const gw = new PiholeCpGateway(baseUrl);
+    const { dashboard: dash, meta: m } = await waitForPiholeCpDashboardCoherent(gw, {
+      onProgress: report,
+    });
+    gateway.setKeaFabricApiBaseUrl(m.kea_fabric_api_base_url ?? "");
+    syncFabricSseAfterKeaBaseChange();
+    try {
+      const pluginsRes = await gateway.listPlugins();
+      apiPlugins = pluginsRes.items;
+    } catch {
+      apiPlugins = [];
+    }
+    dashboard = dash;
+    meta = m;
+    dataRefreshEpoch += 1;
+    layoutResyncEpoch += 1;
   }
 
   async function loadAll(opts?: { userRefresh?: boolean }) {
@@ -99,16 +128,23 @@
     <p class="p-4 text-slate-600 dark:text-gray-400">Loading…</p>
   {:else}
     <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-8">
-      <PiholeCpEnvSettings {baseUrl} onApplied={() => void loadAll({ userRefresh: true })} />
       <PiholeCpDashboardShell
         {dashboard}
         {meta}
         {gateway}
         {plugins}
         dataRefreshEpoch={dataRefreshEpoch}
+        {layoutResyncEpoch}
         {refreshing}
         onRefresh={() => void loadAll({ userRefresh: true })}
-      />
+      >
+        {#snippet belowHeader()}
+          <PiholeCpEnvSettings
+            {baseUrl}
+            onApplied={(report) => reloadDashboardAfterEnvMutation(report)}
+          />
+        {/snippet}
+      </PiholeCpDashboardShell>
       <LogStreamPanel {baseUrl} dataRefreshEpoch={dataRefreshEpoch} />
     </div>
   {/if}
