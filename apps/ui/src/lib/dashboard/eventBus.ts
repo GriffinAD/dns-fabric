@@ -22,6 +22,8 @@ export type FabricEventBus = {
   ): () => void;
   /** Attach single `EventSource` and dispatch to subscribers. Idempotent per instance. */
   connect(): () => void;
+  /** Push a topic to subscribers (e.g. control-plane perf polling on Pi-hole CP). */
+  emit(topic: string, payload: unknown): void;
   connectionState: Readable<FabricConnectionState>;
 };
 
@@ -78,9 +80,14 @@ export function createFabricEventBus(gateway: DataGateway): FabricEventBus {
     return releaseConnection;
   }
 
+  function emit(topic: string, payload: unknown): void {
+    dispatch({ topic, payload });
+  }
+
   return {
     subscribe,
     connect,
+    emit,
     connectionState: readonly(connectionState),
   };
 }

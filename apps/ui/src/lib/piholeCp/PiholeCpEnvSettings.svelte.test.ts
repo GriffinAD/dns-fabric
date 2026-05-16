@@ -5,6 +5,41 @@ import * as piholeCpGateway from "./PiholeCpGateway";
 import PiholeCpEnvSettings from "./PiholeCpEnvSettings.svelte";
 
 describe("PiholeCpEnvSettings", () => {
+  it("loads schema when alwaysOpen without clicking accordion", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).includes("/schema")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              keys: [
+                {
+                  key: "DHCP_MODE",
+                  tier: 2,
+                  type: "string",
+                  label: "Dhcp Mode",
+                  requires_apply: true,
+                },
+              ],
+            }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            effective: { DHCP_MODE: "none" },
+            pending: null,
+          }),
+        };
+      }),
+    );
+    render(PiholeCpEnvSettings, { props: { baseUrl: "http://127.0.0.1:8091", alwaysOpen: true } });
+    expect(await screen.findByText("Dhcp Mode")).toBeTruthy();
+  });
+
   it("loads schema when expanded", async () => {
     vi.stubGlobal(
       "fetch",

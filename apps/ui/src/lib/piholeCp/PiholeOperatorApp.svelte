@@ -12,8 +12,8 @@
     type PiholeCpMeta,
   } from "./PiholeCpGateway";
   import PiholeCpDashboardShell from "./PiholeCpDashboardShell.svelte";
-  import PiholeCpEnvSettings from "./PiholeCpEnvSettings.svelte";
   import { PiholeCpDashboardGateway } from "./PiholeCpDashboardGateway";
+  import { startPiholeCpPerfPolling } from "./piholeCpPerfPoll";
 
   let error = $state<string | null>(null);
   let dashboard = $state<DashboardResponse | null>(null);
@@ -39,6 +39,7 @@
   const plugins = $derived(mergeOperatorPluginsForPiholeCp(apiPlugins, dashboard, meta));
 
   let fabricSseRelease: (() => void) | null = null;
+  let perfPollRelease: (() => void) | null = null;
   let lastKeaApiOrigin = "";
 
   function syncFabricSseAfterKeaBaseChange(): void {
@@ -114,8 +115,11 @@
   }
 
   onMount(() => {
+    perfPollRelease = startPiholeCpPerfPolling(gateway, fabricEventBus);
     void loadAll();
     return () => {
+      perfPollRelease?.();
+      perfPollRelease = null;
       fabricSseRelease?.();
     };
   });
@@ -127,24 +131,19 @@
   {:else if !dashboard}
     <p class="p-4 text-slate-600 dark:text-gray-400">Loading…</p>
   {:else}
-    <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-8">
+    <div class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
       <PiholeCpDashboardShell
         {dashboard}
         {meta}
         {gateway}
         {plugins}
+        {baseUrl}
         dataRefreshEpoch={dataRefreshEpoch}
         {layoutResyncEpoch}
         {refreshing}
         onRefresh={() => void loadAll({ userRefresh: true })}
-      >
-        {#snippet belowHeader()}
-          <PiholeCpEnvSettings
-            {baseUrl}
-            onApplied={(report) => reloadDashboardAfterEnvMutation(report)}
-          />
-        {/snippet}
-      </PiholeCpDashboardShell>
+        onEnvApplied={(report) => reloadDashboardAfterEnvMutation(report)}
+      />
       <LogStreamPanel {baseUrl} dataRefreshEpoch={dataRefreshEpoch} />
     </div>
   {/if}

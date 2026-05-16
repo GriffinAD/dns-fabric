@@ -20,11 +20,9 @@
 </script>
 
 <script lang="ts">
-  import type { Snippet } from "svelte";
   import { get } from "svelte/store";
 
   import type { PluginEntry } from "../api/types";
-  import ThemeControls from "../theme/ThemeControls.svelte";
   import DashboardPage from "../dashboard/DashboardPage.svelte";
   import { handlePerfTileGridHint as applyPerfTileGridHint } from "../dashboard/gridHints";
   import { loadDashboardLayout } from "../dashboard/layoutStorage";
@@ -41,6 +39,8 @@
   } from "./buildLayoutFromDashboard";
   import type { DashboardResponse } from "./dashboardZod";
   import type { PiholeCpMeta } from "./PiholeCpGateway";
+  import PiholeCpEnvSettings from "./PiholeCpEnvSettings.svelte";
+  import PiholeCpShellHeader from "./PiholeCpShellHeader.svelte";
   import { piholeCpDashboardData } from "./piholeCpDashboardDataStore";
   import {
     formatPiholeCpUiDisplayVersion,
@@ -52,23 +52,23 @@
     meta,
     gateway,
     plugins,
+    baseUrl,
     dataRefreshEpoch = 0,
     layoutResyncEpoch = 0,
     refreshing = false,
     onRefresh,
-    belowHeader,
+    onEnvApplied,
   }: {
     dashboard: DashboardResponse;
     meta: PiholeCpMeta | null;
     gateway: DataGateway;
     plugins: PluginEntry[];
+    baseUrl: string;
     dataRefreshEpoch?: number;
-    /** Bumped after env apply so layout is re-derived from server widgets + meta. */
     layoutResyncEpoch?: number;
     refreshing?: boolean;
     onRefresh: () => void;
-    /** Rendered between the page header and the dashboard grid (e.g. Node settings). */
-    belowHeader?: Snippet;
+    onEnvApplied?: (report?: (label: string) => void) => void | Promise<void>;
   } = $props();
 
   const uiDisplayVersion = $derived(
@@ -76,14 +76,13 @@
   );
 
   const stored = loadDashboardLayout(PIHOLE_CP_LAYOUT_STORAGE_KEY);
-  /* Layout store is seeded from the first dashboard snapshot; widget-set drift is corrected in `$effect`. */
   // svelte-ignore state_referenced_locally
   const initial = pickInitialPiholeCpLayout(dashboard, stored, meta);
 
   let settingsTile = $state<DashboardTile | null>(null);
   let settingsGroup = $state<DashboardGroup | null>(null);
 
-  // svelte-ignore state_referenced_locally — `gateway` is owned by the parent and stable for this shell.
+  // svelte-ignore state_referenced_locally
   const ls = createLayoutStore({
     gateway,
     dashboardId: "pihole-cp",
@@ -142,71 +141,29 @@
       ls.applyStructure(merged, { skipHistory: true });
     }
   });
-
-  async function toggleLayoutEdit() {
-    if (get(ls.editorOpen)) {
-      await ls.closeEditorAndFlush();
-    } else {
-      ls.openEditor();
-    }
-  }
 </script>
 
-<header
-  class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-900"
->
-  <div class="min-w-0">
-    <h1 class="text-lg font-semibold text-slate-900 dark:text-gray-100">Pi-hole HA control plane</h1>
-    <p class="truncate text-sm text-slate-600 dark:text-gray-400">
-      Node <span class="font-mono">{meta?.node ?? dashboard.node}</span>
-      · v<span class="font-mono" data-testid="pihole-cp-ui-version">{uiDisplayVersion}</span>
-    </p>
-  </div>
-  <div class="flex flex-wrap items-center gap-2">
-    <div class="flex items-center gap-1" data-testid="pihole-cp-theme-controls">
-      <ThemeControls showAccent={false} showGaugeSegmentToggle={false} />
-    </div>
-    <button
-      type="button"
-      class="rounded border border-slate-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:text-gray-100"
-      aria-pressed={$editorOpen}
-      aria-label={$editorOpen ? "Done editing layout" : "Edit layout"}
-      title={$editorOpen ? "Done editing layout" : "Edit layout — palette, containers, and grid"}
-      data-testid="pihole-cp-layout-edit-toggle"
-      onclick={() => void toggleLayoutEdit()}
-    >
-      {$editorOpen ? "Done" : "Edit layout"}
-    </button>
-    {#if meta?.peer_ui_base_url}
-      <a
-        class="text-sm text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-        href={meta.peer_ui_base_url}
-        target="_blank"
-        rel="noreferrer"
-      >
-        Peer UI
-      </a>
-    {/if}
-    <button
-      type="button"
-      class="rounded border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-gray-600 dark:text-gray-100"
-      disabled={refreshing}
-      data-testid="pihole-cp-refresh"
-      onclick={onRefresh}
-    >
-      {refreshing ? "Refreshing…" : "Refresh"}
-    </button>
-  </div>
-</header>
+<PiholeCpShellHeader
+  nodeLabel={meta?.node ?? dashboard.node}
+  uiVersion={uiDisplayVersion}
+  editorOpen={$editorOpen}
+  {refreshing}
+  peerUiBaseUrl={meta?.peer_ui_base_url ?? null}
+  onOpenEditor={() => ls.openEditor()}
+  onCloseEditor={() => ls.closeEditorAndFlush()}
+  onResetBaseline={() => ls.resetToBaseline()}
+  onSaveLayout={() => ls.saveLayoutToFile()}
+  onRefresh={onRefresh}
+/>
 
-{#if belowHeader}
-  <div class="mt-4">
-    {@render belowHeader()}
+{#if $editorOpen}
+  <div class="mt-6" data-testid="pihole-cp-node-settings-panel">
+    <PiholeCpEnvSettings {baseUrl} alwaysOpen onApplied={onEnvApplied} />
   </div>
 {/if}
 
 <!-- Inherited `--dashboard-gap` spaces tiles on `[data-dashboard-tile-grid]` and the layout editor (app.css). -->
-<div class="mt-4 [--dashboard-gap:5px]">
+<div class="mt-6 [--dashboard-gap:5px]">
   <DashboardPage
     {gateway}
     {plugins}
@@ -216,8 +173,8 @@
     persistError={$persistError}
     localPersistBlocked={$localPersistBlocked}
     localPersistBlockedReason={$localPersistBlockedReason}
-    settingsTile={settingsTile}
-    settingsGroup={settingsGroup}
+    {settingsTile}
+    {settingsGroup}
     {ls}
     {overlay}
     {onPerfTileGridHint}

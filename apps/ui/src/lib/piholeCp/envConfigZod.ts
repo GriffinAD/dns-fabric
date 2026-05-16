@@ -9,6 +9,8 @@ export const envSchemaEntrySchema = z.object({
   type: z.enum(["boolean", "integer", "string", "url"]),
   label: z.string(),
   requires_apply: z.boolean(),
+  readonly: z.boolean().optional(),
+  sensitive: z.boolean().optional(),
 });
 
 export const envSchemaResponseSchema = z.object({

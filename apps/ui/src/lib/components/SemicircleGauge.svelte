@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { tweened } from "svelte/motion";
+  import { cubicOut } from "svelte/easing";
+
   import type { GaugeGradientMode } from "../api/types";
   import type { GaugeCapStyle } from "../theme/themeStorage";
   import {
@@ -7,6 +10,11 @@
     effectiveGaugeSegmentDivisionsFromDataAttrs,
     clampGaugeSegmentGap,
   } from "../theme/themeStorage";
+  import {
+    clampGaugePercent,
+    gaugeDisplayTweenDuration,
+    prefersReducedMotion,
+  } from "./gaugeDisplay";
   import { describeSemicircleArc, describeSemicircleSegment, semicirclePoint } from "./gaugeMath";
   import {
     GAUGE_ARC_ZONE_STOPS,
@@ -125,11 +133,23 @@
   );
   const cy = $derived(h - bottomClear + vbPad);
 
-  const safePercent = $derived.by(() => {
-    const n = Number(percent);
-    if (!Number.isFinite(n)) return 0;
-    return Math.max(0, Math.min(100, n));
+  const targetPercent = $derived(clampGaugePercent(Number(percent)));
+
+  /** Animated readout + arc fill (slides between poll updates). */
+  const displayPercent = tweened(targetPercent, { duration: 0 });
+
+  let instantNextTween = true;
+
+  $effect(() => {
+    const duration = gaugeDisplayTweenDuration({
+      reducedMotion: prefersReducedMotion(),
+      instant: instantNextTween,
+    });
+    instantNextTween = false;
+    void displayPercent.set(targetPercent, { duration, easing: cubicOut });
   });
+
+  const safePercent = $derived(clampGaugePercent($displayPercent));
 
   const track = $derived(describeSemicircleArc(cx, cy, r));
   const progressSegments = $derived(
@@ -235,7 +255,7 @@
       ? 'w-full min-w-0 max-w-[4.75rem] justify-self-center'
       : ''} gap-0"
   data-testid="semicircle-gauge"
-  aria-label={label && !labelBlank ? undefined : `Gauge ${safePercent.toFixed(1)} percent`}
+  aria-label={label && !labelBlank ? undefined : `Gauge ${targetPercent.toFixed(1)} percent`}
 >
   {#if labelBlank || label}
     <div class={labelRowClass} aria-hidden={labelBlank ? "true" : undefined}>

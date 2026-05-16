@@ -11,9 +11,12 @@
 
   let {
     baseUrl,
+    alwaysOpen = false,
     onApplied,
   }: {
     baseUrl: string;
+    /** When true, panel is always expanded (e.g. layout edit mode). */
+    alwaysOpen?: boolean;
     onApplied?: (report?: (label: string) => void) => void | Promise<void>;
   } = $props();
 
@@ -28,6 +31,10 @@
   let errorMsg = $state<string | null>(null);
   let open = $state(false);
 
+  const panelOpen = $derived(alwaysOpen || open);
+  const writableKeys = $derived(schemaKeys.filter((e) => e.tier !== 3 && !e.readonly));
+  const secretKeys = $derived(schemaKeys.filter((e) => e.tier === 3 || e.sensitive));
+
   function setProgress(label: string | null) {
     busyLabel = label;
   }
@@ -41,7 +48,6 @@
     draft = { ...env.effective, ...(env.pending ?? {}) };
   }
 
-  /** Persist the password field, then resolve token (session or VITE build default). */
   function mutationToken(): string {
     writePiholeCpApiToken(apiTokenInput);
     return readPiholeCpApiToken();
@@ -70,7 +76,7 @@
       return;
     }
     const changes: Record<string, string> = {};
-    for (const entry of schemaKeys) {
+    for (const entry of writableKeys) {
       const key = entry.key;
       const next = draft[key];
       const prev = config?.effective[key];
@@ -113,7 +119,7 @@
         })();
         const dashTask = onDone ? Promise.resolve(onDone(setProgress)) : Promise.resolve();
         await Promise.all([envTask, dashTask]);
-        statusMsg = "Apply finished. Values below are from the running control-plane container.";
+        statusMsg = "Apply finished. Values below are from the host .env file.";
       } catch (e) {
         const err = e instanceof Error ? e.message : String(e);
         statusMsg = `${res.summary} ${err}`;
@@ -159,7 +165,7 @@
   }
 
   $effect(() => {
-    if (open && schemaKeys.length === 0) {
+    if (panelOpen && schemaKeys.length === 0) {
       void loadConfig().catch((e) => {
         errorMsg = e instanceof Error ? e.message : String(e);
       });
@@ -173,7 +179,10 @@
   }
 </script>
 
-<section class="relative mb-4 rounded-lg border border-slate-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+<section
+  class="relative rounded-lg border border-slate-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900"
+  data-testid="pihole-cp-env-settings"
+>
   {#if busy}
     <div
       class="env-settings-busy-overlay absolute inset-0 z-50 flex flex-col items-center justify-center gap-3 rounded-lg bg-white/90 dark:bg-gray-900/90"
@@ -188,22 +197,27 @@
       </p>
     </div>
   {/if}
-  <button
-    type="button"
-    class="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-gray-100"
-    onclick={() => {
-      open = !open;
-    }}
-  >
-    <span>Node settings (.env)</span>
-    <span class="text-xs font-normal text-slate-500 dark:text-gray-400">{open ? "Hide" : "Show"}</span>
-  </button>
-  {#if open}
+  {#if !alwaysOpen}
+    <button
+      type="button"
+      class="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-900 dark:text-gray-100"
+      onclick={() => {
+        open = !open;
+      }}
+    >
+      <span>Node settings (.env)</span>
+      <span class="text-xs font-normal text-slate-500 dark:text-gray-400">{open ? "Hide" : "Show"}</span>
+    </button>
+  {:else}
+    <h2 class="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900 dark:border-gray-800 dark:text-gray-100">
+      Node settings (.env)
+    </h2>
+  {/if}
+  {#if panelOpen}
     <div class="min-h-[10rem] border-t border-slate-100 px-4 py-3 dark:border-gray-800">
       <p class="mb-3 text-xs text-slate-600 dark:text-gray-400">
-        Tier-1 keys per ADR-0053. Save stages changes; Apply merges into <code class="text-[0.7rem]">.env</code>
-        and restarts the stack. Values below are from the <strong>running</strong> control-plane container
-        (reload the page if they look stale after apply).
+        Writable keys from the host <code class="text-[0.7rem]">.env</code> (secrets are listed but not editable).
+        Save stages changes; Apply merges on the host and may restart services.
       </p>
       <label class="mb-3 block text-xs">
         <span class="text-slate-500 dark:text-gray-500">API token</span>
@@ -213,6 +227,7 @@
           bind:value={apiTokenInput}
           autocomplete="off"
           disabled={busy}
+          aria-label="API token"
         />
       </label>
       {#if config?.pending}
@@ -220,11 +235,14 @@
           Pending staged patch: {Object.keys(config.pending).join(", ")}
         </p>
       {/if}
-      {#if schemaKeys.length > 0}
-        <dl class="mb-3 grid gap-2">
-          {#each schemaKeys as entry (entry.key)}
-            <div class="grid gap-1 text-xs sm:grid-cols-[1fr_8rem] sm:items-center">
-              <dt class="text-slate-600 dark:text-gray-400">{entry.label}</dt>
+      {#if writableKeys.length > 0}
+        <dl class="mb-3 max-h-[min(28rem,50vh)] grid gap-2 overflow-y-auto pr-1">
+          {#each writableKeys as entry (entry.key)}
+            <div class="grid gap-1 text-xs sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center">
+              <dt class="truncate text-slate-600 dark:text-gray-400" title={entry.key}>
+                {entry.label}
+                <span class="block font-mono text-[0.65rem] text-slate-400 dark:text-gray-500">{entry.key}</span>
+              </dt>
               <dd>
                 {#if entry.type === "boolean"}
                   <select
@@ -247,6 +265,14 @@
             </div>
           {/each}
         </dl>
+      {/if}
+      {#if secretKeys.length > 0}
+        <p class="mb-1 text-xs font-medium text-slate-700 dark:text-gray-300">Secrets (edit on host only)</p>
+        <ul class="mb-3 max-h-32 overflow-y-auto text-xs text-slate-500 dark:text-gray-500">
+          {#each secretKeys as entry (entry.key)}
+            <li class="font-mono">{entry.key}</li>
+          {/each}
+        </ul>
       {/if}
       <div class="flex flex-wrap gap-2">
         <button
