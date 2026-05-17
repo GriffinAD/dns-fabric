@@ -27,22 +27,66 @@ type TopicListener<T = unknown> = {
   onValue: (v: T) => void;
 };
 
+export type FabricTransportHandle = {
+  setState(state: FabricConnectionState): void;
+  release(): void;
+};
+
 export type FabricEventBus = {
   subscribe<T>(
     topic: string,
     selector: (payload: unknown) => T | null,
     onValue: (v: T) => void,
   ): () => void;
+  /** Register a transport slot (Kea SSE, CP poll, …) for aggregated `connectionState`. */
+  declareTransport(id: string): FabricTransportHandle;
   /** Attach single `EventSource` and dispatch to subscribers. Idempotent per instance. */
   connect(): () => void;
   /** Push a topic to subscribers (e.g. control-plane perf polling on Pi-hole CP). */
   emit(topic: string, payload: unknown): void;
+  /** Aggregated across transports: `open` when any transport is connected. */
   connectionState: Readable<FabricConnectionState>;
 };
 
+/** Merge per-transport states for the shell indicator (open beats connecting beats error). */
+export function aggregateFabricConnectionStates(
+  states: Iterable<FabricConnectionState>,
+): FabricConnectionState {
+  let hasConnecting = false;
+  let hasError = false;
+  for (const s of states) {
+    if (s === "open") return "open";
+    if (s === "connecting") hasConnecting = true;
+    if (s === "error") hasError = true;
+  }
+  if (hasConnecting) return "connecting";
+  if (hasError) return "error";
+  return "idle";
+}
+
 export function createFabricEventBus(gateway: DataGateway): FabricEventBus {
+  const transportStates = new Map<string, FabricConnectionState>();
   const connectionState = writable<FabricConnectionState>("idle");
   const byTopic = new Map<string, Set<TopicListener>>();
+
+  function recomputeConnectionState(): void {
+    connectionState.set(aggregateFabricConnectionStates(transportStates.values()));
+  }
+
+  function declareTransport(id: string): FabricTransportHandle {
+    transportStates.set(id, "idle");
+    recomputeConnectionState();
+    return {
+      setState(state: FabricConnectionState) {
+        transportStates.set(id, state);
+        recomputeConnectionState();
+      },
+      release() {
+        transportStates.delete(id);
+        recomputeConnectionState();
+      },
+    };
+  }
 
   let releaseConnection: (() => void) | null = null;
 
@@ -75,20 +119,21 @@ export function createFabricEventBus(gateway: DataGateway): FabricEventBus {
 
   function connect(): () => void {
     if (releaseConnection) return releaseConnection;
-    connectionState.set("connecting");
+    const transport = declareTransport("kea-sse");
+    transport.setState("connecting");
     const unsubGateway = gateway.subscribeFabricEvents(
       (ev) => {
-        connectionState.set("open");
+        transport.setState("open");
         dispatch(ev);
       },
       () => {
-        connectionState.set("error");
+        transport.setState("error");
       },
     );
     releaseConnection = () => {
       unsubGateway();
+      transport.release();
       releaseConnection = null;
-      connectionState.set("idle");
     };
     return releaseConnection;
   }
@@ -99,6 +144,7 @@ export function createFabricEventBus(gateway: DataGateway): FabricEventBus {
 
   return {
     subscribe,
+    declareTransport,
     connect,
     emit,
     connectionState: readonly(connectionState),

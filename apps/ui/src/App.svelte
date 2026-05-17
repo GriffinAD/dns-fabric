@@ -97,6 +97,7 @@
 <main class="min-h-screen bg-slate-100 p-8 dark:bg-gray-900">
   <div class="mx-auto w-full max-w-6xl">
     <ShellHeader
+      bus={fabricBusKernel.bus}
       {route}
       layout={$layout}
       layoutSource={$layoutSource}

@@ -12,8 +12,12 @@
   import Server from "lucide-svelte/icons/server";
   import Undo2 from "lucide-svelte/icons/undo-2";
 
+  import { getContext } from "svelte";
+
   import ThemeControls from "../theme/ThemeControls.svelte";
   import DashboardControls from "../dashboard/DashboardControls.svelte";
+  import FabricBusConnectionBadge from "../dashboard/FabricBusConnectionBadge.svelte";
+  import { FABRIC_EVENT_BUS, type FabricEventBus } from "../dashboard/eventBus";
   import { importDashboardLayoutFromJson } from "../dashboard/layoutImport";
   import type { LayoutStore } from "../dashboard/layoutStore";
   import { downloadDashboardLayoutFile } from "../dashboard/layoutStorage";
@@ -44,6 +48,8 @@
     onSaveLayout: () => void | Promise<void>;
     onRefresh: () => void;
   } = $props();
+
+  const bus = getContext<FabricEventBus>(FABRIC_EVENT_BUS);
 
   let resetConfirmOpen = $state(false);
   let importConfirmOpen = $state(false);
@@ -118,9 +124,12 @@
       <Server class="h-8 w-8 shrink-0" aria-hidden="true" />
       Pi-hole HA control plane
     </h1>
-    <p class="text-slate-600 dark:text-gray-400">
-      Node <span class="font-mono text-sm">{nodeLabel}</span>
-      · Operator shell (<span class="font-mono text-sm" data-testid="pihole-cp-ui-version">{uiVersion}</span>)
+    <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-600 dark:text-gray-400">
+      <span>
+        Node <span class="font-mono text-sm">{nodeLabel}</span>
+        · Operator shell (<span class="font-mono text-sm" data-testid="pihole-cp-ui-version">{uiVersion}</span>)
+      </span>
+      <FabricBusConnectionBadge {bus} />
     </p>
   </div>
   <div

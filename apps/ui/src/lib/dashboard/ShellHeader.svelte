@@ -12,12 +12,15 @@
   import ThemeControls from "../theme/ThemeControls.svelte";
   import { UI_VERSION } from "../uiVersion";
   import DashboardControls from "./DashboardControls.svelte";
+  import FabricBusConnectionBadge from "./FabricBusConnectionBadge.svelte";
+  import type { FabricEventBus } from "./eventBus";
   import { importDashboardLayoutFromJson } from "./layoutImport";
   import type { LayoutSource } from "./layoutStore";
   import { downloadDashboardLayoutFile } from "./layoutStorage";
   import type { DashboardLayout } from "./types";
 
   let {
+    bus,
     route,
     layout,
     layoutSource,
@@ -31,6 +34,7 @@
     onGoHome,
     onGoAdmin,
   }: {
+    bus: FabricEventBus;
     route: "home" | "admin";
     layout: DashboardLayout;
     layoutSource: LayoutSource;
@@ -106,8 +110,9 @@
       <House class="h-8 w-8 shrink-0" aria-hidden="true" />
       Kea Fabric
     </h1>
-    <p class="text-slate-600 dark:text-gray-400">
-      Operator shell ({UI_VERSION}). Flowbite Svelte v2 + mocked <code class="font-mono text-sm">/api/v1</code>.
+    <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-600 dark:text-gray-400">
+      <span>Operator shell ({UI_VERSION}). Flowbite Svelte v2 + mocked <code class="font-mono text-sm">/api/v1</code>.</span>
+      <FabricBusConnectionBadge {bus} />
     </p>
     {#if layoutSource === "cache"}
       <p

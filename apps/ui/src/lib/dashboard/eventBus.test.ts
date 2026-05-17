@@ -5,6 +5,7 @@ import type { FabricEvent } from "../api/types";
 import { DataGateway } from "../dataGateway";
 import { perfSummaryForTick } from "../../mock/perfSimulate";
 import {
+  aggregateFabricConnectionStates,
   createFabricEventBus,
   dhcpClientsListUpdated,
   dhcpPoolsListUpdated,
@@ -13,6 +14,26 @@ import {
   perfUpdatedCpuPercent,
   perfUpdatedFullSummary,
 } from "./eventBus";
+
+describe("aggregateFabricConnectionStates", () => {
+  it("returns open when any transport is open", () => {
+    expect(aggregateFabricConnectionStates(["idle", "connecting", "open"])).toBe("open");
+    expect(aggregateFabricConnectionStates(["error", "open"])).toBe("open");
+  });
+
+  it("returns connecting when none open but one is connecting", () => {
+    expect(aggregateFabricConnectionStates(["idle", "connecting", "error"])).toBe("connecting");
+  });
+
+  it("returns error when only idle and error", () => {
+    expect(aggregateFabricConnectionStates(["idle", "error"])).toBe("error");
+  });
+
+  it("returns idle for empty or all idle", () => {
+    expect(aggregateFabricConnectionStates([])).toBe("idle");
+    expect(aggregateFabricConnectionStates(["idle", "idle"])).toBe("idle");
+  });
+});
 
 describe("createFabricEventBus", () => {
   it("returns the same disconnect when connect is called twice", () => {
@@ -136,6 +157,23 @@ describe("createFabricEventBus", () => {
     await vi.waitUntil(() => get(bus.connectionState) === "open");
     expect(stop2).not.toBe(stop);
     stop2();
+  });
+
+  it("aggregates connectionState across multiple transports", async () => {
+    const gw = new DataGateway("");
+    const bus = createFabricEventBus(gw);
+    const cp = bus.declareTransport("cp-perf");
+    cp.setState("open");
+    expect(get(bus.connectionState)).toBe("open");
+
+    vi.spyOn(gw, "subscribeFabricEvents").mockReturnValue(() => {});
+    const stopSse = bus.connect();
+    expect(get(bus.connectionState)).toBe("open");
+
+    cp.release();
+    expect(get(bus.connectionState)).toBe("connecting");
+    stopSse();
+    expect(get(bus.connectionState)).toBe("idle");
   });
 });
 

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { get } from "svelte/store";
 
 import { createFabricEventBus, perfUpdatedFullSummary } from "../eventBus";
 import type { PerfSummaryResponse } from "../../api/types";
@@ -38,7 +39,9 @@ describe("cpFabricTransport", () => {
     const stop = attachCpFabricTransport(bus, gw, { sampleMs: 1000, uiAverageSamples: 3 });
     await vi.advanceTimersByTimeAsync(0);
     expect(received).toHaveLength(1);
+    expect(get(bus.connectionState)).toBe("open");
     stop();
+    expect(get(bus.connectionState)).toBe("idle");
   });
 
   it("emits first sample immediately then averaged every 3 samples", async () => {
@@ -126,6 +129,33 @@ describe("cpFabricTransport", () => {
     expect(getPerf).toHaveBeenCalledOnce();
   });
 
+  it("attachCpFabricTransport stays connecting until first successful sample", async () => {
+    vi.useFakeTimers();
+    const gw = new PiholeCpDashboardGateway("");
+    vi.spyOn(gw, "getPerfSummary").mockRejectedValue(new Error("down"));
+
+    const bus = createFabricEventBus(gw);
+    const stop = attachCpFabricTransport(bus, gw, { sampleMs: 1000 });
+    expect(get(bus.connectionState)).toBe("connecting");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(get(bus.connectionState)).toBe("connecting");
+    stop();
+    expect(get(bus.connectionState)).toBe("idle");
+  });
+
+  it("calls onFirstEmit after the first successful sample", async () => {
+    vi.useFakeTimers();
+    const gw = new PiholeCpDashboardGateway("");
+    vi.spyOn(gw, "getPerfSummary").mockResolvedValue(snap(10));
+    const onFirstEmit = vi.fn();
+
+    const bus = createFabricEventBus(gw);
+    const stop = startPiholeCpPerfPolling(gw, bus, { sampleMs: 1000, onFirstEmit });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onFirstEmit).toHaveBeenCalledOnce();
+    stop();
+  });
+
   it("ignores getPerfSummary errors and keeps polling", async () => {
     vi.useFakeTimers();
     const gw = new PiholeCpDashboardGateway("");
@@ -144,4 +174,5 @@ describe("cpFabricTransport", () => {
     expect(received).toHaveLength(1);
     stop();
   });
+
 });

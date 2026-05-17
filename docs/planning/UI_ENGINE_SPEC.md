@@ -270,21 +270,37 @@ so the data contract stays truthful without shipping dead UI.
 
 `GroupSettingsOverlay` stays as-is (it's clean).
 
-### 4.5 `EventBus` (new, tiny)
+### 4.5 `FabricEventBus` (dashboard data plane)
 
-Wraps `DataGateway.subscribeFabricEvents`. Provides:
+**Status:** implemented as `createFabricEventBus` + `attachFabricBusKernel`
+(`apps/ui/src/lib/dashboard/`). The bus is **required** Svelte context
+(`FABRIC_EVENT_BUS`) on every dashboard mount; `TileHostContext.bus` is passed
+into each plugin tile.
 
 ```ts
-interface EventBus {
+type FabricEventBus = {
   subscribe<T>(topic: string, selector: (payload: unknown) => T | null,
                onValue: (v: T) => void): () => void;
-}
+  declareTransport(id: string): { setState(state: FabricConnectionState): void; release(): void };
+  connect(): () => void;  // Kea SSE → transport id `kea-sse`
+  emit(topic: string, payload: unknown): void;
+  connectionState: Readable<FabricConnectionState>;  // aggregated across transports
+};
 ```
 
-One subscription to SSE at the kernel, one dispatcher. Plugins subscribe by
-topic (`"fabric.perf.updated"`, `"discovery.scan.updated"`, …) in their
-`dataHook`. No more `liveCpuPercent` prop drilled from `App.svelte` through
-`DashboardHost`.
+**Transports** (only place that may poll or own `EventSource`):
+
+| Transport | Module | Feeds topics |
+| --- | --- | --- |
+| Kea SSE | `eventBus.connect()` | `fabric.perf.updated`, `fabric.discovery.scan.updated`, `fabric.dhcp.clients.updated`, … |
+| Pi-hole CP perf | `transports/cpFabricTransport.ts` | `fabric.perf.updated` (`emit`) |
+
+**Plugins** use `plugins/pluginDataBus.ts` — one-shot `gateway` GET for bootstrap,
+then `bus.subscribe` by topic. No `setInterval` in `lib/plugins/` (CI guard).
+Topic registry: [events.md](../architecture/events.md) §Fabric topic registry.
+
+Shell headers show aggregated `connectionState` (`open` if any transport is
+connected) via `FabricBusConnectionBadge.svelte`.
 
 ---
 
@@ -297,7 +313,7 @@ type DashboardTileProps = {
   tile: DashboardTile;           // id, grid, options, hostControl, displayMode
   manifest: UiDashboardManifest; // from API (supports_compact, allowed_host_controls, …)
   gateway: DataGateway;
-  bus: EventBus;
+  bus: FabricEventBus;
   hostContext: {
     inGroup: boolean;
     containerColumns: number;    // 12 on root; G on inner grid
@@ -488,11 +504,12 @@ as the canonical contract. Runtime types mirror it exactly.
 
 ### 7.2 SSE fan-out
 
-- One `EventSource` at boot, owned by the `EventBus`.
-- `EventBus.subscribe(topic, selector, onValue)` is the only way tiles receive
-  SSE data.
-- Reconnect with exponential backoff on `onerror`; expose connection state on
-  the bus for the shell status indicator.
+- One `EventSource` per bus instance, owned by `FabricEventBus.connect()` (Kea
+  transport). CP and other bridges use `bus.emit` or additional transports.
+- `bus.subscribe(topic, selector, onValue)` (via `pluginDataBus`) is the only way
+  tiles receive live data after bootstrap.
+- Reconnect with exponential backoff on `onerror`; aggregated `connectionState`
+  on the bus drives `FabricBusConnectionBadge` in shell headers.
 
 ### 7.3 Auth
 

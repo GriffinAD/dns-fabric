@@ -24,6 +24,7 @@ export function startPiholeCpPerfPolling(
     sampleMs?: number;
     uiAverageSamples?: number;
     diskRefreshMs?: number;
+    onFirstEmit?: () => void;
   },
 ): () => void {
   const sampleMs = opts?.sampleMs ?? PIHOLE_CP_PERF_SAMPLE_MS;
@@ -66,6 +67,7 @@ export function startPiholeCpPerfPolling(
     if (!firstEmitDone) {
       firstEmitDone = true;
       emitToUi(snap);
+      opts?.onFirstEmit?.();
       bucket = [];
       return;
     }
@@ -95,5 +97,14 @@ export function attachCpFabricTransport(
     diskRefreshMs?: number;
   },
 ): () => void {
-  return startPiholeCpPerfPolling(gateway, bus, opts);
+  const transport = bus.declareTransport("cp-perf");
+  transport.setState("connecting");
+  const stopPoll = startPiholeCpPerfPolling(gateway, bus, {
+    ...opts,
+    onFirstEmit: () => transport.setState("open"),
+  });
+  return () => {
+    stopPoll();
+    transport.release();
+  };
 }

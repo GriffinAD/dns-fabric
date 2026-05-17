@@ -218,9 +218,12 @@ copy-pasting Card + Table + gauge markup:
 - **`MetricList`** — monospace list lines for percent-only / summary modes.
 - **`GaugeTileLayout`** — Card chrome + title + loading/error for gauge-class tiles.
 - **`TablePluginShell`** — titled list tables with compact summary + full table paths.
-- **`createFabricEventBus`** — single `EventSource` subscription; plugins use
-  `getContext(FABRIC_EVENT_BUS)` and `subscribe(topic, selector, onValue)` (see
-  [events.md](events.md) §Operator UI).
+- **`FabricEventBus` (data plane)** — mandatory dashboard kernel context from
+  `attachFabricBusKernel`. Kea SSE and CP bridges are **transports** into the bus;
+  plugins consume via `pluginDataBus.ts` (`subscribeWithInitialFetch`, list refetch
+  helpers). `DataGateway` is for mutations and one-shot bootstrap GETs only — not
+  tile `setInterval` polling. See [events.md](events.md) §Operator UI — FabricEventBus
+  data plane and topic registry.
 
 `lib/plugins/` must not import `lib/dashboard/*` except `types` and `eventBus`
 (enforced by `npm run check:ui-plugin-dashboard-imports`). Layout math shared
@@ -270,8 +273,8 @@ Authoritative code paths (operator UI, Svelte 5):
 - **Host + fault isolation:** `DashboardHost.svelte`, `PluginTileMount.svelte`,
   `TileErrorBoundary.svelte`, `TileFallback.svelte`, `TileHostControl.svelte` —
   [ADR-0049](../adr/ADR-0049-operator-dashboard-fault-isolation-host-controls-v1.md).
-- **Event fan-out:** `apps/ui/src/lib/dashboard/eventBus.ts`
-  (`createFabricEventBus`, `FABRIC_EVENT_BUS` context).
+- **Event fan-out:** `eventBus.ts`, `fabricBusKernel.ts`, `transports/*`,
+  `plugins/pluginDataBus.ts` (`FABRIC_EVENT_BUS` required on every dashboard mount).
 - **E2E:** `apps/ui/tests/e2e/*.e2e.ts` (dashboard, plugin isolation, render parity).
 - **Icons / fonts:** `specs/contracts/registry.json` + `KfIcon` (ADR-0016);
   self-hosted fonts in `apps/ui/src/main.ts` (ADR-0017).
