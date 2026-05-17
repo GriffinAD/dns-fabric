@@ -8,9 +8,9 @@
   import Trash2 from "lucide-svelte/icons/trash-2";
 
   import type { PluginEntry } from "../../api/types";
-  import DashboardReadNestedHost from "../DashboardReadNestedHost.svelte";
-  import TileEditChrome from "../TileEditChrome.svelte";
-  import { groupOuterColSpan } from "../gridPlacement";
+  import DashboardReadNestedHost from "../pages/DashboardReadNestedHost.svelte";
+  import TileEditChrome from "../tiles/TileEditChrome.svelte";
+  import { groupOuterColSpan } from "../grid/gridPlacement";
   import { reorderByTarget } from "../interactions/dashboardSveltedndApply";
   import type { DashboardDragPayload } from "../interactions/dashboardSveltedndTypes";
   import {
@@ -21,7 +21,7 @@
     tabStripCellPayload,
   } from "../interactions/dashboardSveltedndTypes";
   import { editorDndDragAttrs as dndDragAttrs, editorDndDropAttrs as dndDropAttrs } from "../interactions/editorChrome";
-  import { dedupeById } from "../layoutTree";
+  import { dedupeById } from "../layout/layoutTree";
   import type { DashboardGroup, DashboardTile, GroupChild } from "../types";
   import { isDashboardGroupNode, MAX_TAB_GROUP_CHILDREN } from "../types";
   import TabGroupHost from "./TabGroupHost.svelte";
@@ -138,7 +138,8 @@
 
   function deleteTab(childId: string) {
     if (children.length <= 1) return;
-    const label = tabStripLabel(children.find((c) => c.id === childId) ?? { id: childId });
+    const child = children.find((c) => c.id === childId);
+    const label = child ? tabStripLabel(child) : childId;
     if (!window.confirm(`Remove tab “${label}”?`)) return;
     try {
       commit(removeTabChild(group, childId));

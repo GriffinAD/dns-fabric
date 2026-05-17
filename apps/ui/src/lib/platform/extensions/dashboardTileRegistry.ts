@@ -7,4 +7,4 @@ export {
   type PluginRegistration,
   type ResolvedPluginMount,
   type TileHostContext,
-} from "../../plugins/registry";
+} from "../../plugins/core/registry";

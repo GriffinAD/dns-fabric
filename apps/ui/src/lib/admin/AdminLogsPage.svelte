@@ -2,10 +2,10 @@
   import Card from "flowbite-svelte/Card.svelte";
   import { onMount } from "svelte";
 
-  import BaseDataTable from "../components/BaseDataTable.svelte";
-  import type { BaseDataTableColumn } from "../components/baseDataTable";
-  import { defaultBaseDataTableSettings, mergeBaseDataTableSettings } from "../components/baseDataTable";
-  import type { DataGateway } from "../dataGateway";
+  import BaseDataTable from "../components/baseDataTable/BaseDataTable.svelte";
+  import type { BaseDataTableColumn } from "../components/baseDataTable/baseDataTable";
+  import { defaultBaseDataTableSettings, mergeBaseDataTableSettings } from "../components/baseDataTable/baseDataTable";
+  import type { DataGateway } from "../gateway/dataGateway";
   import type { AdminLogRecord, LogLevel } from "../api/types";
 
   let { gateway }: { gateway: DataGateway } = $props();

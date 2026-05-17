@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { TileDisplayStyle } from "../../api/types";
   import type { DashboardTile } from "../../dashboard/types";
-  import { clampGridColSpan } from "../builtinMeta";
+  import { clampGridColSpan } from "../core/builtinMeta";
   import PerfGaugeGradientSelect from "./PerfGaugeGradientSelect.svelte";
 
   let { draft = $bindable() }: { draft: DashboardTile } = $props();

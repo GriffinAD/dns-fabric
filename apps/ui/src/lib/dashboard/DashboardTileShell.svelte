@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import TileEditChrome from "./TileEditChrome.svelte";
+  import TileEditChrome from "./tiles/TileEditChrome.svelte";
   import { EDITOR_LAYOUT_ELEVATED_CLASS } from "./interactions/editorChrome";
   import type { DashboardTile } from "./types";
 

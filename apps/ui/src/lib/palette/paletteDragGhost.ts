@@ -1,5 +1,5 @@
 import type { DashboardTile } from "../dashboard/types";
-import { tileColSpanForPlugin } from "../plugins/pluginGridPolicy";
+import { tileColSpanForPlugin } from "../plugins/core/pluginGridPolicy";
 
 export const PALETTE_DRAG_IMAGE_ID = "__palette-drag-image__";
 

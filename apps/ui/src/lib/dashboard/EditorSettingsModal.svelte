@@ -11,7 +11,7 @@
     DASHBOARD_GAP_MIN_PX,
     loadDashboardSettings,
     saveDashboardSettings,
-  } from "./dashboardSettings";
+  } from "./layout/dashboardSettings";
   import {
     type ColorPreset,
     applyDocumentTheme,

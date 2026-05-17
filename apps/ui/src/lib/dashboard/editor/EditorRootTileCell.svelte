@@ -8,8 +8,8 @@
     effectiveColSpan,
     gridAreaStyle,
     gridColumnSpanStyle,
-  } from "../gridPlacement";
-  import type { DashboardDndListItem } from "../groupDndFinalize";
+  } from "../grid/gridPlacement";
+  import type { DashboardDndListItem } from "../grid/groupDndFinalize";
   import {
     EDITOR_LAYOUT_ELEVATED_CLASS,
     EDITOR_PLUGIN_CAPTION_BAR_CLASS,
@@ -21,7 +21,7 @@
     rootSlotContainer,
   } from "../interactions/dashboardSveltedndTypes";
   import TileColSpanResizeHandle from "./TileColSpanResizeHandle.svelte";
-  import TileEditChrome from "../TileEditChrome.svelte";
+  import TileEditChrome from "../tiles/TileEditChrome.svelte";
   import type { DashboardTile, RootLayoutItem } from "../types";
 
   const TILE_HANDLE = '[data-testid="editor-tile-drag-handle"]';

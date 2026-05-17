@@ -1,4 +1,8 @@
-import { findGroupByIdInItems, mapLayoutReplaceGroupById, mapTileInLayout } from "../layoutTree";
+import {
+  findGroupByIdInItems,
+  mapLayoutReplaceGroupById,
+  mapTileInLayout,
+} from "../layout/layoutTree";
 import {
   clampGridColSpan,
   GRID_COLUMNS,

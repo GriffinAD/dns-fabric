@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import EditorSettingsModal from "./EditorSettingsModal.svelte";
-import { saveDashboardSettings } from "./dashboardSettings";
+import { saveDashboardSettings } from "./layout/dashboardSettings";
 import { applyDocumentTheme, loadThemePreferences, saveThemePreferences } from "../theme/themeStorage";
 
 let lsStore: Record<string, string>;

@@ -1,6 +1,6 @@
 import { getContext } from "svelte";
 
-import type { DataGateway } from "../dataGateway";
+import type { DataGateway } from "../gateway/dataGateway";
 import { createFabricEventBus, FABRIC_EVENT_BUS, type FabricEventBus } from "./eventBus";
 
 export type FabricBusKernel = {

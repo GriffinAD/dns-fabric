@@ -1,7 +1,7 @@
 import type { DragDropState } from "@thisux/sveltednd";
 import { dndState } from "@thisux/sveltednd";
 
-import type { DashboardDndListItem } from "../groupDndFinalize";
+import type { DashboardDndListItem } from "../grid/groupDndFinalize";
 import { applyDashboardInvalidDrop } from "./dashboardSveltedndApply";
 import {
   parseDropContainer,
@@ -96,7 +96,7 @@ export function syncEditorDragHoverFromPointer(
     const container = nextHover.getAttribute(DND_CONTAINER_ATTR);
     if (container) {
       dndState.targetContainer = container;
-      dndState.targetElement = hit instanceof Element ? hit : nextHover;
+      dndState.targetElement = hit instanceof HTMLElement ? hit : nextHover;
       syncDropPositionFromPointer(container, nextHover, hit, clientX, clientY);
     }
   } else {

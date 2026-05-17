@@ -1,4 +1,4 @@
-import { tileColSpanForPlugin } from "../../plugins/builtinMeta";
+import { tileColSpanForPlugin } from "../../plugins/core/builtinMeta";
 import {
   clampGridColSpan,
   GRID_COLUMNS,

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { clampGridColSpan } from "../../plugins/builtinMeta";
+  import { clampGridColSpan } from "../../plugins/core/builtinMeta";
 
   let {
     colSpan,

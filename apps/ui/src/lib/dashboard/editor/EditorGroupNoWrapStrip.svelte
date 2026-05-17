@@ -2,12 +2,12 @@
   import type { DragDropState } from "@thisux/sveltednd";
   import { droppable } from "@thisux/sveltednd";
   import type { Snippet } from "svelte";
-  import { effectiveColSpan, groupOuterColSpan } from "../gridPlacement";
+  import { effectiveColSpan, groupOuterColSpan } from "../grid/gridPlacement";
   import {
     type DashboardDndListItem,
     dndListItemToDashboardTile,
     isDndCellGroup,
-  } from "../groupDndFinalize";
+  } from "../grid/groupDndFinalize";
   import type { DashboardDragPayload } from "../interactions/dashboardSveltedndTypes";
   import {
     groupAppendContainer,
@@ -15,7 +15,7 @@
     groupEmptyContainer,
     groupGapAfterContainer,
   } from "../interactions/dashboardSveltedndTypes";
-  import { DASHBOARD_STRIP_GAP_2_PX, flexStripDistributedWidth } from "../stripWidth";
+  import { DASHBOARD_STRIP_GAP_2_PX, flexStripDistributedWidth } from "../layout/stripWidth";
   import { editorDndDropAttrs as dndDropAttrs } from "../interactions/editorChrome";
   import EditorGroupChildTile from "./EditorGroupChildTile.svelte";
   import EditorGroupNestedNoWrapShell from "./EditorGroupNestedNoWrapShell.svelte";

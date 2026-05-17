@@ -4,12 +4,12 @@
   import type { Snippet } from "svelte";
   import GripVertical from "lucide-svelte/icons/grip-vertical";
   import Pencil from "lucide-svelte/icons/pencil";
-  import { effectiveColSpan, groupOuterColSpan } from "../gridPlacement";
+  import { effectiveColSpan, groupOuterColSpan } from "../grid/gridPlacement";
   import {
     type DashboardDndListItem,
     dndListItemToDashboardTile,
     isDndCellGroup,
-  } from "../groupDndFinalize";
+  } from "../grid/groupDndFinalize";
   import { nestedContainerDisplayTitle } from "../interactions/editorChrome";
   import type { DashboardDragPayload } from "../interactions/dashboardSveltedndTypes";
   import {
@@ -17,7 +17,7 @@
     groupChildSlotContainer,
     groupEmptyContainer,
   } from "../interactions/dashboardSveltedndTypes";
-  import { DASHBOARD_STRIP_GAP_1_PX, flexStripDistributedWidth } from "../stripWidth";
+  import { DASHBOARD_STRIP_GAP_1_PX, flexStripDistributedWidth } from "../layout/stripWidth";
   import {
     CONTAINER_DND_HANDLE,
     editorDndDragAttrs as dndDragAttrs,

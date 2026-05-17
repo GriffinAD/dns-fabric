@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import * as layoutNormalize from "./layoutNormalize";
+import * as layoutNormalize from "./layout/layoutNormalize";
 import { importDashboardLayoutFromJson } from "./layoutImport";
 
 describe("importDashboardLayoutFromJson", () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { mount, unmount } from "svelte";
 
-import { DataGateway } from "../dataGateway";
+import { DataGateway } from "../gateway/dataGateway";
 import { attachFabricBusKernel } from "./fabricBusKernel";
 import FabricBusContextHost from "./fabricBusContextHost.test.svelte";
 import FabricBusRequireProbe from "./fabricBusRequireProbe.test.svelte";

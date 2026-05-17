@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { DataGateway } from "../dataGateway";
+  import type { DataGateway } from "../gateway/dataGateway";
 
   let { gateway: _gateway }: { gateway: DataGateway } = $props();
 </script>

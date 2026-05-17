@@ -1,8 +1,8 @@
 import type { DragDropState } from "@thisux/sveltednd";
 
-import type { DashboardDndListItem } from "../groupDndFinalize";
-import { buildRootLayoutFromDnd, isDndCellGroup } from "../groupDndFinalize";
-import { dedupeById } from "../layoutTree";
+import type { DashboardDndListItem } from "../grid/groupDndFinalize";
+import { buildRootLayoutFromDnd, isDndCellGroup } from "../grid/groupDndFinalize";
+import { dedupeById } from "../layout/layoutTree";
 import {
   applyRootLayoutPointerDropPlacement,
   packRootLayoutItems,
@@ -11,8 +11,8 @@ import {
   reorderRootLayoutItemsPreservingSlotOrigins,
   swapRootItemGridPlacements,
   swapRootSingleRowTilePlacements,
-} from "../gridPlacement";
-import { findGroupByIdInItems } from "../layoutTree";
+} from "../grid/gridPlacement";
+import { findGroupByIdInItems } from "../layout/layoutTree";
 import type { DashboardLayout, RootLayoutItem } from "../types";
 
 import {
@@ -287,7 +287,24 @@ function rootInsertIndex(dndRoot: DashboardDndListItem[], slot: ParsedDropSlot, 
   return dropPosition === "before" ? idx : idx + 1;
 }
 
-function isRootSurfaceSlot(slot: ParsedDropSlot): boolean {
+type RootSurfaceSlot = Extract<
+  ParsedDropSlot,
+  { kind: "root" | "rootRowEnd" | "rootGapAfter" | "rootEmpty" | "rootCanvas" | "rootAppend" }
+>;
+type GroupSurfaceSlot = Extract<
+  ParsedDropSlot,
+  {
+    kind:
+      | "groupChild"
+      | "groupEmpty"
+      | "groupCanvas"
+      | "groupGapAfter"
+      | "groupAppend"
+      | "groupTabs";
+  }
+>;
+
+function isRootSurfaceSlot(slot: ParsedDropSlot): slot is RootSurfaceSlot {
   return (
     slot.kind === "root" ||
     slot.kind === "rootRowEnd" ||
@@ -298,7 +315,7 @@ function isRootSurfaceSlot(slot: ParsedDropSlot): boolean {
   );
 }
 
-function isGroupSurfaceSlot(slot: ParsedDropSlot): boolean {
+function isGroupSurfaceSlot(slot: ParsedDropSlot): slot is GroupSurfaceSlot {
   return (
     slot.kind === "groupChild" ||
     slot.kind === "groupEmpty" ||
@@ -312,8 +329,15 @@ function isGroupEndSlot(slot: ParsedDropSlot): boolean {
   return slot.kind === "groupEmpty" || slot.kind === "groupCanvas" || slot.kind === "groupAppend";
 }
 
-function isTabGroupSurfaceSlot(slot: ParsedDropSlot): boolean {
-  return isGroupSurfaceSlot(slot) || slot.kind === "groupTabs";
+function isTabGroupSurfaceSlot(slot: ParsedDropSlot): slot is GroupSurfaceSlot {
+  return (
+    slot.kind === "groupChild" ||
+    slot.kind === "groupEmpty" ||
+    slot.kind === "groupCanvas" ||
+    slot.kind === "groupGapAfter" ||
+    slot.kind === "groupAppend" ||
+    slot.kind === "groupTabs"
+  );
 }
 
 function isTabControlGroupInLayout(items: RootLayoutItem[], groupId: string): boolean {
@@ -416,7 +440,9 @@ export function applyDashboardDrop(
       const anchorId =
         slot.kind === "rootEmpty" || slot.kind === "rootCanvas" || slot.kind === "rootAppend"
           ? (ctx.dndRoot[ctx.dndRoot.length - 1]?.id ?? drag.i)
-          : slot.id;
+          : slot.kind === "root" || slot.kind === "rootRowEnd" || slot.kind === "rootGapAfter"
+            ? slot.id
+            : /* v8 ignore next */ drag.i;
       const tileBand =
         slot.kind === "root"
           ? resolveRootTileDropBand(

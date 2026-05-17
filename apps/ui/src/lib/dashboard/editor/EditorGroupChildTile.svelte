@@ -3,7 +3,7 @@
   import { draggable, droppable } from "@thisux/sveltednd";
   import type { Snippet } from "svelte";
   import GripVertical from "lucide-svelte/icons/grip-vertical";
-  import { effectiveColSpan, effectiveRowSpan } from "../gridPlacement";
+  import { effectiveColSpan, effectiveRowSpan } from "../grid/gridPlacement";
   import {
     EDITOR_PLUGIN_CAPTION_BAR_CLASS,
     EDITOR_PLUGIN_HOVER_SHELL,
@@ -21,7 +21,7 @@
     editorDndDropAttrs as dndDropAttrs,
   } from "../interactions/editorChrome";
   import TileColSpanResizeHandle from "./TileColSpanResizeHandle.svelte";
-  import TileEditChrome from "../TileEditChrome.svelte";
+  import TileEditChrome from "../tiles/TileEditChrome.svelte";
   import type { DashboardTile } from "../types";
 
   let {

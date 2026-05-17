@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createFabricEventBus } from "../eventBus";
-import { DataGateway } from "../../dataGateway";
+import { DataGateway } from "../../gateway/dataGateway";
 import { attachKeaSseTransport } from "./keaSseTransport";
 
 describe("attachKeaSseTransport", () => {

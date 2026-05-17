@@ -1,5 +1,5 @@
-import { PiholeCpDashboardGateway } from "./PiholeCpDashboardGateway";
-import { PiholeCpGateway } from "./PiholeCpGateway";
+import { PiholeCpDashboardGateway } from "./gateway/PiholeCpDashboardGateway";
+import { PiholeCpGateway } from "./gateway/PiholeCpGateway";
 
 export type PiholeCpSession = {
   baseUrl: string;

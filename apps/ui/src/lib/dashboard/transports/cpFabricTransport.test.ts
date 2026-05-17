@@ -3,7 +3,7 @@ import { get } from "svelte/store";
 
 import { createFabricEventBus, perfUpdatedFullSummary } from "../eventBus";
 import type { PerfSummaryResponse } from "../../api/types";
-import { PiholeCpDashboardGateway } from "../../piholeCp/PiholeCpDashboardGateway";
+import { PiholeCpDashboardGateway } from "../../piholeCp/gateway/PiholeCpDashboardGateway";
 import { attachCpFabricTransport, startPiholeCpPerfPolling } from "./cpFabricTransport";
 
 function snap(cpu: number, disk = 50): PerfSummaryResponse {

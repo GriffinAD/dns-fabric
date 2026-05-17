@@ -146,6 +146,7 @@ Expected: PASS (100% line coverage on enforced paths).
 ### Task 1.2: Create `components/baseDataTable/`
 
 **Files:**
+
 - Move: all `BaseDataTable*`, `baseDataTable.ts`, `tableRowModel.ts`, `tableExport.ts`, `tableValidation.ts` (+ co-located tests/harnesses) → `components/baseDataTable/`
 
 - [ ] **Step 1: Move files**
@@ -303,6 +304,7 @@ git commit -s -am "refactor(ui): split components into basePagination, gauge, ed
 ### Task 1.4: Vitest coverage paths for components
 
 **Files:**
+
 - Modify: `apps/ui/vite.config.ts` (`coverage.exclude` entries)
 
 - [ ] **Step 1: Update exclude paths**
@@ -346,6 +348,7 @@ git commit -s -m "chore(ui): align vitest coverage excludes with component folde
 ### Task 2.1: `plugins/core/`
 
 **Files:**
+
 - Move: `registry.ts`, `registry.test.ts`, `builtinMeta.ts`, `builtinMeta.test.ts`, `pluginGridPolicy.ts`, `pluginDataBus.ts`, `pluginDataBus.test.ts`, `pluginDataBusUseProbe.test.svelte`, `tileOptionsZod.ts`, `tileDisplay.ts`, `tileDisplay.test.ts`
 
 - [ ] **Step 1: Move core runtime**
@@ -424,6 +427,7 @@ git commit -s -am "refactor(ui): move plugin registry and shared runtime to plug
 ### Task 2.2: Tile folders `dhcp/`, `discovery/`, `perf/`, `fixtures/`
 
 **Files:**
+
 - Move tile Svelte files; merge root `perf/` helpers with tile files where logical.
 
 - [ ] **Step 1: Move DHCP tiles**
@@ -495,6 +499,7 @@ git commit -s -am "refactor(ui): group built-in tiles under plugins/dhcp, discov
 ### Task 3.1: Gateway + session + meta
 
 **Files:**
+
 - Move: `PiholeCpGateway.ts`, `PiholeCpGateway.test.ts`, `PiholeCpDashboardGateway.ts`, `PiholeCpDashboardGateway.test.ts`, `piholeCpSession.ts`, `piholeCpSession.test.ts`, `piholeCpApiToken.ts`, `piholeCpApiToken.test.ts`, `piholeCpUiVersion.ts`, `piholeCpUiVersion.test.ts`
 
 - [ ] **Step 1: Move**
@@ -633,6 +638,7 @@ git commit -s -am "refactor(ui): organize piholeCp into shell, layout, perf, env
 ### Task 4.1: App shell and gateway
 
 **Files:**
+
 - Move: `appDashboardShell.ts`, `appMount.ts`, `operatorBoot.ts` (+ tests) → `lib/app/`
 - Move: `dataGateway.ts` (+ test) → `lib/gateway/`
 - Move: `uiVersion.ts` (+ test) → `lib/version/`
@@ -722,6 +728,7 @@ git commit -s -am "refactor(ui): move app shell, gateway, and version out of lib
 ### Task 5.1: Refresh architecture map
 
 **Files:**
+
 - Modify: `docs/architecture/ui-component-and-service-map.md` (§ file path tables, `DataGateway` path, component paths)
 
 - [ ] **Step 1: Update path references**

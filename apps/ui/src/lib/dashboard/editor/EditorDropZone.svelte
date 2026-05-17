@@ -1,7 +1,7 @@
 <script lang="ts">
   import { droppable } from "@thisux/sveltednd";
   import type { Snippet } from "svelte";
-  import type { DashboardDndListItem } from "../groupDndFinalize";
+  import type { DashboardDndListItem } from "../grid/groupDndFinalize";
   import type { DashboardDragPayload } from "../interactions/dashboardSveltedndTypes";
   import {
     ROOT_EMPTY_CONTAINER,

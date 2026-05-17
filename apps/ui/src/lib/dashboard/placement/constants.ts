@@ -1,6 +1,6 @@
-import { GRID_COLUMNS } from "../../plugins/builtinMeta";
+import { GRID_COLUMNS } from "../../plugins/core/builtinMeta";
 
-export { clampGridColSpan, GRID_COLUMNS } from "../../plugins/builtinMeta";
+export { clampGridColSpan, GRID_COLUMNS } from "../../plugins/core/builtinMeta";
 
 /** Max vertical span of a single tile (dashboard rows are unbounded). */
 export const GRID_ROW_SPAN_MAX = 12;

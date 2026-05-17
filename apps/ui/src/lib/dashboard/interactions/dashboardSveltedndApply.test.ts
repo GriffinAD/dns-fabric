@@ -1,7 +1,7 @@
 import type { DragDropState } from "@thisux/sveltednd";
 import { describe, expect, it, vi } from "vitest";
 
-import type { DashboardDndListItem } from "../groupDndFinalize";
+import type { DashboardDndListItem } from "../grid/groupDndFinalize";
 import type { DashboardGroup, RootLayoutItem } from "../types";
 
 import {

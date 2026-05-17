@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { findTileInLayout, iterateTilesInLayout } from "../layoutTree";
+  import { findTileInLayout, iterateTilesInLayout } from "../layout/layoutTree";
   import type { DashboardLayoutV3 } from "../types";
   import { editorSelection } from "./editorState";
 

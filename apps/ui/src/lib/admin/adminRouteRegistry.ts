@@ -1,6 +1,6 @@
 import type { Component } from "svelte";
 
-import type { DataGateway } from "../dataGateway";
+import type { DataGateway } from "../gateway/dataGateway";
 import AdminLogsPage from "./AdminLogsPage.svelte";
 import AdminRegistrySamplePage from "./AdminRegistrySamplePage.svelte";
 

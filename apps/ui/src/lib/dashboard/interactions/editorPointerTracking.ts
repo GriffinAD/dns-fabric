@@ -1,5 +1,5 @@
 import { clearEditorDragHover, syncEditorDragHoverFromPointer } from "./dashboardEditorDragHover";
-import type { DashboardDndListItem } from "../groupDndFinalize";
+import type { DashboardDndListItem } from "../grid/groupDndFinalize";
 
 export type EditorPointerTrackingHandlers = {
   onPointer: (pt: { x: number; y: number }) => void;

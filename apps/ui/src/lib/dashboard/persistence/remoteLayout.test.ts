@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { DataGateway } from "../../dataGateway";
+import { DataGateway } from "../../gateway/dataGateway";
 import { flushLayoutToServer, postLayoutSaveFileSnapshot } from "./remoteLayout";
 
 describe("remoteLayout", () => {

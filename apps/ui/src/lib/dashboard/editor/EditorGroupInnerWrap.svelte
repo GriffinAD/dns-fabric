@@ -2,12 +2,12 @@
   import type { DragDropState } from "@thisux/sveltednd";
   import { droppable } from "@thisux/sveltednd";
   import type { Snippet } from "svelte";
-  import { groupOuterColSpan } from "../gridPlacement";
+  import { groupOuterColSpan } from "../grid/gridPlacement";
   import {
     type DashboardDndListItem,
     dndListItemToDashboardTile,
     isDndCellGroup,
-  } from "../groupDndFinalize";
+  } from "../grid/groupDndFinalize";
   import type { DashboardDragPayload } from "../interactions/dashboardSveltedndTypes";
   import {
     groupCanvasContainer,

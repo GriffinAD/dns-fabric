@@ -4,8 +4,8 @@
   import type { Snippet } from "svelte";
   import GripVertical from "lucide-svelte/icons/grip-vertical";
   import Pencil from "lucide-svelte/icons/pencil";
-  import { gridAreaStyle, groupOuterColSpan } from "../gridPlacement";
-  import type { DashboardDndListItem } from "../groupDndFinalize";
+  import { gridAreaStyle, groupOuterColSpan } from "../grid/gridPlacement";
+  import type { DashboardDndListItem } from "../grid/groupDndFinalize";
   import {
     CONTAINER_DND_HANDLE,
     EDITOR_LAYOUT_ELEVATED_CLASS,
@@ -14,7 +14,7 @@
   } from "../interactions/editorChrome";
   import type { DashboardDragPayload } from "../interactions/dashboardSveltedndTypes";
   import { rootCellPayload, rootSlotContainer } from "../interactions/dashboardSveltedndTypes";
-  import { dedupeById } from "../layoutTree";
+  import { dedupeById } from "../layout/layoutTree";
   import TabGroupHost from "../groups/TabGroupHost.svelte";
   import EditorGroupInnerWrap from "./EditorGroupInnerWrap.svelte";
   import EditorGroupNoWrapStrip from "./EditorGroupNoWrapStrip.svelte";

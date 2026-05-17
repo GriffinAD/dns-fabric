@@ -5,9 +5,10 @@
   import GripVertical from "lucide-svelte/icons/grip-vertical";
 
   import type { PluginEntry } from "../api/types";
-  import type { DataGateway } from "../dataGateway";
+  import type { DataGateway } from "../gateway/dataGateway";
   import type { FabricEventBus } from "../dashboard/eventBus";
-  import PluginTileMount from "../dashboard/PluginTileMount.svelte";
+  import { pluginIdsEqual } from "../plugins/core/pluginIds";
+  import PluginTileMount from "../dashboard/tiles/PluginTileMount.svelte";
   import type { DashboardTile } from "../dashboard/types";
   import {
     PALETTE_ADD_GROUP_CONTAINER,
@@ -65,7 +66,7 @@
 
   function preparePluginDragImage(pluginId: string): void {
     if (!gateway) return;
-    if (dragImageTile?.pluginId === pluginId) return;
+    if (dragImageTile && pluginIdsEqual(dragImageTile.pluginId, pluginId)) return;
     dragImageTile = buildPaletteDragImageTile(pluginId);
   }
 

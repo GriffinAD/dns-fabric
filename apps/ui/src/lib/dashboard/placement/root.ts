@@ -1,4 +1,4 @@
-import { ensureLayoutV3 } from "../layoutTree";
+import { ensureLayoutV3 } from "../layout/layoutTree";
 import { cloneLayoutJson } from "./clone";
 import { GRID_COLUMNS, clampGridColSpan } from "./constants";
 import type {

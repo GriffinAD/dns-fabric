@@ -216,7 +216,6 @@ describe("layoutUpgrade v3", () => {
 
   it("wrapLegacyTabControlTile produces tab group with single-panel child", () => {
     const wrapped = wrapLegacyTabControlTile({
-      kind: "tile",
       id: "legacy-tab",
       pluginId: "perf.cpu",
       hostControl: "tab-control",

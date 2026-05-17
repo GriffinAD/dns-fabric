@@ -1,6 +1,6 @@
 import type { FabricEventBus } from "../eventBus";
 import type { PerfSummaryResponse } from "../../api/types";
-import type { PiholeCpDashboardGateway } from "../../piholeCp/PiholeCpDashboardGateway";
+import type { PiholeCpDashboardGateway } from "../../piholeCp/gateway/PiholeCpDashboardGateway";
 import {
   averagePerfSamples,
   extractDiskSnapshot,
@@ -8,13 +8,13 @@ import {
   PIHOLE_CP_PERF_SAMPLE_MS,
   PIHOLE_CP_PERF_UI_AVERAGE_SAMPLES,
   withDiskSnapshot,
-} from "../../piholeCp/piholeCpPerfAggregate";
+} from "../../piholeCp/perf/piholeCpPerfAggregate";
 
 export {
   PIHOLE_CP_PERF_DISK_REFRESH_MS,
   PIHOLE_CP_PERF_SAMPLE_MS,
   PIHOLE_CP_PERF_UI_AVERAGE_SAMPLES,
-} from "../../piholeCp/piholeCpPerfAggregate";
+} from "../../piholeCp/perf/piholeCpPerfAggregate";
 
 /** Sole owner of CP perf sampling; publishes only via `bus.emit("fabric.perf.updated", ...)`. */
 export function startPiholeCpPerfPolling(

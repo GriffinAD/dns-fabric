@@ -1,4 +1,4 @@
-import type { DataGateway } from "../../dataGateway";
+import type { DataGateway } from "../../gateway/dataGateway";
 import type { FabricEventBus } from "../eventBus";
 
 /**

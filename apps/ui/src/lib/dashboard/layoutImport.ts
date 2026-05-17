@@ -1,5 +1,5 @@
-import { normalizeLayoutStrict } from "./layoutNormalize";
-import { parseDashboardLayout } from "./layoutStorage";
+import { normalizeLayoutStrict } from "./layout/layoutNormalize";
+import { parseDashboardLayout } from "./layout/layoutStorage";
 import { ensureLayoutV3 } from "./migration";
 import type { DashboardLayoutV3 } from "./types";
 

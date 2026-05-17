@@ -1,7 +1,7 @@
 <script lang="ts">
   import Button from "flowbite-svelte/Button.svelte";
 
-  import type { LayoutStore } from "../layoutStore";
+  import type { LayoutStore } from "../layout/layoutStore";
 
   let { ls }: { ls: LayoutStore } = $props();
 </script>

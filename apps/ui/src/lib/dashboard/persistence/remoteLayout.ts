@@ -1,4 +1,4 @@
-import type { DataGateway } from "../../dataGateway";
+import type { DataGateway } from "../../gateway/dataGateway";
 import type { DashboardLayoutV3 } from "../types";
 
 /** Immediate PUT of the current layout document (debounce lives in `layoutStore`). */

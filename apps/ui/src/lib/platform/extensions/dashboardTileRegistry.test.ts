@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createFabricEventBus } from "../../dashboard/eventBus";
-import { DataGateway } from "../../dataGateway";
+import { DataGateway } from "../../gateway/dataGateway";
 import { resolvePluginTileMount } from "./dashboardTileRegistry";
 
 describe("dashboardTileRegistry", () => {

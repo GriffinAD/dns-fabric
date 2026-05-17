@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mount, unmount } from "svelte";
 
 import { createFabricEventBus } from "../dashboard/eventBus";
-import type { DataGateway } from "../dataGateway";
+import type { DataGateway } from "../gateway/dataGateway";
 import {
   requireFabricBus,
   subscribeListWithInitialFetch,
@@ -73,7 +73,7 @@ describe("subscribeListWithInitialFetch", () => {
         p && typeof p === "object" && "items" in p
           ? ((p as { items: { id: string }[] }).items ?? null)
           : null,
-      onItems: (items) => seen.push(items.map((i) => i.id)),
+      onItems: (items) => seen.push((items as { id: string }[]).map((i) => i.id)),
     });
     await Promise.resolve();
     bus.emit("fabric.dhcp.clients.updated", { items: [{ id: "b" }] });
@@ -97,7 +97,7 @@ describe("subscribeListWithInitialFetch", () => {
         p && typeof p === "object" && "items" in p
           ? ((p as { items: { id: string }[] }).items ?? null)
           : null,
-      onItems: (items) => seen.push(items.map((i) => i.id)),
+      onItems: (items) => seen.push((items as { id: string }[]).map((i) => i.id)),
     });
     await Promise.resolve();
     expect(seen).toEqual([["a"]]);
@@ -117,7 +117,7 @@ describe("subscribeListWithInitialFetch", () => {
       topic: "fabric.dhcp.pools.updated",
       fetch,
       parseItems: () => null,
-      onItems: (items) => seen.push(items.map((i) => i.id)),
+      onItems: (items) => seen.push((items as { id: string }[]).map((i) => i.id)),
     });
     await Promise.resolve();
     bus.emit("fabric.dhcp.pools.updated", "ignored");
