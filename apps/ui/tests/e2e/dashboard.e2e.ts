@@ -482,7 +482,7 @@ test("export layout downloads JSON", async ({ page }) => {
   await page.getByRole("button", { name: "Edit layout" }).click();
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByLabel("Layout").selectOption("export"),
+    page.getByTestId("layout-file-menu").getByRole("combobox").selectOption("export"),
   ]);
   expect(download.suggestedFilename()).toMatch(/Dashboard_Layout_.*\.json/);
 });
