@@ -2,16 +2,16 @@
   import Button from "flowbite-svelte/Button.svelte";
   import Modal from "flowbite-svelte/Modal.svelte";
   import ArrowLeft from "lucide-svelte/icons/arrow-left";
-  import Download from "lucide-svelte/icons/download";
+  import Cog from "lucide-svelte/icons/cog";
   import House from "lucide-svelte/icons/house";
   import Pencil from "lucide-svelte/icons/pencil";
   import Save from "lucide-svelte/icons/save";
   import Settings from "lucide-svelte/icons/settings";
-  import Upload from "lucide-svelte/icons/upload";
 
   import ThemeControls from "../theme/ThemeControls.svelte";
   import { UI_VERSION } from "../uiVersion";
-  import DashboardControls from "./DashboardControls.svelte";
+  import EditorSettingsModal from "./EditorSettingsModal.svelte";
+  import LayoutMenuSelect from "./LayoutMenuSelect.svelte";
   import FabricBusConnectionBadge from "./FabricBusConnectionBadge.svelte";
   import type { FabricEventBus } from "./eventBus";
   import { importDashboardLayoutFromJson } from "./layoutImport";
@@ -51,6 +51,7 @@
 
   let resetConfirmOpen = $state(false);
   let importConfirmOpen = $state(false);
+  let editorSettingsOpen = $state(false);
   let pendingImportLayout = $state<DashboardLayout | null>(null);
   let layoutFileInput = $state<HTMLInputElement | undefined>(undefined);
 
@@ -96,7 +97,12 @@
   }
 
   $effect(() => {
-    if (!editorOpen) resetConfirmOpen = false;
+    if (!editorOpen) {
+      resetConfirmOpen = false;
+      importConfirmOpen = false;
+      editorSettingsOpen = false;
+      pendingImportLayout = null;
+    }
   });
 
   /** Height-only (zero width) so it does not widen icon columns — matches ThemeControls label band on sm+. */
@@ -127,11 +133,36 @@
     class="flex w-full min-w-0 flex-col items-stretch gap-3 sm:max-w-none sm:flex-1 sm:items-end"
     data-testid="app-header-actions"
   >
-    <div class="flex w-full flex-wrap items-end justify-end gap-3">
-      <ThemeControls showAccent={route === "home" && editorOpen} />
-      {#if route === "home" && editorOpen}
-        <DashboardControls />
-      {/if}
+    <div class="flex w-full flex-wrap items-end justify-end gap-2">
+      <div class="flex items-end gap-2">
+        <ThemeControls showAccent={false} toolbarRow={route === "home" && editorOpen} />
+        {#if route === "home" && editorOpen}
+          <div class="flex flex-col items-end">
+            <span class={headerLabelBandSpacerClass} aria-hidden="true"></span>
+            <Button
+              type="button"
+              color="alternative"
+              size="sm"
+              class="!p-2 shrink-0"
+              aria-label="Display settings"
+              data-testid="editor-display-settings-open"
+              onclick={() => (editorSettingsOpen = true)}
+            >
+              <Cog class="h-5 w-5" aria-hidden="true" />
+            </Button>
+          </div>
+          <LayoutMenuSelect onExport={exportLayout} onImport={openLayoutFilePicker} />
+          <input
+            bind:this={layoutFileInput}
+            type="file"
+            accept="application/json,.json"
+            class="hidden"
+            aria-hidden="true"
+            tabindex={-1}
+            onchange={onLayoutFileSelected}
+          />
+        {/if}
+      </div>
       {#if route === "admin"}
         <Button
           type="button"
@@ -163,39 +194,8 @@
           <div
             role="toolbar"
             aria-label="Dashboard mode"
-            class="flex flex-wrap items-end {editorOpen ? 'gap-3' : 'gap-1'}"
+            class="flex flex-wrap items-end gap-1"
           >
-            <Button
-              type="button"
-              color="alternative"
-              size="sm"
-              class="inline-flex shrink-0 items-center gap-2"
-              aria-label="Export layout"
-              onclick={exportLayout}
-            >
-              <Download class="h-4 w-4" aria-hidden="true" />
-              Export layout
-            </Button>
-            <Button
-              type="button"
-              color="alternative"
-              size="sm"
-              class="inline-flex shrink-0 items-center gap-2"
-              aria-label="Import layout"
-              onclick={openLayoutFilePicker}
-            >
-              <Upload class="h-4 w-4" aria-hidden="true" />
-              Import layout
-            </Button>
-            <input
-              bind:this={layoutFileInput}
-              type="file"
-              accept="application/json,.json"
-              class="hidden"
-              aria-hidden="true"
-              tabindex={-1}
-              onchange={onLayoutFileSelected}
-            />
             {#if editorOpen}
               <Button
                 type="button"
@@ -248,6 +248,7 @@
 </header>
 
 {#if route === "home"}
+  <EditorSettingsModal bind:open={editorSettingsOpen} />
   <Modal bind:open={resetConfirmOpen} title="Reset dashboard layout?" size="md" class="z-[100]">
     {#snippet children()}
       <p class="text-base leading-relaxed text-gray-600 dark:text-gray-400">

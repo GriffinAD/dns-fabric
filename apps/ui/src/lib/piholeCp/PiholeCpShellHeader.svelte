@@ -3,9 +3,8 @@
   import Modal from "flowbite-svelte/Modal.svelte";
   import { get } from "svelte/store";
   import ArrowLeft from "lucide-svelte/icons/arrow-left";
-  import Download from "lucide-svelte/icons/download";
+  import Cog from "lucide-svelte/icons/cog";
   import Pencil from "lucide-svelte/icons/pencil";
-  import Upload from "lucide-svelte/icons/upload";
   import Redo2 from "lucide-svelte/icons/redo-2";
   import RefreshCw from "lucide-svelte/icons/refresh-cw";
   import Save from "lucide-svelte/icons/save";
@@ -15,8 +14,9 @@
   import { getContext } from "svelte";
 
   import ThemeControls from "../theme/ThemeControls.svelte";
-  import DashboardControls from "../dashboard/DashboardControls.svelte";
+  import EditorSettingsModal from "../dashboard/EditorSettingsModal.svelte";
   import FabricBusConnectionBadge from "../dashboard/FabricBusConnectionBadge.svelte";
+  import LayoutMenuSelect from "../dashboard/LayoutMenuSelect.svelte";
   import { FABRIC_EVENT_BUS, type FabricEventBus } from "../dashboard/eventBus";
   import { importDashboardLayoutFromJson } from "../dashboard/layoutImport";
   import type { LayoutStore } from "../dashboard/layoutStore";
@@ -53,6 +53,7 @@
 
   let resetConfirmOpen = $state(false);
   let importConfirmOpen = $state(false);
+  let editorSettingsOpen = $state(false);
   let pendingImportLayout = $state<DashboardLayout | null>(null);
   let layoutFileInput = $state<HTMLInputElement | undefined>(undefined);
 
@@ -111,7 +112,12 @@
   }
 
   $effect(() => {
-    if (!editorOpen) resetConfirmOpen = false;
+    if (!editorOpen) {
+      resetConfirmOpen = false;
+      importConfirmOpen = false;
+      editorSettingsOpen = false;
+      pendingImportLayout = null;
+    }
   });
 </script>
 
@@ -136,13 +142,36 @@
     class="flex w-full min-w-0 flex-col items-stretch gap-3 sm:max-w-none sm:flex-1 sm:items-end"
     data-testid="pihole-cp-header-actions"
   >
-    <div class="flex w-full flex-wrap items-end justify-end gap-3">
-      <div class="flex items-center gap-1" data-testid="pihole-cp-theme-controls">
-        <ThemeControls showAccent={editorOpen} showGaugeSegmentToggle={editorOpen} />
+    <div class="flex w-full flex-wrap items-end justify-end gap-2">
+      <div class="flex items-end gap-2" data-testid="pihole-cp-theme-controls">
+        <ThemeControls showAccent={false} toolbarRow={editorOpen} />
+        {#if editorOpen}
+          <div class="flex flex-col items-end">
+            <span class={headerLabelBandSpacerClass} aria-hidden="true"></span>
+            <Button
+              type="button"
+              color="alternative"
+              size="sm"
+              class="!p-2 shrink-0"
+              aria-label="Display settings"
+              data-testid="editor-display-settings-open"
+              onclick={() => (editorSettingsOpen = true)}
+            >
+              <Cog class="h-5 w-5" aria-hidden="true" />
+            </Button>
+          </div>
+          <LayoutMenuSelect onExport={exportLayout} onImport={openLayoutFilePicker} />
+          <input
+            bind:this={layoutFileInput}
+            type="file"
+            accept="application/json,.json"
+            class="hidden"
+            aria-hidden="true"
+            tabindex={-1}
+            onchange={onLayoutFileSelected}
+          />
+        {/if}
       </div>
-      {#if editorOpen}
-        <DashboardControls />
-      {/if}
       {#if peerUiBaseUrl}
         <div class="flex flex-col items-end">
           <span class={headerLabelBandSpacerClass} aria-hidden="true"></span>
@@ -177,39 +206,8 @@
         <div
           role="toolbar"
           aria-label="Dashboard mode"
-          class="flex flex-wrap items-end {editorOpen ? 'gap-3' : 'gap-1'}"
+          class="flex flex-wrap items-end gap-1"
         >
-          <Button
-            type="button"
-            color="alternative"
-            size="sm"
-            class="inline-flex shrink-0 items-center gap-2"
-            aria-label="Export layout"
-            onclick={exportLayout}
-          >
-            <Download class="h-4 w-4" aria-hidden="true" />
-            Export layout
-          </Button>
-          <Button
-            type="button"
-            color="alternative"
-            size="sm"
-            class="inline-flex shrink-0 items-center gap-2"
-            aria-label="Import layout"
-            onclick={openLayoutFilePicker}
-          >
-            <Upload class="h-4 w-4" aria-hidden="true" />
-            Import layout
-          </Button>
-          <input
-            bind:this={layoutFileInput}
-            type="file"
-            accept="application/json,.json"
-            class="hidden"
-            aria-hidden="true"
-            tabindex={-1}
-            onchange={onLayoutFileSelected}
-          />
           {#if editorOpen}
             <Button
               type="button"
@@ -287,6 +285,8 @@
     </div>
   </div>
 </header>
+
+<EditorSettingsModal bind:open={editorSettingsOpen} />
 
 <Modal bind:open={resetConfirmOpen} title="Reset dashboard layout?" size="md" class="z-[100]">
   {#snippet children()}

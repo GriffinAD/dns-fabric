@@ -223,7 +223,7 @@
         <span class="text-slate-500 dark:text-gray-500">API token</span>
         <input
           type="password"
-          class="mt-1 w-full rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-xs dark:border-gray-700 dark:bg-gray-950"
+          class="mt-1 block w-full rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-xs sm:w-1/2 dark:border-gray-700 dark:bg-gray-950"
           bind:value={apiTokenInput}
           autocomplete="off"
           disabled={busy}
@@ -238,15 +238,17 @@
       {#if writableKeys.length > 0}
         <dl class="mb-3 max-h-[min(28rem,50vh)] grid gap-2 overflow-y-auto pr-1">
           {#each writableKeys as entry (entry.key)}
-            <div class="grid gap-1 text-xs sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center">
-              <dt class="truncate text-slate-600 dark:text-gray-400" title={entry.key}>
+            <div
+              class="grid gap-1 text-xs sm:grid-cols-[minmax(0,33%)_minmax(0,66%)] sm:items-start"
+            >
+              <dt class="min-w-0 text-slate-600 dark:text-gray-400" title={entry.key}>
                 {entry.label}
                 <span class="block font-mono text-[0.65rem] text-slate-400 dark:text-gray-500">{entry.key}</span>
               </dt>
-              <dd>
+              <dd class="min-w-0">
                 {#if entry.type === "boolean"}
                   <select
-                    class="w-full rounded border border-slate-200 px-2 py-1 font-mono dark:border-gray-700 dark:bg-gray-950"
+                    class="w-auto max-w-full min-w-[7rem] rounded border border-slate-200 px-2 py-1 font-mono dark:border-gray-700 dark:bg-gray-950"
                     bind:value={draft[entry.key]}
                     disabled={busy}
                   >
@@ -256,7 +258,7 @@
                 {:else}
                   <input
                     type={inputType(entry)}
-                    class="w-full rounded border border-slate-200 px-2 py-1 font-mono dark:border-gray-700 dark:bg-gray-950"
+                    class="w-full max-w-full rounded border border-slate-200 px-2 py-1 font-mono dark:border-gray-700 dark:bg-gray-950"
                     bind:value={draft[entry.key]}
                     disabled={busy}
                   />

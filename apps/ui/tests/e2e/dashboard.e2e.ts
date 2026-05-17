@@ -479,9 +479,10 @@ test("edit layout: root grid tracks and ruler align", async ({
 
 test("export layout downloads JSON", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: "Edit layout" }).click();
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Export layout" }).click(),
+    page.getByLabel("Layout").selectOption("export"),
   ]);
   expect(download.suggestedFilename()).toMatch(/Dashboard_Layout_.*\.json/);
 });
