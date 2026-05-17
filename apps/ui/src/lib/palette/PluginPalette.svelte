@@ -15,8 +15,8 @@
     palettePluginPayload,
     parseDragPayload,
   } from "../dashboard/interactions/dashboardSveltedndTypes";
-  import { tileColSpanForPlugin } from "../plugins/pluginGridPolicy";
   import { buildPaletteCatalog } from "./paletteCatalog";
+  import { buildPaletteDragImageTile } from "./paletteDragGhost";
   import {
     paletteDisplaySettings,
     type PaletteDisplaySettings,
@@ -27,7 +27,6 @@
     loadPaletteDockMode,
     loadPaletteFloatPosition,
     loadPinnedPaletteIds,
-    loadRecentPaletteIds,
     recordRecentPaletteId,
     savePaletteDockMode,
     savePaletteFloatPosition,
@@ -39,7 +38,6 @@
 
   const PALETTE_CHIP_DRAG = '[data-testid="palette-chip-drag"]';
   const PALETTE_ADD_GROUP_DRAG = '[data-testid="palette-add-group-drag"]';
-  const SHOW_RECENTS = false;
   const paletteDragAttrs = {
     draggingClass: "opacity-55 ring-2 ring-primary-500/35 shadow-sm",
   };
@@ -62,20 +60,10 @@
     onAddGroup?: (insertBeforeIndex?: number) => void;
   } = $props();
 
-  function buildDragImageTile(pluginId: string): DashboardTile {
-    return {
-      id: "__palette-drag-image__",
-      pluginId,
-      hostControl: "single-panel",
-      displayMode: "full",
-      grid: { col: 0, row: 0, colSpan: tileColSpanForPlugin({ pluginId }), rowSpan: 1 },
-    };
-  }
-
   function preparePluginDragImage(pluginId: string): void {
     if (!gateway) return;
     if (dragImageTile?.pluginId === pluginId) return;
-    dragImageTile = buildDragImageTile(pluginId);
+    dragImageTile = buildPaletteDragImageTile(pluginId);
   }
 
   /** After sveltednd sets effectAllowed=move, force copy semantics for palette → grid adds. */
@@ -188,8 +176,6 @@
       return p.searchText.includes(needle);
     });
   });
-
-  const recent = $derived(loadRecentPaletteIds());
 
   function setDock(next: PaletteDockMode) {
     dockMode = next;
@@ -328,7 +314,7 @@
       if (!(hit instanceof HTMLElement)) return;
       const pluginId = hit.dataset.paletteDragPluginId;
       if (!pluginId || !gateway) return;
-      const tile = buildDragImageTile(pluginId);
+      const tile = buildPaletteDragImageTile(pluginId);
       const x = e.clientX > 0 ? e.clientX : (lastPointer?.x ?? 24);
       const y = e.clientY > 0 ? e.clientY : (lastPointer?.y ?? 24);
       dragImageTile = tile;
@@ -520,51 +506,6 @@
         >
           {p.label}
         </button>
-      {/each}
-    </div>
-  {/if}
-  {#if SHOW_RECENTS && recent.length > 0 && q.trim() === ""}
-    <p class="mb-0.5 text-[10px] font-semibold text-gray-900 dark:text-gray-400">Recent</p>
-    <div class="mb-1 flex flex-wrap gap-1">
-      {#each recent as rid (rid)}
-        {@const item = catalog.find((i) => i.kind === "plugin" && i.id === rid)}
-        {#if item && item.kind === "plugin"}
-          <div
-            class="inline-flex items-center gap-0.5 rounded border border-gray-400/45 bg-white/70 px-0.5 py-px shadow-sm dark:border-gray-600 dark:bg-gray-800 dark:shadow-none"
-            data-palette-drag-plugin-id={item.id}
-            use:draggable={{
-              dragData: palettePluginPayload(item.id),
-              container: palettePluginContainer(item.id),
-              handle: PALETTE_CHIP_DRAG,
-              attributes: paletteDragAttrs,
-              callbacks: palettePluginDragCallbacks(item.id),
-            }}
-          >
-            <button
-              type="button"
-              class="flex h-5 w-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-gray-600 hover:bg-gray-200/80 active:cursor-grabbing dark:text-gray-400 dark:hover:bg-gray-700/80"
-              data-testid="palette-chip-drag"
-              data-palette-drag-plugin-id={item.id}
-              aria-label="Drag {item.label} onto the dashboard"
-              onpointerdown={(e) => {
-                rememberPointer(e);
-                preparePluginDragImage(item.id);
-              }}
-              ondragstart={(e) => onPluginDragStart(e, item.id)}
-              ondragend={clearDragImage}
-            >
-              <GripVertical class="h-3 w-3" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              class="rounded px-1 py-px text-[10px] font-medium text-gray-900 hover:bg-white/90 dark:text-gray-100 dark:hover:bg-gray-700"
-              aria-label="Add {item.label}"
-              onclick={() => onChipClick(item)}
-            >
-              {item.label}
-            </button>
-          </div>
-        {/if}
       {/each}
     </div>
   {/if}
