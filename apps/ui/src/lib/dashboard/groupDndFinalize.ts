@@ -1,5 +1,5 @@
 /**
- * Merge svelte-dnd-action lists back into a layout document (supports nested groups in v3).
+ * Merge editor DnD mirror lists back into a layout document (supports nested groups in v3).
  */
 import {
   groupOuterColSpan,

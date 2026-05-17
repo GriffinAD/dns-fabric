@@ -1,12 +1,6 @@
 <script lang="ts">
-  import {
-    FEATURE_FLAG_NAMES,
-    setFeatureFlag,
-    SOURCES,
-  } from "svelte-dnd-action";
-  import type { DndEvent } from "svelte-dnd-action";
-
-  setFeatureFlag(FEATURE_FLAG_NAMES.USE_COMPUTED_STYLE_INSTEAD_OF_BOUNDING_RECT, true);
+  import type { DragDropState } from "@thisux/sveltednd";
+  import { dndState } from "@thisux/sveltednd";
 
   import type { PluginEntry } from "../api/types";
   import { DataGateway } from "../dataGateway";
@@ -24,23 +18,12 @@
   import GroupReadNoWrap from "./GroupReadNoWrap.svelte";
   import PluginTileMount from "./PluginTileMount.svelte";
   import TileEditChrome from "./TileEditChrome.svelte";
-  import {
-    buildRootLayoutFromDnd,
-    type DashboardDndListItem,
-    isDndCellGroup,
-  } from "./groupDndFinalize";
+  import { buildRootLayoutFromDnd, type DashboardDndListItem } from "./groupDndFinalize";
   import DashboardEditRootGrid from "./DashboardEditRootGrid.svelte";
-  import {
-    createDashboardEditorTransformDragged,
-    dashboardEditorDropTargetStyle,
-    dashboardEditorRootFlipMs,
-    readPrefersReducedMotion,
-  } from "./interactions/dndEditorFeedback";
+  import { applyDashboardDrop, applyDashboardInvalidDrop } from "./interactions/dashboardSveltedndApply";
+  import type { DashboardDropContext } from "./interactions/dashboardSveltedndApply";
+  import type { DashboardDragPayload } from "./interactions/dashboardSveltedndTypes";
   import { editorGroupInPlay, editorTileInPlay } from "./interactions/editorSelection";
-  import {
-    createPaletteRootDropController,
-    type PaletteRootInsertPreview,
-  } from "./interactions/editorPaletteRootDrop";
   import { dedupeById } from "./layoutTree";
   import { noWrapReadRowGroups } from "./readModeLayout";
   import { stripScrollportObserve } from "./stripWidth";
@@ -54,8 +37,6 @@
   } from "./types";
   import { isDashboardGroupNode } from "./types";
 
-  /** svelte-dnd-action zone type — one shared value so root ↔ container moves are allowed. */
-  const SVELTE_DND_TYPE_DASHBOARD = "dashboard-layout";
   type DndListItem = DashboardDndListItem;
 
   let {
@@ -137,11 +118,6 @@
     return buildRootLayoutFromDnd(layout.items, dndRoot, dndByGroup);
   }
 
-  function commitDndToLayout() {
-    const next = reorderRootLayoutItemsPreservingSlotOrigins(layout.items, buildLayoutFromDnd());
-    onLayoutStructureChange?.({ version: 3, items: next });
-  }
-
   const packedRoot = $derived(
     reorderRootLayoutItemsPreservingSlotOrigins(layout.items, buildLayoutFromDnd()),
   );
@@ -150,66 +126,41 @@
   /** Rely on `enabled` only: some API responses omit `ui_dashboard` and would hide the whole palette. */
   const palette = $derived(plugins.filter((p) => p.enabled));
 
-  /** Phase 7: honour `prefers-reduced-motion` for root FLIP only; nested zones stay at 0 ms. */
-  let reducedMotion = $state(readPrefersReducedMotion());
+  /** True while @thisux/sveltednd reports an active drag (palette or grid). */
+  const editorPointerDndActive = $derived(dndState.isDragging);
+  let dropCommittedForActiveDrag = $state(false);
+
   $effect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const onChange = () => {
-      reducedMotion = mq.matches;
+    if (!dndState.isDragging) {
+      dropCommittedForActiveDrag = false;
+    }
+  });
+
+  function buildDropContext(): DashboardDropContext {
+    return {
+      dndRoot,
+      dndByGroup,
+      layoutItems: layout.items,
+      onLayoutStructureChange,
+      onAddTile,
+      onAddGroup,
+      onAddTileToGroup,
+      onAddGroupToGroup,
     };
-    reducedMotion = mq.matches;
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  });
-  const rootFlipMs = $derived(dashboardEditorRootFlipMs(reducedMotion));
-  const editorDropTargetStyle = dashboardEditorDropTargetStyle();
+  }
 
-  /** True while a pointer-driven in-grid drag is in flight (consider…finalize). For tests + subtle chrome. */
-  let editorPointerDndActive = $state(false);
+  function onLayoutDrop(state: DragDropState<DashboardDragPayload>) {
+    if (state.invalidDrop) return;
+    if (dropCommittedForActiveDrag) return;
+    dropCommittedForActiveDrag = true;
+    const r = applyDashboardDrop(state, buildDropContext());
+    if (r.nextDndRoot) dndRoot = dedupeById(r.nextDndRoot);
+    if (r.nextDndByGroup) dndByGroup = { ...dndByGroup, ...r.nextDndByGroup };
+  }
 
-  /** Kea palette HTML5 drag only — root insertion slot preview (see `paletteDragCodec.isPaletteFabricHtml5Drag`). */
-  let paletteRootInsertPreview = $state<PaletteRootInsertPreview>(null);
-
-  const paletteRootDrop = createPaletteRootDropController({
-    getRootDndIds: () => dndRoot.map((d) => d.id),
-    getPreview: () => paletteRootInsertPreview,
-    setPreview: (p) => {
-      paletteRootInsertPreview = p;
-    },
-    getOnAddTile: () => onAddTile,
-    getOnAddGroup: () => onAddGroup,
-    getOnAddTileToGroup: () => onAddTileToGroup,
-    getOnAddGroupToGroup: () => onAddGroupToGroup,
-  });
-
-  $effect(() => {
-    if (!editLayout || typeof window === "undefined") return;
-    const onDragEnd = () => paletteRootDrop.clearPreview();
-    window.addEventListener("dragend", onDragEnd);
-    return () => window.removeEventListener("dragend", onDragEnd);
-  });
-
-  /**
-   * svelte-dnd-action hit-tests nested zones before the root (deepest first). While reordering a
-   * **root-level container** with the pointer, nested strips must not accept drops from the root
-   * zone (same `type`), or the shadow jumps into the hovered container’s inner list instead of a
-   * new root row. Root **tiles** entering a group must still work.
-   */
-  type EditorPointerDnDKind = null | { origin: "root"; isGroup: boolean } | { origin: "nested" };
-  let editorPointerDnDKind = $state<EditorPointerDnDKind>(null);
-
-  const nestedZoneDropFromOthersDisabled = $derived(
-    editorPointerDnDKind != null &&
-      editorPointerDnDKind.origin === "root" &&
-      editorPointerDnDKind.isGroup,
-  );
-
-  const dashboardEditorTransformDragged = $derived.by(() =>
-    createDashboardEditorTransformDragged(reducedMotion),
-  );
-
-  type DndConsiderFinalize = CustomEvent<DndEvent<DndListItem>>;
+  function onDragOverLayout(state: DragDropState<DashboardDragPayload>) {
+    applyDashboardInvalidDrop(state, dndRoot);
+  }
 
   /** Viewport width for an editor “strip” (Auto wrap off) — same math as `GroupReadNoWrap` widthPx. */
   let noWrapEditPortW = $state<Record<string, number>>({});
@@ -217,57 +168,6 @@
     return stripScrollportObserve(el, (w) => {
       noWrapEditPortW = { ...noWrapEditPortW, [gid]: w };
     });
-  }
-
-  /**
-   * Read view, Auto wrap off: a **single** horizontal scroller, not one strip per `grid.row`.
-   * Splitting by row made multi-row grid data look like wrapped flex; order follows row then col.
-   */
-  function handleRootConsider(e: DndConsiderFinalize) {
-    paletteRootDrop.clearPreview();
-    if (e.detail.info.source === SOURCES.POINTER) {
-      editorPointerDndActive = true;
-      const wrap = dndRoot.find((d) => d.id === e.detail.info.id);
-      if (wrap) {
-        editorPointerDnDKind = { origin: "root", isGroup: isDndCellGroup(wrap.item) };
-      }
-    }
-    dndRoot = dedupeById(e.detail.items);
-  }
-
-  function handleRootFinalize(e: DndConsiderFinalize) {
-    editorPointerDndActive = false;
-    editorPointerDnDKind = null;
-    dndRoot = dedupeById(e.detail.items);
-    queueMicrotask(() => {
-      if (!onLayoutStructureChange) return;
-      commitDndToLayout();
-    });
-  }
-
-  function handleGroupConsider(gid: string) {
-    return (e: DndConsiderFinalize) => {
-      paletteRootDrop.clearPreview();
-      if (e.detail.info.source === SOURCES.POINTER) {
-        editorPointerDndActive = true;
-        editorPointerDnDKind = { origin: "nested" };
-      }
-      const items = dedupeById(e.detail.items);
-      dndByGroup = { ...dndByGroup, [gid]: items };
-    };
-  }
-
-  function handleGroupFinalize(gid: string) {
-    return (e: DndConsiderFinalize) => {
-      editorPointerDndActive = false;
-      editorPointerDnDKind = null;
-      const items = dedupeById(e.detail.items);
-      dndByGroup = { ...dndByGroup, [gid]: items };
-      queueMicrotask(() => {
-        if (!onLayoutStructureChange) return;
-        commitDndToLayout();
-      });
-    };
   }
 
 </script>
@@ -285,7 +185,7 @@
 
 <div class="flex flex-col gap-4" data-testid="dashboard-host">
   {#if editLayout && (palette.length > 0 || onAddGroup)}
-    <PluginPalette {plugins} {onAddTile} {onAddGroup} />
+    <PluginPalette {plugins} {onAddTile} {onAddGroup} {gateway} />
   {/if}
 
   {#if editLayout}
@@ -293,22 +193,13 @@
       dndRoot={dndRoot}
       dndByGroup={dndByGroup}
       rootPackedById={rootPackedById}
-      paletteRootInsertPreview={paletteRootInsertPreview}
-      paletteRootDrop={paletteRootDrop}
       editorPointerDndActive={editorPointerDndActive}
-      rootFlipMs={rootFlipMs}
-      editorDropTargetStyle={editorDropTargetStyle}
-      dashboardEditorTransformDragged={dashboardEditorTransformDragged}
-      nestedZoneDropFromOthersDisabled={nestedZoneDropFromOthersDisabled}
       noWrapEditPortW={noWrapEditPortW}
       noWrapStripPortMeasure={noWrapStripPortMeasure}
-      dndType={SVELTE_DND_TYPE_DASHBOARD}
       chromeDragSm={CHROME_DRAG_SM}
       chromeEditSm={CHROME_EDIT_SM}
-      onRootConsider={handleRootConsider}
-      onRootFinalize={handleRootFinalize}
-      onGroupConsider={handleGroupConsider}
-      onGroupFinalize={handleGroupFinalize}
+      onLayoutDrop={onLayoutDrop}
+      onDragOverLayout={onDragOverLayout}
       editorTileInPlay={(id) => editorTileInPlay(editLayout, activeEditorKind, activeEditorId, id)}
       editorGroupInPlay={(id) => editorGroupInPlay(editLayout, activeEditorKind, activeEditorId, id)}
       onAddTileToGroup={onAddTileToGroup}
@@ -418,4 +309,5 @@
       {/each}
     </div>
   {/if}
+
 </div>

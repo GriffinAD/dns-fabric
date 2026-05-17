@@ -1,7 +1,7 @@
 /**
  * Stable **host DOM contract** for the dashboard layout editor (`DashboardHost`).
- * Palette hit-testing and root insert geometry (`paletteDropInsertIndex`) resolve surfaces via
- * `data-dashboard-editor="…"`, not `data-testid` alone — testids remain for Playwright and humans.
+ * Editor surfaces are resolved via `data-dashboard-editor="…"`, not `data-testid` alone —
+ * testids remain for Playwright and humans.
  *
  * @see docs/architecture/dashboard-plugin-blueprint.md — “Host DOM contract (layout editor)”
  */

@@ -1,5 +1,5 @@
 /**
- * Visual / timing feedback for dashboard layout editor DnD (svelte-dnd-action).
+ * Visual / timing feedback for dashboard layout editor DnD (@thisux/sveltednd + CSS tokens).
  * Placement semantics stay in `groupDndFinalize` / `layoutStore`; this module is presentation only.
  */
 
@@ -22,14 +22,14 @@ export function dashboardEditorRootFlipMs(reducedMotion: boolean): number {
 }
 
 /**
- * Nested `dragHandleZone` instances (groups / innerWrap / nowrap strips) use **0** ms flip so
+ * Nested strips historically used **0** ms motion so
  * nested lists do not animate competing FLIPs (Phase 7 perf guardrail).
  */
 export function dashboardEditorNestedFlipMs(): number {
   return 0;
 }
 
-/** Inline styles applied by svelte-dnd-action to the current drop target while dragging. */
+/** Inline-style object shape compatible with legacy drop-target styling helpers. */
 export function dashboardEditorDropTargetStyle(): Record<string, string> {
   return {
     outline: "2px dashed var(--color-primary-500)",
@@ -74,7 +74,7 @@ export function preferSlotVisibilityForDndListItem(data: unknown): boolean {
 }
 
 /**
- * Callback for `transformDraggedElement` on dashboard `dragHandleZone`s (bound to reduce-motion).
+ * Callback shape retained for any custom drag-preview wiring (reduce-motion aware).
  */
 export function createDashboardEditorTransformDragged(reducedMotion: boolean) {
   return (element?: HTMLElement, data?: unknown, _index?: number) => {
