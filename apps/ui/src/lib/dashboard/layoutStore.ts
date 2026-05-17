@@ -1,7 +1,7 @@
 import { get, writable } from "svelte/store";
 
 import { DataGateway } from "../dataGateway";
-import { defaultPaletteOptionsForPiholeHaPlugin } from "../piholeCp/piholeHaPluginIds";
+import { defaultPaletteOptionsForPiholeHaPlugin } from "../piholeCp/plugins/piholeHaPluginIds";
 import { cloneLayoutJson, placementForNewEmptyNestedGroup } from "./gridPlacement";
 import { normalizeLayoutStrict } from "./layoutNormalize";
 import {

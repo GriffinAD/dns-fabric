@@ -3,7 +3,7 @@ import { mount } from "svelte";
 import "./app.css";
 import "@thisux/sveltednd";
 
-import PiholeOperatorApp from "./lib/piholeCp/PiholeOperatorApp.svelte";
+import PiholeOperatorApp from "./lib/piholeCp/shell/PiholeOperatorApp.svelte";
 import {
   applyDocumentDashboardSettings,
   loadDashboardSettings,
