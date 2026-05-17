@@ -314,7 +314,9 @@ hide irrelevant toggles.
 
 ## Twelve-column grid placement (Phase C)
 
-Implemented in `apps/ui` (`gridPlacement.ts`, `DashboardHost.svelte`, `DashboardEditor.svelte`) and persisted via `tile.grid` in `specs/dashboard/layout.schema.json`.
+Implemented in `apps/ui` (`DashboardHost.svelte`, `DashboardEditRootGrid.svelte`) and persisted via `tile.grid` in `specs/dashboard/layout.schema.json`.
+
+**Pure placement modules (refactor R1):** grid math, pack/reflow, resize, and DnD placement helpers live under `apps/ui/src/lib/dashboard/placement/` (`constants.ts`, `root.ts`, `group.ts`, `tile.ts`, `clone.ts`, `index.ts`). New code should import from `./placement` (or `dashboard/placement`); `gridPlacement.ts` remains a deprecated barrel that re-exports the same symbols for existing call sites.
 
 - **Widths:** `perf.summary` uses **12** columns; other dashboard plugins use **6** (`tileColSpan`).
 - **Editor DnD:** `svelte-dnd-action` reorders tiles. Children use **`grid-column: span N` only** (CSS auto-placement in row order) so drag/FLIP animations stay stable; **fixed** `grid-row` / `grid-column` lines are not applied to draggable nodes.
