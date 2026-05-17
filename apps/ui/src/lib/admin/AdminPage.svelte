@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
 
   import type { HealthResponse } from "../api/types";
-  import SemicircleGauge from "../components/SemicircleGauge.svelte";
+  import SemicircleGauge from "../components/gauge/SemicircleGauge.svelte";
   import { DataGateway } from "../dataGateway";
   import GaugeThemeControls from "../theme/GaugeThemeControls.svelte";
 

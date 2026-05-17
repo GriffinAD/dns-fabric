@@ -2,14 +2,14 @@
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
 
-  import type { GaugeGradientMode } from "../api/types";
-  import type { GaugeCapStyle } from "../theme/themeStorage";
+  import type { GaugeGradientMode } from "../../api/types";
+  import type { GaugeCapStyle } from "../../theme/themeStorage";
   import {
     DEFAULT_GAUGE_SEGMENT_DIVISIONS,
     DEFAULT_GAUGE_SEGMENT_GAP,
     effectiveGaugeSegmentDivisionsFromDataAttrs,
     clampGaugeSegmentGap,
-  } from "../theme/themeStorage";
+  } from "../../theme/themeStorage";
   import {
     clampGaugePercent,
     gaugeDisplayTweenDuration,

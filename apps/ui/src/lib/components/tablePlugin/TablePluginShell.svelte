@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
-  import BaseDataTable from "./baseDataTable/BaseDataTable.svelte";
-  import type { BaseDataTableColumn } from "./baseDataTable/baseDataTable";
-  import { tableShellLegacySettings } from "./baseDataTable/baseDataTable";
+  import BaseDataTable from "../baseDataTable/BaseDataTable.svelte";
+  import type { BaseDataTableColumn } from "../baseDataTable/baseDataTable";
+  import { tableShellLegacySettings } from "../baseDataTable/baseDataTable";
 
   let {
     title,

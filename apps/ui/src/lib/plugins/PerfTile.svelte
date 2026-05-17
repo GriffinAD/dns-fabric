@@ -3,8 +3,8 @@
   import { getContext, onMount } from "svelte";
 
   import type { PerfSummaryResponse } from "../api/types";
-  import MetricList from "../components/MetricList.svelte";
-  import SemicircleGauge from "../components/SemicircleGauge.svelte";
+  import MetricList from "../components/metrics/MetricList.svelte";
+  import SemicircleGauge from "../components/gauge/SemicircleGauge.svelte";
   import { clampGridColSpan, tileColSpanForPlugin } from "./builtinMeta";
   import { FABRIC_EVENT_BUS, perfUpdatedFullSummary, type FabricEventBus } from "../dashboard/eventBus";
   import { DataGateway } from "../dataGateway";

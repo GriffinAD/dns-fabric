@@ -85,13 +85,13 @@ export default defineConfig({
       exclude: [
         "src/lib/**/types.ts",
         "src/lib/appDashboardShell.ts",
-        "src/lib/components/tablePluginShell.ts",
+        "src/lib/components/tablePlugin/tablePluginShell.ts",
         /* v8 + Flowbite Modal: branch/function attribution on dialog + snippets misses global 99%/100% despite Modal tests. */
-        "src/lib/components/BaseDataTableModal.svelte",
+        "src/lib/components/baseDataTable/BaseDataTableModal.svelte",
         /* v8 reports an extra synthetic branch on the root <select> tag after Svelte compile. */
-        "src/lib/components/InlineSelectEditor.svelte",
+        "src/lib/components/editors/InlineSelectEditor.svelte",
         /* v8 reports an extra synthetic branch on the page-size <option> template expression. */
-        "src/lib/components/BaseDataTable.svelte",
+        "src/lib/components/baseDataTable/BaseDataTable.svelte",
         "src/lib/**/*.harness.svelte",
         "src/lib/**/*Harness.svelte",
         "src/lib/**/*.test-support.svelte",
