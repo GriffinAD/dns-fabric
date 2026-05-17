@@ -116,6 +116,7 @@ apps/ui/src/lib/
 ### Task R0.1: Cover `swapRootItemGridPlacements`
 
 **Files:**
+
 - Modify: `apps/ui/src/lib/dashboard/gridPlacement.test.ts` (append tests)
 - Test: same file
 
@@ -188,6 +189,7 @@ git commit -s -m "test(ui): cover swapRootItemGridPlacements for coverage gate"
 ### Task R0.2: Record refactor baseline in component map
 
 **Files:**
+
 - Modify: `docs/architecture/ui-component-and-service-map.md` (add “Refactor track” pointer)
 
 - [ ] **Step 1: Add section after executive summary**
@@ -214,6 +216,7 @@ git commit -s -m "docs(ui): link component map to refactor plan"
 ### Task R1.1: Extract constants and clone helper
 
 **Files:**
+
 - Create: `apps/ui/src/lib/dashboard/placement/constants.ts`
 - Create: `apps/ui/src/lib/dashboard/placement/clone.ts`
 - Create: `apps/ui/src/lib/dashboard/placement/index.ts`
@@ -267,6 +270,7 @@ git commit -s -m "refactor(ui): extract placement constants and clone helper"
 ### Task R1.2: Extract root placement functions
 
 **Files:**
+
 - Create: `apps/ui/src/lib/dashboard/placement/root.ts`
 - Modify: `apps/ui/src/lib/dashboard/gridPlacement.ts`
 - Modify: `apps/ui/src/lib/dashboard/placement/index.ts`
@@ -313,6 +317,7 @@ git commit -s -m "refactor(ui): extract root grid placement module"
 ### Task R1.3: Extract group placement functions
 
 **Files:**
+
 - Create: `apps/ui/src/lib/dashboard/placement/group.ts`
 - Modify: `apps/ui/src/lib/dashboard/gridPlacement.ts`
 - Modify: `apps/ui/src/lib/dashboard/placement/index.ts`
@@ -336,6 +341,7 @@ git commit -s -m "refactor(ui): extract group grid placement module"
 ### Task R1.4: Slim `gridPlacement.ts` to barrel only
 
 **Files:**
+
 - Modify: `apps/ui/src/lib/dashboard/gridPlacement.ts`
 
 - [ ] **Step 1: Replace file body**
@@ -368,6 +374,7 @@ git commit -s -m "refactor(ui): gridPlacement.ts becomes placement barrel"
 ### Task R2.1: Extract `editorPointerTracking`
 
 **Files:**
+
 - Create: `apps/ui/src/lib/dashboard/interactions/editorPointerTracking.ts`
 - Create: `apps/ui/src/lib/dashboard/interactions/editorPointerTracking.test.ts`
 - Modify: `apps/ui/src/lib/dashboard/DashboardHost.svelte`
@@ -526,6 +533,7 @@ git commit -s -m "refactor(ui): centralize editor pointer tracking for DnD"
 ### Task R2.2: Document pointer contract
 
 **Files:**
+
 - Modify: `docs/planning/UI_ENGINE_SPEC.md` (add § “Editor pointer tracking”)
 
 - [ ] **Step 1: Add short normative paragraph**
@@ -547,6 +555,7 @@ git commit -s -m "docs(ui): document editor pointer tracking module"
 ### Task R3.1: `EditorRootTileCell.svelte`
 
 **Files:**
+
 - Create: `apps/ui/src/lib/dashboard/editor/EditorRootTileCell.svelte`
 - Modify: `apps/ui/src/lib/dashboard/DashboardEditRootGrid.svelte`
 
@@ -585,6 +594,7 @@ git commit -s -m "refactor(ui): extract EditorRootTileCell from edit grid"
 ### Task R3.2: `EditorRootGroupShell.svelte`
 
 **Files:**
+
 - Create: `apps/ui/src/lib/dashboard/editor/EditorRootGroupShell.svelte`
 - Modify: `apps/ui/src/lib/dashboard/DashboardEditRootGrid.svelte`
 
@@ -603,6 +613,7 @@ git commit -s -m "refactor(ui): extract EditorRootGroupShell from edit grid"
 ### Task R3.3: `EditorDropZone.svelte` (canvas + append + empty)
 
 **Files:**
+
 - Create: `apps/ui/src/lib/dashboard/editor/EditorDropZone.svelte`
 - Modify: `apps/ui/src/lib/dashboard/DashboardEditRootGrid.svelte`
 
@@ -629,6 +640,7 @@ git commit -s -m "refactor(ui): extract EditorDropZone wrapper"
 ### Task R4.1: `DashboardTileShell.svelte`
 
 **Files:**
+
 - Create: `apps/ui/src/lib/dashboard/DashboardTileShell.svelte`
 - Modify: `apps/ui/src/lib/dashboard/DashboardHost.svelte`
 - Modify: `apps/ui/src/lib/dashboard/GroupReadNoWrap.svelte` (optional: use shell)
@@ -686,6 +698,7 @@ git commit -s -m "refactor(ui): shared DashboardTileShell for read/edit tiles"
 ### Task R5.1: Extract drag ghost module
 
 **Files:**
+
 - Create: `apps/ui/src/lib/palette/paletteDragGhost.ts`
 - Create: `apps/ui/src/lib/palette/paletteDragGhost.test.ts`
 - Modify: `apps/ui/src/lib/palette/PluginPalette.svelte`
@@ -726,6 +739,7 @@ git commit -s -m "refactor(ui): extract palette drag ghost helpers"
 ### Task R6.1: `piholeCpSession` facade
 
 **Files:**
+
 - Create: `apps/ui/src/lib/piholeCp/piholeCpSession.ts`
 - Create: `apps/ui/src/lib/piholeCp/piholeCpSession.test.ts`
 - Modify: `apps/ui/src/lib/piholeCp/PiholeOperatorApp.svelte`
@@ -783,6 +797,7 @@ git commit -s -m "refactor(ui-pihole-cp): single session facade for CP gateways"
 ### Task R6.2: Gate layout resync when editor is open
 
 **Files:**
+
 - Modify: `apps/ui/src/lib/piholeCp/PiholeCpDashboardShell.svelte`
 - Test: `apps/ui/src/lib/piholeCp/buildLayoutFromDashboard.test.ts` or new `PiholeCpDashboardShell.test.ts` (logic-only test for `shouldResyncLayout`)
 
@@ -827,6 +842,7 @@ git commit -s -m "fix(ui-pihole-cp): avoid server layout merge while editor open
 ### Task R7.1: Palette chip to grid drop
 
 **Files:**
+
 - Modify: `apps/ui/tests/e2e/dashboard.e2e.ts`
 - Use: `apps/ui/tests/e2e/fixtures/editorGridFixture.ts`
 
@@ -862,6 +878,7 @@ git commit -s -m "test(ui-e2e): palette drag adds tile to editor grid"
 ### Task R7.2: Root tile reorder changes DOM order
 
 **Files:**
+
 - Modify: `apps/ui/tests/e2e/dashboard.e2e.ts`
 
 - [ ] **Step 1: Add test using `editor-container-drag-handle` on two root tiles from `E2E_EDITOR_GRID_LAYOUT` seed**
@@ -883,6 +900,7 @@ git commit -s -m "test(ui-e2e): root tile reorder updates editor DOM order"
 ### Task R8.1: Update architecture map and blueprint cross-link
 
 **Files:**
+
 - Modify: `docs/architecture/ui-component-and-service-map.md` (refresh line counts, mark R1–R7 done)
 - Modify: `docs/architecture/dashboard-plugin-blueprint.md` (one paragraph: placement module path)
 
@@ -899,6 +917,7 @@ git commit -s -m "docs(ui): refresh component map after separation refactor"
 ### Task R8.2: E2E comment cleanup + SSE ops note
 
 **Files:**
+
 - Modify: `apps/ui/tests/e2e/dashboard.e2e.ts` (replace `svelte-dnd-action` with `@thisux/sveltednd`)
 - Modify: `docs/operations/control-plane-ui.md` or `docs/architecture/ui.md` (F11 — SSE token query param logging)
 
@@ -917,6 +936,7 @@ git commit -s -m "docs(ui): sveltednd e2e comments and SSE token logging note"
 ### Task R8.3 (optional): Line-count CI guard for known monoliths
 
 **Files:**
+
 - Create: `scripts/check_ui_file_sizes.sh`
 - Modify: root `package.json` add `"check:ui-file-sizes": "bash scripts/check_ui_file_sizes.sh"`
 
@@ -987,6 +1007,7 @@ src/kea_fabric/api/event_stream.py   # J1 — discovery/dhcp topics → SSE → 
 ### Task H0: ADR-0054 + schema — tab groups
 
 **Files:**
+
 - Create: `docs/adr/ADR-0054-dashboard-tab-group-containers.md`
 - Modify: `specs/dashboard/layout.schema.json`
 - Modify: `apps/ui/src/lib/dashboard/layoutZod.ts`
@@ -1097,6 +1118,7 @@ git commit -s -m "docs(adr): ADR-0054 tab containers as dashboard groups"
 ### Task H1: `tabGroupOps.ts` — tab CRUD on layout
 
 **Files:**
+
 - Create: `apps/ui/src/lib/dashboard/groups/tabGroupOps.ts`
 - Create: `apps/ui/src/lib/dashboard/groups/tabGroupOps.test.ts`
 
@@ -1168,6 +1190,7 @@ git commit -s -m "feat(ui): tab group layout operations (add/remove/rename/reord
 ### Task H2: `TabGroupHost.svelte` — render + edit chrome
 
 **Files:**
+
 - Create: `apps/ui/src/lib/dashboard/groups/TabGroupHost.svelte`
 - Create: `apps/ui/src/lib/dashboard/groups/TabGroupHost.test.ts`
 - Modify: `apps/ui/src/lib/dashboard/DashboardHost.svelte`, `DashboardEditRootGrid.svelte`, `DashboardReadNestedHost.svelte`
@@ -1196,6 +1219,7 @@ git commit -s -m "feat(ui): TabGroupHost with renameable tabs and active pane"
 ### Task H3: Editor integration — palette drop into tab group
 
 **Files:**
+
 - Modify: `apps/ui/src/lib/dashboard/interactions/dashboardSveltedndApply.ts`
 - Modify: `apps/ui/src/lib/dashboard/interactions/dashboardSveltedndTypes.ts` (tab strip container ids, e.g. `g:{groupId}:tabs`)
 - Modify: `apps/ui/src/lib/palette/PluginPalette.svelte`
@@ -1227,6 +1251,7 @@ git commit -s -m "feat(ui): palette and DnD add tabs to tab-control groups"
 ### Task H4: `GroupSettingsOverlay` — convert container to tab control
 
 **Files:**
+
 - Modify: `apps/ui/src/lib/dashboard/GroupSettingsOverlay.svelte`
 
 - [ ] **Step 1: Add “Container type” select:** `panel` | `tab-control` (others disabled with tooltip “not implemented”).
@@ -1250,6 +1275,7 @@ git commit -s -m "feat(ui): group settings can set tab-control container type"
 ### Task I1: `layoutImport.ts`
 
 **Files:**
+
 - Create: `apps/ui/src/lib/dashboard/layoutImport.ts`
 - Create: `apps/ui/src/lib/dashboard/layoutImport.test.ts`
 
@@ -1333,6 +1359,7 @@ git commit -s -m "feat(ui): layout import parser with replace mode"
 ### Task I2: Shell export + import UI
 
 **Files:**
+
 - Modify: `apps/ui/src/lib/dashboard/ShellHeader.svelte`
 - Modify: `apps/ui/src/lib/piholeCp/PiholeCpShellHeader.svelte`
 - Modify: `apps/ui/src/lib/dashboard/layoutStore.ts` (add `importLayout(layout, opts?)` method)
@@ -1400,6 +1427,7 @@ flowchart LR
 ### Task J0: `fabricBusKernel` + required context
 
 **Files:**
+
 - Create: `apps/ui/src/lib/dashboard/fabricBusKernel.ts`
 - Create: `apps/ui/src/lib/dashboard/fabricBusKernel.test.ts`
 - Modify: `apps/ui/src/lib/appMount.ts`, `apps/ui/src/lib/piholeCp/PiholeOperatorApp.svelte`
@@ -1465,6 +1493,7 @@ git commit -s -m "feat(ui): fabric bus kernel required for dashboard mounts"
 ### Task J1: Transports layer (Kea SSE + CP bridge)
 
 **Files:**
+
 - Create: `apps/ui/src/lib/dashboard/transports/keaSseTransport.ts` (thin wrapper: `createFabricEventBus` already connects — document as pass-through)
 - Create: `apps/ui/src/lib/dashboard/transports/cpFabricTransport.ts`
 - Modify: `apps/ui/src/lib/piholeCp/piholeCpPerfPoll.ts` → move body into `cpFabricTransport.ts`
@@ -1510,6 +1539,7 @@ git commit -s -m "feat(ui): fabric bus transports for Kea SSE and Pi-hole CP"
 ### Task J2: `pluginDataBus.ts` — mandatory tile subscription API
 
 **Files:**
+
 - Create: `apps/ui/src/lib/plugins/pluginDataBus.ts`
 - Create: `apps/ui/src/lib/plugins/pluginDataBus.test.ts`
 - Create: `scripts/check_ui_plugin_no_gateway_poll.sh`
@@ -1588,6 +1618,7 @@ git commit -s -m "feat(ui): pluginDataBus subscription API and anti-poll guard"
 ### Task J3: Migrate all data tiles to bus
 
 **Files:**
+
 - Modify: `apps/ui/src/lib/plugins/PerfTile.svelte`, `PerfMetricTile.svelte` (use `ctx.bus` from props, not `getContext` ad hoc)
 - Modify: `apps/ui/src/lib/plugins/DiscoveryTile.svelte`
 - Modify: `apps/ui/src/lib/plugins/DhcpPoolsTile.svelte`, `DhcpClientsTile.svelte`, `DhcpReservationsTile.svelte`
@@ -1614,6 +1645,7 @@ git commit -s -m "feat(ui): migrate operator tiles to FabricEventBus kernel"
 ### Task J4: Docs + `events.md` + blueprint
 
 **Files:**
+
 - Modify: `docs/architecture/events.md`
 - Modify: `docs/architecture/dashboard-plugin-blueprint.md` (§ reactive / EventBus)
 - Modify: `docs/planning/UI_ENGINE_SPEC.md` §4.5
@@ -1633,6 +1665,7 @@ git commit -s -m "docs(ui): FabricEventBus as dashboard data plane"
 ### Task J5: Shell connection indicator
 
 **Files:**
+
 - Modify: `apps/ui/src/lib/dashboard/ShellHeader.svelte`, `PiholeCpShellHeader.svelte`
 
 - [ ] **Step 1: Show `connectionState` from bus** (aggregated: open if any transport connected).

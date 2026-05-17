@@ -465,8 +465,8 @@ Ordered by severity. No code changes were made as part of this documentation pas
 
 1. **Large Svelte without Vitest line coverage:** DnD wiring in `editor/*` / `DashboardHost` relies on `placement/` unit tests + E2E (drop zone geometry, pointer-DnD chrome; full palette→grid persist optional).
 2. **Drop-time pointer fallback:** `editorPointerTracking.ts` owns live pointer position; `getLastEditorDragClient()` still used on drop — document or consolidate per drag phase.
-4. **Pi-hole layout resync:** `PiholeCpDashboardShell` `$effect` may overwrite in-progress edits if refresh runs during `editorOpen` unless explicitly gated.
-5. **SSE auth in query string:** `access_token` on EventSource URL — ensure proxies/logging policy in production.
+3. **Pi-hole layout resync:** `PiholeCpDashboardShell` `$effect` may overwrite in-progress edits if refresh runs during `editorOpen` unless explicitly gated.
+4. **SSE auth in query string:** `access_token` on EventSource URL — ensure proxies/logging policy in production.
 
 ### 8.2 Medium (maintainability)
 

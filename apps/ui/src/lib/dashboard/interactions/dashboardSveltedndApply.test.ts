@@ -2,7 +2,7 @@ import type { DragDropState } from "@thisux/sveltednd";
 import { describe, expect, it, vi } from "vitest";
 
 import type { DashboardDndListItem } from "../grid/groupDndFinalize";
-import type { DashboardGroup, RootLayoutItem } from "../types";
+import type { DashboardGroup, GroupChild, RootLayoutItem } from "../types";
 
 import {
   type DashboardDragPayload,
@@ -1171,7 +1171,7 @@ describe("applyDashboardDrop", () => {
     const group = merged?.items?.[0];
     expect(group?.kind).toBe("group");
     if (group?.kind === "group") {
-      expect(group.children.map((ch) => ch.id)).toEqual(["c2", "c1"]);
+      expect(group.children.map((ch: GroupChild) => ch.id)).toEqual(["c2", "c1"]);
     }
   });
 
@@ -1451,7 +1451,7 @@ describe("applyDashboardDrop", () => {
     const merged = onLayoutStructureChange.mock.calls[0]?.[0];
     const group = merged?.items?.[0];
     if (group?.kind === "group") {
-      expect(group.children.map((ch) => ch.id)).toEqual(["c2", "c1"]);
+      expect(group.children.map((ch: GroupChild) => ch.id)).toEqual(["c2", "c1"]);
     }
   });
 
