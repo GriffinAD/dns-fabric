@@ -37,6 +37,7 @@
     PIHOLE_CP_LAYOUT_STORAGE_KEY,
     stripPiholeCpLayoutWhenKeaDhcpDisabled,
   } from "./buildLayoutFromDashboard";
+  import { shouldApplyCpLayoutResync, shouldMergeServerWidgets } from "./piholeCpLayoutResync";
   import type { DashboardResponse } from "./dashboardZod";
   import type { PiholeCpMeta } from "./PiholeCpGateway";
   import PiholeCpEnvSettings from "./PiholeCpEnvSettings.svelte";
@@ -123,23 +124,40 @@
     void layoutResyncEpoch;
     void dashboard;
     void meta;
-    piholeCpDashboardData.set(dashboard);
-    if (layoutResyncEpoch > 0) {
-      const stored = loadDashboardLayout(PIHOLE_CP_LAYOUT_STORAGE_KEY);
-      const fresh = pickInitialPiholeCpLayout(dashboard, stored, meta);
-      ls.applyStructure(stripPiholeCpLayoutWhenKeaDhcpDisabled(fresh, meta, dashboard), {
-        skipHistory: true,
-      });
-    }
-    let cur = get(ls.layout);
-    if (layoutContainsPiholeCpKeaDisabledTiles(cur, meta, dashboard)) {
-      ls.applyStructure(stripPiholeCpLayoutWhenKeaDhcpDisabled(cur, meta, dashboard), { skipHistory: true });
-      cur = get(ls.layout);
-    }
-    const merged = mergeNewServerWidgetsIntoLayout(cur, dashboard, meta);
-    if (merged) {
-      ls.applyStructure(merged, { skipHistory: true });
-    }
+
+    const syncLayoutFromServer = () => {
+      const editorOpen = get(ls.editorOpen);
+      piholeCpDashboardData.set(dashboard);
+      if (
+        shouldApplyCpLayoutResync({
+          layoutResyncEpoch,
+          editorOpen,
+          forceAfterEnvApply: layoutResyncEpoch > 0,
+        })
+      ) {
+        const stored = loadDashboardLayout(PIHOLE_CP_LAYOUT_STORAGE_KEY);
+        const fresh = pickInitialPiholeCpLayout(dashboard, stored, meta);
+        ls.applyStructure(stripPiholeCpLayoutWhenKeaDhcpDisabled(fresh, meta, dashboard), {
+          skipHistory: true,
+        });
+      }
+      let cur = get(ls.layout);
+      if (layoutContainsPiholeCpKeaDisabledTiles(cur, meta, dashboard)) {
+        ls.applyStructure(stripPiholeCpLayoutWhenKeaDhcpDisabled(cur, meta, dashboard), {
+          skipHistory: true,
+        });
+        cur = get(ls.layout);
+      }
+      if (shouldMergeServerWidgets(editorOpen)) {
+        const merged = mergeNewServerWidgetsIntoLayout(cur, dashboard, meta);
+        if (merged) {
+          ls.applyStructure(merged, { skipHistory: true });
+        }
+      }
+    };
+
+    syncLayoutFromServer();
+    return ls.editorOpen.subscribe(() => syncLayoutFromServer());
   });
 </script>
 
