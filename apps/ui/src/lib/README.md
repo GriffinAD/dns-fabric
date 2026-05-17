@@ -11,7 +11,7 @@ Module folders (2026-05 restructure). Import paths are relative from each file; 
 | `components/` | Reusable UI: `baseDataTable/`, `basePagination/`, `gauge/`, `editors/`, `metrics/`, `tablePlugin/`, `validation/` |
 | `plugins/` | Built-in tiles: `core/` (registry), `dhcp/`, `discovery/`, `perf/`, `fixtures/` |
 | `piholeCp/` | Pi-hole CP embed: `shell/`, `gateway/`, `layout/`, `perf/`, `env/`, `logs/`, `session/`, `plugins/`, `kea/`, `store/`, `meta/` |
-| `dashboard/` | Layout engine, editor, placement, event bus |
+| `dashboard/` | `types.ts` at root; `tiles/`, `layout/`, `bus/`, `pages/`, `grid/`, `bootstrap/`; plus `editor/`, `interactions/`, `persistence/`, `migration/` |
 | `palette/` | Plugin palette and drag helpers |
 | `theme/` | Theme storage and controls |
 | `admin/` | Admin routes and pages |
