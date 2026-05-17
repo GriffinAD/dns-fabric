@@ -8,7 +8,7 @@
   import Settings from "lucide-svelte/icons/settings";
 
   import ThemeControls from "../theme/ThemeControls.svelte";
-  import { UI_VERSION } from "../uiVersion";
+  import { UI_VERSION } from "../version/uiVersion";
   import DashboardControls from "./DashboardControls.svelte";
   import type { LayoutSource } from "./layoutStore";
 

@@ -4,7 +4,7 @@
   import Button from "flowbite-svelte/Button.svelte";
 
   import type { PluginEntry } from "../api/types";
-  import type { DataGateway } from "../dataGateway";
+  import type { DataGateway } from "../gateway/dataGateway";
   import DashboardToolbar from "./editor/DashboardToolbar.svelte";
   import InspectorPanel from "./editor/InspectorPanel.svelte";
   import { editorSelection } from "./editor/editorState";

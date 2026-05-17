@@ -3,7 +3,7 @@
   import { dndState } from "@thisux/sveltednd";
 
   import type { PluginEntry } from "../api/types";
-  import { DataGateway } from "../dataGateway";
+  import { DataGateway } from "../gateway/dataGateway";
   import PluginPalette from "../palette/PluginPalette.svelte";
   import {
     gridAreaStyle,

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { get } from "svelte/store";
 
-import { DataGateway } from "../dataGateway";
+import { DataGateway } from "../gateway/dataGateway";
 import * as layoutNormalize from "./layoutNormalize";
 import * as layoutStorage from "./layoutStorage";
 import { createLayoutStore } from "./layoutStore";

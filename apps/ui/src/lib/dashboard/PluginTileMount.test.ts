@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mount, unmount } from "svelte";
 
 import type { PluginEntry } from "../api/types";
-import type { DataGateway } from "../dataGateway";
+import type { DataGateway } from "../gateway/dataGateway";
 import PluginTileMount from "./PluginTileMount.svelte";
 import type { DashboardTile } from "./types";
 

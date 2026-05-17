@@ -1,7 +1,7 @@
 import { perfSummaryResponseSchema } from "../../api/openapiZod";
 import type { PerfSummaryResponse } from "../../api/types";
 import type { DashboardLayout } from "../../dashboard/types";
-import { DataGateway, GatewayError } from "../../dataGateway";
+import { DataGateway, GatewayError } from "../../gateway/dataGateway";
 import { joinControlPlaneUrl } from "../gateway/PiholeCpGateway";
 
 /**

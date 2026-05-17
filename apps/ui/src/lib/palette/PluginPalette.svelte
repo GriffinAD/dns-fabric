@@ -5,7 +5,7 @@
   import GripVertical from "lucide-svelte/icons/grip-vertical";
 
   import type { PluginEntry } from "../api/types";
-  import type { DataGateway } from "../dataGateway";
+  import type { DataGateway } from "../gateway/dataGateway";
   import PluginTileMount from "../dashboard/PluginTileMount.svelte";
   import type { DashboardTile } from "../dashboard/types";
   import {

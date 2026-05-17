@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { createAppDashboardShell } from "./appDashboardShell";
-import { DataGateway } from "./dataGateway";
-import type { DashboardGroup, DashboardTile } from "./dashboard/types";
+import { DataGateway } from "../gateway/dataGateway";
+import type { DashboardGroup, DashboardTile } from "../dashboard/types";
 
 const minimalTile: DashboardTile = {
   id: "t1",

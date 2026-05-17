@@ -4,7 +4,7 @@
 
   import type { HealthResponse } from "../api/types";
   import SemicircleGauge from "../components/gauge/SemicircleGauge.svelte";
-  import { DataGateway } from "../dataGateway";
+  import { DataGateway } from "../gateway/dataGateway";
   import GaugeThemeControls from "../theme/GaugeThemeControls.svelte";
 
   import { resolveAdminRoute } from "./adminRouteRegistry";

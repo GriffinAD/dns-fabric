@@ -1,5 +1,5 @@
 import type { PluginEntry } from "../api/types";
-import { DataGateway } from "../dataGateway";
+import { DataGateway } from "../gateway/dataGateway";
 import { layoutWithGrid } from "./gridPlacement";
 import type { FabricEventBus } from "./eventBus";
 import { parseDashboardLayout, saveDashboardLayout } from "./layoutStorage";

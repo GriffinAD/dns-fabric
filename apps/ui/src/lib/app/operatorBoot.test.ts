@@ -1,9 +1,9 @@
 import { cleanup, render, screen } from "@testing-library/svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { DataGateway } from "./dataGateway";
+import { DataGateway } from "../gateway/dataGateway";
 import { appendBootFailureUi, mountOperatorApp } from "./operatorBoot";
-import { resolvePluginTileMount } from "./plugins/core/registry";
+import { resolvePluginTileMount } from "../plugins/core/registry";
 
 describe("appendBootFailureUi", () => {
   let target: HTMLDivElement;
@@ -54,7 +54,7 @@ describe("mountOperatorApp", () => {
 
   it("registers e2e.throwing resolver when VITE_E2E_THROWING is set", async () => {
     vi.stubEnv("VITE_E2E_THROWING", "1");
-    const registry = await import("./plugins/core/registry");
+    const registry = await import("../plugins/core/registry");
     const spy = vi.spyOn(registry, "registerDynamicPluginResolver");
 
     vi.spyOn(DataGateway.prototype, "listPlugins").mockResolvedValue({ items: [] });

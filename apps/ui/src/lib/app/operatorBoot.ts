@@ -39,7 +39,7 @@ async function defaultLoadSvelteAndApp(): Promise<{
   mount: (component: Component, options: { target: HTMLElement }) => unknown;
   App: Component;
 }> {
-  const [{ mount }, { default: App }] = await Promise.all([import("svelte"), import("../App.svelte")]);
+  const [{ mount }, { default: App }] = await Promise.all([import("svelte"), import("../../App.svelte")]);
   return { mount, App: App as Component };
 }
 
@@ -50,8 +50,8 @@ export async function mountOperatorApp(
   try {
     if (import.meta.env.VITE_E2E_THROWING === "1") {
       const [{ registerDynamicPluginResolver }, { default: E2EThrowingTile }] = await Promise.all([
-        import("./plugins/core/registry"),
-        import("./plugins/fixtures/E2EThrowingTile.svelte"),
+        import("../plugins/core/registry"),
+        import("../plugins/fixtures/E2EThrowingTile.svelte"),
       ]);
       registerDynamicPluginResolver("e2e.throwing", () => ({
         component: E2EThrowingTile,

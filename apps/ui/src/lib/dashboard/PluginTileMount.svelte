@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PluginEntry } from "../api/types";
-  import type { DataGateway } from "../dataGateway";
+  import type { DataGateway } from "../gateway/dataGateway";
   import { resolvePluginTileMount } from "../platform/extensions/dashboardTileRegistry";
   import { tileOptionsSchemaForPlugin } from "../plugins/core/tileOptionsZod";
   import TileErrorBoundary from "./TileErrorBoundary.svelte";

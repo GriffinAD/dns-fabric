@@ -29,7 +29,7 @@
   import { createLayoutStore } from "../../dashboard/layoutStore";
   import { createOverlayActions } from "../../dashboard/overlayActions";
   import type { DashboardGroup, DashboardTile } from "../../dashboard/types";
-  import type { DataGateway } from "../../dataGateway";
+  import type { DataGateway } from "../../gateway/dataGateway";
   import {
     layoutContainsPiholeCpKeaDisabledTiles,
     mergeNewServerWidgetsIntoLayout,

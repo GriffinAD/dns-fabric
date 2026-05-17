@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { DataGateway } from "../dataGateway";
+import { DataGateway } from "../gateway/dataGateway";
 import { createFabricEventBus, perfUpdatedCpuPercent } from "./eventBus";
 import * as gridPlacement from "./gridPlacement";
 import { mountDashboardGatewaySideEffects } from "./dashboardBootstrap";

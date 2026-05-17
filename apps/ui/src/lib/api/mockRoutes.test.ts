@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { baseFixtures } from "../mock/fixtures";
+import { baseFixtures } from "../../mock/fixtures";
 
 /** Paths declared in specs/api/openapi.yaml (GET /api/v1 relative to server root). */
 const requiredPaths = [

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { DataGateway } from "../dataGateway";
+import type { DataGateway } from "../gateway/dataGateway";
 import type { AdminLogRecord } from "../api/types";
 import AdminLogsPage from "./AdminLogsPage.svelte";
 

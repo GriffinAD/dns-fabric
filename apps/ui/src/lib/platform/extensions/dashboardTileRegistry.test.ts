@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DataGateway } from "../../dataGateway";
+import { DataGateway } from "../../gateway/dataGateway";
 import { resolvePluginTileMount } from "./dashboardTileRegistry";
 
 describe("dashboardTileRegistry", () => {

@@ -6,7 +6,7 @@
   import type { BaseDataTableColumn, BaseDataTableSettingsPatch } from "../../components/baseDataTable/baseDataTable";
   import { defaultBaseDataTableSettings, mergeBaseDataTableSettings } from "../../components/baseDataTable/baseDataTable";
   import { validateIpv4Address, validateMacAddress } from "../../components/validation/netValidation";
-  import { DataGateway } from "../../dataGateway";
+  import { DataGateway } from "../../gateway/dataGateway";
   import type { DashboardTile } from "../../dashboard/types";
 
   let {

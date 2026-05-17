@@ -15,8 +15,8 @@ import {
   metaResponseSchema,
   perfSummaryResponseSchema,
   pluginListResponseSchema,
-} from "./api/openapiZod";
-import { dashboardLayoutJsonSchema, normalizeLayoutFromJson } from "./dashboard/layoutZod";
+} from "../api/openapiZod";
+import { dashboardLayoutJsonSchema, normalizeLayoutFromJson } from "../dashboard/layoutZod";
 import type {
   DhcpClientListResponse,
   DhcpClientPatch,
@@ -34,8 +34,8 @@ import type {
   MetaResponse,
   PerfSummaryResponse,
   PluginListResponse,
-} from "./api/types";
-import type { DashboardLayout } from "./dashboard/types";
+} from "../api/types";
+import type { DashboardLayout } from "../dashboard/types";
 
 export type GatewayErrorCode = "http_error" | "parse_failed";
 

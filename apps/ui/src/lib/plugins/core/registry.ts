@@ -1,6 +1,6 @@
 import type { Component } from "svelte";
 
-import type { DataGateway } from "../../dataGateway";
+import type { DataGateway } from "../../gateway/dataGateway";
 import type { DashboardTile } from "../../dashboard/types";
 import { applyPerfCompactAsPercentOnly } from "./tileDisplay";
 import DhcpClientsTile from "../dhcp/DhcpClientsTile.svelte";

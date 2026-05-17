@@ -2,7 +2,7 @@ import { readonly, writable, type Readable } from "svelte/store";
 
 import { perfSummaryResponseSchema } from "../api/openapiZod";
 import type { FabricEvent, PerfSummaryResponse } from "../api/types";
-import { DataGateway } from "../dataGateway";
+import { DataGateway } from "../gateway/dataGateway";
 
 /** Svelte context key for the fabric SSE fan-out bus (`docs/planning/UI_ENGINE_PLAN.md` P5). */
 export const FABRIC_EVENT_BUS = Symbol("FABRIC_EVENT_BUS");

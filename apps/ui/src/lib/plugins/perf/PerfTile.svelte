@@ -7,7 +7,7 @@
   import SemicircleGauge from "../../components/gauge/SemicircleGauge.svelte";
   import { clampGridColSpan, tileColSpanForPlugin } from "../core/builtinMeta";
   import { FABRIC_EVENT_BUS, perfUpdatedFullSummary, type FabricEventBus } from "../../dashboard/eventBus";
-  import { DataGateway } from "../../dataGateway";
+  import { DataGateway } from "../../gateway/dataGateway";
   import type { DashboardTile } from "../../dashboard/types";
 
   let { gateway, tile }: { gateway: DataGateway; tile: DashboardTile } = $props();

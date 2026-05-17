@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { DashboardLayout } from "./dashboard/types";
+import type { DashboardLayout } from "../dashboard/types";
 import { DataGateway } from "./dataGateway";
 
 describe("DataGateway", () => {

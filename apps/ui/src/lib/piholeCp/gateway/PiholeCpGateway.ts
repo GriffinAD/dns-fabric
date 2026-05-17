@@ -1,6 +1,6 @@
 import { z, type ZodType } from "zod";
 
-import { GatewayError } from "../../dataGateway";
+import { GatewayError } from "../../gateway/dataGateway";
 import {
   envConfigResponseSchema,
   envApplyResponseSchema,

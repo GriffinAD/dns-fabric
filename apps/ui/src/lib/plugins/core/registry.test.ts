@@ -2,7 +2,7 @@ import type { Component } from "svelte";
 import { describe, expect, it } from "vitest";
 
 import type { DashboardTile } from "../../dashboard/types";
-import type { DataGateway } from "../../dataGateway";
+import type { DataGateway } from "../../gateway/dataGateway";
 import type { TileHostContext } from "./registry";
 import DhcpClientsTile from "../dhcp/DhcpClientsTile.svelte";
 import DhcpPoolsTile from "../dhcp/DhcpPoolsTile.svelte";

@@ -4,9 +4,9 @@
 
   import AdminPage from "./lib/admin/AdminPage.svelte";
   import type { PluginEntry } from "./lib/api/types";
-  import { createAppDashboardShell } from "./lib/appDashboardShell";
-  import { attachOperatorShellLifecycle } from "./lib/appMount";
-  import { DataGateway } from "./lib/dataGateway";
+  import { createAppDashboardShell } from "./lib/app/appDashboardShell";
+  import { attachOperatorShellLifecycle } from "./lib/app/appMount";
+  import { DataGateway } from "./lib/gateway/dataGateway";
   import DashboardPage from "./lib/dashboard/DashboardPage.svelte";
   import { createFabricEventBus, FABRIC_EVENT_BUS } from "./lib/dashboard/eventBus";
   import { handlePerfTileGridHint as applyPerfTileGridHint } from "./lib/dashboard/gridHints";
