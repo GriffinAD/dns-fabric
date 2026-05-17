@@ -6,13 +6,9 @@
   import type { DashboardResponse } from "./dashboardZod";
   import LogStreamPanel from "./LogStreamPanel.svelte";
   import { mergeOperatorPluginsForPiholeCp } from "./operatorBaselinePlugins";
-  import {
-    PiholeCpGateway,
-    waitForPiholeCpDashboardCoherent,
-    type PiholeCpMeta,
-  } from "./PiholeCpGateway";
+  import { waitForPiholeCpDashboardCoherent, type PiholeCpMeta } from "./PiholeCpGateway";
   import PiholeCpDashboardShell from "./PiholeCpDashboardShell.svelte";
-  import { PiholeCpDashboardGateway } from "./PiholeCpDashboardGateway";
+  import { createPiholeCpSession } from "./piholeCpSession";
   import { startPiholeCpPerfPolling } from "./piholeCpPerfPoll";
 
   let error = $state<string | null>(null);
@@ -29,8 +25,9 @@
       ? import.meta.env.VITE_PIHOLE_CP_BASE_URL
       : "";
 
+  const session = createPiholeCpSession(baseUrl);
   /** Kea API + layout no-op; perf gauges use the control-plane `/v1/node/perf/summary`. */
-  const gateway = new PiholeCpDashboardGateway(baseUrl);
+  const gateway = session.dashboardGateway;
   const fabricEventBus = createFabricEventBus(gateway);
   setContext(FABRIC_EVENT_BUS, fabricEventBus);
 
@@ -67,8 +64,7 @@
     report?: (label: string) => void,
   ): Promise<void> {
     if (!dashboard) return;
-    const gw = new PiholeCpGateway(baseUrl);
-    const { dashboard: dash, meta: m } = await waitForPiholeCpDashboardCoherent(gw, {
+    const { dashboard: dash, meta: m } = await waitForPiholeCpDashboardCoherent(session.controlPlane, {
       onProgress: report,
     });
     gateway.setKeaFabricApiBaseUrl(m.kea_fabric_api_base_url ?? "");
@@ -89,9 +85,11 @@
     const userRefresh = opts?.userRefresh === true;
     error = null;
     if (userRefresh) refreshing = true;
-    const gw = new PiholeCpGateway(baseUrl);
     try {
-      const [dash, m] = await Promise.all([gw.getDashboard(), gw.getMeta()]);
+      const [dash, m] = await Promise.all([
+        session.controlPlane.getDashboard(),
+        session.controlPlane.getMeta(),
+      ]);
       gateway.setKeaFabricApiBaseUrl(m.kea_fabric_api_base_url ?? "");
       syncFabricSseAfterKeaBaseChange();
       void gateway
@@ -144,7 +142,7 @@
         onRefresh={() => void loadAll({ userRefresh: true })}
         onEnvApplied={(report) => reloadDashboardAfterEnvMutation(report)}
       />
-      <LogStreamPanel {baseUrl} dataRefreshEpoch={dataRefreshEpoch} />
+      <LogStreamPanel {baseUrl} controlPlane={session.controlPlane} dataRefreshEpoch={dataRefreshEpoch} />
     </div>
   {/if}
 </main>

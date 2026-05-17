@@ -4,7 +4,15 @@
   import { PiholeCpGateway } from "./PiholeCpGateway";
   import type { LogsCatalogResponse } from "./dashboardZod";
 
-  let { baseUrl, dataRefreshEpoch = 0 }: { baseUrl: string; dataRefreshEpoch?: number } = $props();
+  let {
+    baseUrl,
+    controlPlane,
+    dataRefreshEpoch = 0,
+  }: {
+    baseUrl: string;
+    controlPlane?: PiholeCpGateway;
+    dataRefreshEpoch?: number;
+  } = $props();
 
   let catalog = $state<LogsCatalogResponse | null>(null);
   let catalogError = $state<string | null>(null);
@@ -16,7 +24,7 @@
   async function loadCatalog() {
     catalogError = null;
     try {
-      const gw = new PiholeCpGateway(baseUrl);
+      const gw = controlPlane ?? new PiholeCpGateway(baseUrl);
       catalog = await gw.getLogsCatalog();
       if (catalog.logs.length > 0 && !selectedId) {
         selectedId = catalog.logs[0]!.id;
