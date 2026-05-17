@@ -36,6 +36,7 @@ import {
   reflowRootLayoutRowInListOrder,
   relocateRootItemToRow,
   rootEditGridColumnCount,
+  swapRootItemGridPlacements,
   swapRootSingleRowTilePlacements,
   ROOT_EDIT_ROW_END_DRAG_PAD_COLS,
   resizeGroupChildTileColSpan,
@@ -2315,11 +2316,66 @@ describe("resizeRootLayoutItemColSpan", () => {
     expect(next.find((it) => it.id === "b")!.grid).toMatchObject({ row: 0, col: 0, colSpan: 4 });
   });
 
+  it("relocateRootItemToRow updates row only for multi-row-span items", () => {
+    const tall: RootLayoutItem = {
+      kind: "tile",
+      id: "a",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 2 },
+    };
+    const next = relocateRootItemToRow([tall], "a", 3);
+    expect(next[0]!.grid).toMatchObject({ row: 3, col: 0, rowSpan: 2 });
+  });
+
   it("swapRootSingleRowTilePlacements exchanges grid slots", () => {
-    const items: RootLayoutItem[] = [tile("a", 0, 4, 0), tile("b", 8, 4, 1)];
+    const items: RootLayoutItem[] = [tile("a", 0, 4, 0), tile("b", 8, 4, 1), tile("c", 12, 2)];
     const next = swapRootSingleRowTilePlacements(items, "a", "b");
     expect(next.find((it) => it.id === "a")!.grid).toMatchObject({ row: 1, col: 8 });
     expect(next.find((it) => it.id === "b")!.grid).toMatchObject({ row: 0, col: 0 });
+    expect(next.find((it) => it.id === "c")!.grid).toMatchObject({ row: 0, col: 12 });
+  });
+
+  it("swapRootSingleRowTilePlacements no-ops when rowSpan is not 1", () => {
+    const tall: RootLayoutItem = {
+      kind: "tile",
+      id: "a",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 2 },
+    };
+    const items: RootLayoutItem[] = [tall, tile("b", 0, 4, 1)];
+    expect(swapRootSingleRowTilePlacements(items, "a", "b")).toBe(items);
+  });
+
+  it("swapRootItemGridPlacements exchanges grid slots for multi-row items", () => {
+    const tall: RootLayoutItem = {
+      kind: "tile",
+      id: "a",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 2 },
+    };
+    const items: RootLayoutItem[] = [tall, tile("b", 8, 4, 1), tile("c", 12, 2)];
+    const next = swapRootItemGridPlacements(items, "a", "b");
+    expect(next.find((it) => it.id === "a")!.grid).toMatchObject({ row: 1, col: 8, colSpan: 4, rowSpan: 1 });
+    expect(next.find((it) => it.id === "b")!.grid).toMatchObject({ row: 0, col: 0, colSpan: 4, rowSpan: 2 });
+    expect(next.find((it) => it.id === "c")!.grid).toMatchObject({ row: 0, col: 12 });
+  });
+
+  it("swapRootItemGridPlacements no-ops when a grid is missing", () => {
+    const noGrid: RootLayoutItem = {
+      kind: "tile",
+      id: "a",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+    };
+    const items: RootLayoutItem[] = [noGrid, tile("b", 0, 4)];
+    expect(swapRootItemGridPlacements(items, "a", "b")).toBe(items);
   });
 
   it("reflowRootLayoutRowInListOrder packs left-to-right in list order", () => {

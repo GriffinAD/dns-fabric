@@ -3,8 +3,10 @@ import { dndState } from "@thisux/sveltednd";
 
 import {
   clearEditorDragHover,
+  clearLastEditorDragClient,
   DND_CONTAINER_ATTR,
   EDITOR_DROP_HOVER_CLASSES,
+  getLastEditorDragClient,
   syncEditorDragHoverFromPointer,
 } from "./dashboardEditorDragHover";
 import { ROOT_CANVAS_CONTAINER } from "./dashboardSveltedndTypes";
@@ -45,6 +47,19 @@ describe("dashboardEditorDragHover", () => {
     grid.remove();
   });
 
+  it("tracks and clears the last drag pointer position", () => {
+    const orig = document.elementFromPoint;
+    document.elementFromPoint = () => drop;
+    try {
+      syncEditorDragHoverFromPointer(12, 34, []);
+      expect(getLastEditorDragClient()).toEqual({ x: 12, y: 34 });
+      clearLastEditorDragClient();
+      expect(getLastEditorDragClient()).toBeNull();
+    } finally {
+      document.elementFromPoint = orig;
+    }
+  });
+
   it("applies drop-target classes and targetContainer under the pointer", () => {
     const orig = document.elementFromPoint;
     document.elementFromPoint = () => drop;
@@ -69,5 +84,55 @@ describe("dashboardEditorDragHover", () => {
     expect(dndState.targetContainer).toBeNull();
     expect(drop.classList.contains("svelte-dnd-drop-target")).toBe(false);
     document.elementFromPoint = orig;
+  });
+
+  it("no-ops when not dragging", () => {
+    const orig = document.elementFromPoint;
+    document.elementFromPoint = () => drop;
+    dndState.isDragging = false;
+    try {
+      syncEditorDragHoverFromPointer(40, 40, []);
+      expect(dndState.targetContainer).toBeNull();
+      expect(drop.classList.contains("svelte-dnd-drop-target")).toBe(false);
+    } finally {
+      document.elementFromPoint = orig;
+    }
+  });
+
+  it("sets dropPosition to after for row-end and gap-after slots", () => {
+    drop.setAttribute(DND_CONTAINER_ATTR, "r:end:t1");
+    const orig = document.elementFromPoint;
+    document.elementFromPoint = () => drop;
+    try {
+      syncEditorDragHoverFromPointer(40, 40, []);
+      expect(dndState.dropPosition).toBe("after");
+    } finally {
+      document.elementFromPoint = orig;
+    }
+  });
+
+  it("sets dropPosition from horizontal band on root tile slots", () => {
+    drop.setAttribute(DND_CONTAINER_ATTR, "r:t1");
+    const orig = document.elementFromPoint;
+    document.elementFromPoint = () => drop;
+    try {
+      syncEditorDragHoverFromPointer(190, 40, []);
+      expect(dndState.dropPosition).toBe("after");
+    } finally {
+      document.elementFromPoint = orig;
+    }
+  });
+
+  it("uses the droppable element when the hit target is not an HTMLElement", () => {
+    const svgHit = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    drop.appendChild(svgHit);
+    const orig = document.elementFromPoint;
+    document.elementFromPoint = () => svgHit;
+    try {
+      syncEditorDragHoverFromPointer(40, 40, []);
+      expect(dndState.targetElement).toBe(drop);
+    } finally {
+      document.elementFromPoint = orig;
+    }
   });
 });

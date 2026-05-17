@@ -102,6 +102,16 @@ describe("createFabricEventBus", () => {
     await vi.waitUntil(() => get(bus.connectionState) === "error");
   });
 
+  it("emit delivers manual events to subscribers", () => {
+    const gw = new DataGateway("");
+    const bus = createFabricEventBus(gw);
+    const received: unknown[] = [];
+    bus.subscribe("custom.topic", (p) => p, (v) => received.push(v));
+    bus.emit("custom.topic", { ok: true });
+    bus.emit("custom.topic", "scalar");
+    expect(received).toEqual([{ ok: true }, { value: "scalar" }]);
+  });
+
   it("can reconnect after teardown (idle → open)", async () => {
     const gw = new DataGateway("");
     const bus = createFabricEventBus(gw);
