@@ -476,3 +476,12 @@ test("edit layout: root grid tracks and ruler align", async ({
     "var(--d-track) and 20fr track must match (ruler vs engine)",
   ).toBeLessThanOrEqual(1.25);
 });
+
+test("export layout downloads JSON", async ({ page }) => {
+  await page.goto("/");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Export layout" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/Dashboard_Layout_.*\.json/);
+});

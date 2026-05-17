@@ -3,7 +3,9 @@
   import Modal from "flowbite-svelte/Modal.svelte";
   import { get } from "svelte/store";
   import ArrowLeft from "lucide-svelte/icons/arrow-left";
+  import Download from "lucide-svelte/icons/download";
   import Pencil from "lucide-svelte/icons/pencil";
+  import Upload from "lucide-svelte/icons/upload";
   import Redo2 from "lucide-svelte/icons/redo-2";
   import RefreshCw from "lucide-svelte/icons/refresh-cw";
   import Save from "lucide-svelte/icons/save";
@@ -12,7 +14,10 @@
 
   import ThemeControls from "../theme/ThemeControls.svelte";
   import DashboardControls from "../dashboard/DashboardControls.svelte";
+  import { importDashboardLayoutFromJson } from "../dashboard/layoutImport";
   import type { LayoutStore } from "../dashboard/layoutStore";
+  import { downloadDashboardLayoutFile } from "../dashboard/layoutStorage";
+  import type { DashboardLayout } from "../dashboard/types";
 
   let {
     nodeLabel,
@@ -41,6 +46,9 @@
   } = $props();
 
   let resetConfirmOpen = $state(false);
+  let importConfirmOpen = $state(false);
+  let pendingImportLayout = $state<DashboardLayout | null>(null);
+  let layoutFileInput = $state<HTMLInputElement | undefined>(undefined);
 
   const headerLabelBandSpacerClass =
     "mb-1 hidden h-[1.125rem] w-0 max-w-0 shrink-0 overflow-hidden sm:block";
@@ -58,6 +66,42 @@
   function confirmResetBaseline() {
     void onResetBaseline();
     resetConfirmOpen = false;
+  }
+
+  function exportLayout() {
+    downloadDashboardLayoutFile(get(ls.layout));
+  }
+
+  function openLayoutFilePicker() {
+    layoutFileInput?.click();
+  }
+
+  async function onLayoutFileSelected(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    const text = await file.text();
+    const result = importDashboardLayoutFromJson(text);
+    if (!result.ok) {
+      ls.loadError.set(result.message);
+      return;
+    }
+    pendingImportLayout = result.layout;
+    importConfirmOpen = true;
+  }
+
+  function confirmImportLayout() {
+    if (pendingImportLayout) {
+      ls.importLayout(pendingImportLayout);
+      pendingImportLayout = null;
+    }
+    importConfirmOpen = false;
+  }
+
+  function cancelImportLayout() {
+    pendingImportLayout = null;
+    importConfirmOpen = false;
   }
 
   $effect(() => {
@@ -126,6 +170,37 @@
           aria-label="Dashboard mode"
           class="flex flex-wrap items-end {editorOpen ? 'gap-3' : 'gap-1'}"
         >
+          <Button
+            type="button"
+            color="alternative"
+            size="sm"
+            class="inline-flex shrink-0 items-center gap-2"
+            aria-label="Export layout"
+            onclick={exportLayout}
+          >
+            <Download class="h-4 w-4" aria-hidden="true" />
+            Export layout
+          </Button>
+          <Button
+            type="button"
+            color="alternative"
+            size="sm"
+            class="inline-flex shrink-0 items-center gap-2"
+            aria-label="Import layout"
+            onclick={openLayoutFilePicker}
+          >
+            <Upload class="h-4 w-4" aria-hidden="true" />
+            Import layout
+          </Button>
+          <input
+            bind:this={layoutFileInput}
+            type="file"
+            accept="application/json,.json"
+            class="hidden"
+            aria-hidden="true"
+            tabindex={-1}
+            onchange={onLayoutFileSelected}
+          />
           {#if editorOpen}
             <Button
               type="button"
@@ -214,6 +289,21 @@
     <div class="flex w-full flex-wrap justify-end gap-2">
       <Button type="button" color="alternative" onclick={() => (resetConfirmOpen = false)}>Cancel</Button>
       <Button type="button" color="danger" onclick={confirmResetBaseline}>Yes</Button>
+    </div>
+  {/snippet}
+</Modal>
+
+<Modal bind:open={importConfirmOpen} title="Replace entire dashboard layout?" size="md" class="z-[100]">
+  {#snippet children()}
+    <p class="text-base leading-relaxed text-gray-600 dark:text-gray-400">
+      Importing a layout file replaces the current dashboard. This cannot be undone except with Undo in the layout
+      editor.
+    </p>
+  {/snippet}
+  {#snippet footer()}
+    <div class="flex w-full flex-wrap justify-end gap-2">
+      <Button type="button" color="alternative" onclick={cancelImportLayout}>Cancel</Button>
+      <Button type="button" color="primary" onclick={confirmImportLayout}>Replace layout</Button>
     </div>
   {/snippet}
 </Modal>

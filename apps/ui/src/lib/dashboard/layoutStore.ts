@@ -169,6 +169,10 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
 
     applyStructure,
 
+    importLayout(next: DashboardLayout, opts?: ApplyLayoutOpts) {
+      applyStructure(next, { skipHistory: false, ...opts });
+    },
+
     canUndo() {
       return undoPast.length > 0;
     },

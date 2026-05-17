@@ -8,7 +8,8 @@
   import { attachOperatorShellLifecycle } from "./lib/appMount";
   import { DataGateway } from "./lib/dataGateway";
   import DashboardPage from "./lib/dashboard/DashboardPage.svelte";
-  import { createFabricEventBus, FABRIC_EVENT_BUS } from "./lib/dashboard/eventBus";
+  import { attachFabricBusKernel } from "./lib/dashboard/fabricBusKernel";
+  import { FABRIC_EVENT_BUS } from "./lib/dashboard/eventBus";
   import { handlePerfTileGridHint as applyPerfTileGridHint } from "./lib/dashboard/gridHints";
   import ShellHeader from "./lib/dashboard/ShellHeader.svelte";
   import type { DashboardGroup, DashboardTile } from "./lib/dashboard/types";
@@ -21,8 +22,8 @@
   let adminSubpath = $state("");
 
   const gateway = new DataGateway();
-  const fabricEventBus = createFabricEventBus(gateway);
-  setContext(FABRIC_EVENT_BUS, fabricEventBus);
+  const fabricBusKernel = attachFabricBusKernel({ gateway });
+  setContext(FABRIC_EVENT_BUS, fabricBusKernel.bus);
   const { ls, overlay } = createAppDashboardShell(gateway, {
     getTile: () => settingsTile,
     setTile: (t) => {
@@ -84,7 +85,7 @@
     return attachOperatorShellLifecycle({
       syncRouteFromHash,
       gateway,
-      fabricEventBus,
+      fabricBusKernel,
       layoutStore: ls,
       setPlugins: (items) => {
         plugins = items;
@@ -97,12 +98,15 @@
   <div class="mx-auto w-full max-w-6xl">
     <ShellHeader
       {route}
+      layout={$layout}
       layoutSource={$layoutSource}
       editorOpen={$editorOpen}
       onSelectDashboardView={() => void selectDashboardView()}
       onOpenEditor={() => ls.openEditor()}
       onResetBaseline={() => void ls.resetToBaseline()}
       onSaveLayoutToFile={() => void ls.saveLayoutToFile()}
+      onImportLayout={(next) => ls.importLayout(next)}
+      onImportError={(message) => ls.loadError.set(message)}
       onGoHome={goHome}
       onGoAdmin={() => void goAdmin()}
     />

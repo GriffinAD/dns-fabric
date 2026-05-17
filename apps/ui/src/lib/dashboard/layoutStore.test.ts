@@ -438,6 +438,28 @@ describe("createLayoutStore", () => {
     spy.mockRestore();
   });
 
+  it("importLayout replaces layout and records undo when editor is open", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.openEditor();
+    const next: DashboardLayoutV3 = {
+      version: 3,
+      items: [
+        {
+          kind: "tile",
+          id: "imported",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "full",
+        },
+      ],
+    };
+    ls.importLayout(next);
+    expect(get(ls.layout).items[0]?.id).toBe("imported");
+    expect(ls.canUndo()).toBe(true);
+  });
+
   it("persistError uses String when PUT rejects non-Error", async () => {
     vi.useFakeTimers();
     const gw = new DataGateway("");
