@@ -443,6 +443,7 @@ export function applyDashboardDrop(
           tileBand && tileBand !== "center" ? tileBand : pos;
         nextG = insertRelativeTo(gList, removed, slot.childId, listPos);
       } else {
+        /* c8 ignore next 2 -- exhaustive isGroupSurfaceSlot arms handled above */
         nextG = gList;
       }
       const nextBy = { ...ctx.dndByGroup, [gid]: nextG };
@@ -517,6 +518,7 @@ export function applyDashboardDrop(
             ctx.pointerClient,
           );
         } else {
+          /* c8 ignore next 2 -- exhaustive same-group group-surface arms handled above */
           return {};
         }
         const nextBy = { ...ctx.dndByGroup, [fromG]: dedupeById(nextTo) };
@@ -537,6 +539,7 @@ export function applyDashboardDrop(
           tileBand && tileBand !== "center" ? tileBand : pos;
         nextTarget = insertRelativeTo(toList, removed, slot.childId, listPos);
       } else {
+        /* c8 ignore next 2 -- exhaustive cross-group group-surface arms handled above */
         nextTarget = toList;
       }
       const nextBy = {

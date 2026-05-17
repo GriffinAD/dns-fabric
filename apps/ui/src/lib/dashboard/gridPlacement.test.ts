@@ -36,6 +36,7 @@ import {
   reflowRootLayoutRowInListOrder,
   relocateRootItemToRow,
   rootEditGridColumnCount,
+  swapRootItemGridPlacements,
   swapRootSingleRowTilePlacements,
   ROOT_EDIT_ROW_END_DRAG_PAD_COLS,
   resizeGroupChildTileColSpan,
@@ -2320,6 +2321,80 @@ describe("resizeRootLayoutItemColSpan", () => {
     const next = swapRootSingleRowTilePlacements(items, "a", "b");
     expect(next.find((it) => it.id === "a")!.grid).toMatchObject({ row: 1, col: 8 });
     expect(next.find((it) => it.id === "b")!.grid).toMatchObject({ row: 0, col: 0 });
+  });
+
+  it("swapRootItemGridPlacements exchanges full grid objects for multi-row items", () => {
+    const groupA: RootLayoutItem = {
+      kind: "group",
+      id: "ga",
+      showBorder: true,
+      children: [],
+      grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 },
+    };
+    const groupB: RootLayoutItem = {
+      kind: "group",
+      id: "gb",
+      showBorder: true,
+      children: [],
+      grid: { col: 0, row: 2, colSpan: 20, rowSpan: 1 },
+    };
+    const items: RootLayoutItem[] = [groupA, groupB];
+    const next = swapRootItemGridPlacements(items, "ga", "gb");
+    expect(next.find((it) => it.id === "ga")!.grid).toEqual(groupB.grid);
+    expect(next.find((it) => it.id === "gb")!.grid).toEqual(groupA.grid);
+  });
+
+  it("swapRootItemGridPlacements is a no-op when either item lacks grid", () => {
+    const items: RootLayoutItem[] = [
+      tile("a", 0, 4, 0),
+      { kind: "tile", id: "b", pluginId: "perf.cpu", hostControl: "single-panel", displayMode: "full" },
+    ];
+    const next = swapRootItemGridPlacements(items, "a", "b");
+    expect(next).toBe(items);
+  });
+
+  it("swapRootItemGridPlacements leaves unrelated items unchanged", () => {
+    const groupA: RootLayoutItem = {
+      kind: "group",
+      id: "ga",
+      showBorder: true,
+      children: [],
+      grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 },
+    };
+    const groupB: RootLayoutItem = {
+      kind: "group",
+      id: "gb",
+      showBorder: true,
+      children: [],
+      grid: { col: 0, row: 2, colSpan: 20, rowSpan: 1 },
+    };
+    const untouched = tile("c", 12, 4, 0);
+    const items: RootLayoutItem[] = [groupA, groupB, untouched];
+    const next = swapRootItemGridPlacements(items, "ga", "gb");
+    expect(next.find((it) => it.id === "c")).toBe(untouched);
+  });
+
+  it("relocateRootItemToRow updates row only for multi-row-span items", () => {
+    const tall: RootLayoutItem = {
+      kind: "group",
+      id: "g",
+      showBorder: true,
+      children: [],
+      grid: { col: 0, row: 0, colSpan: 8, rowSpan: 2 },
+    };
+    const next = relocateRootItemToRow([tall], "g", 3);
+    expect(next.find((it) => it.id === "g")!.grid).toEqual({
+      col: 0,
+      row: 3,
+      colSpan: 8,
+      rowSpan: 2,
+    });
+  });
+
+  it("swapRootSingleRowTilePlacements leaves unrelated items unchanged", () => {
+    const items: RootLayoutItem[] = [tile("a", 0, 4, 0), tile("b", 8, 4, 0), tile("c", 16, 4, 0)];
+    const next = swapRootSingleRowTilePlacements(items, "a", "b");
+    expect(next.find((it) => it.id === "c")).toBe(items[2]);
   });
 
   it("reflowRootLayoutRowInListOrder packs left-to-right in list order", () => {
