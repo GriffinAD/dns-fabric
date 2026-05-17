@@ -374,7 +374,7 @@
           </div>
         {:else}
           <div
-            class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col place-self-stretch"
+            class="editor-layout-elevated flex w-full min-w-0 max-w-full flex-col self-start"
             data-tile-id={it.id}
             style={it.grid ? gridAreaStyle(it.grid) : gridColumnSpanStyle(it)}
           >

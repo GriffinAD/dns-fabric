@@ -22,6 +22,7 @@
     EDITOR_CHROME_BUTTON_LATERAL_OFFSET_PX,
     EDITOR_CHROME_TOP_OFFSET_PX,
     EDITOR_PLUGIN_CAPTION_BAR_CLASS,
+    EDITOR_LAYOUT_ELEVATED_CLASS,
     EDITOR_PLUGIN_HOVER_SHELL,
     EDITOR_PLUGIN_HOVER_VISIBLE,
     EDITOR_TILE_IN_GROUP_DRAG_VISIBLE,
@@ -249,7 +250,7 @@
 
 <!-- Root edit chrome + 20-column drop zone; state lives in DashboardHost. -->
 <div
-  class="relative min-h-[120px] max-w-full overflow-x-auto overflow-y-hidden rounded-lg border-2 border-dashed border-slate-300/95 dark:border-gray-600"
+  class="relative min-h-[120px] max-w-full overflow-x-auto overflow-y-visible rounded-lg border-2 border-dashed border-slate-300/95 p-1 dark:border-gray-600"
   data-dashboard-editor="grid-chrome"
   data-testid="editor-grid-chrome"
   data-editor-pointer-dnd={editorPointerDndActive ? "true" : "false"}
@@ -332,7 +333,7 @@
             {@const isGroupEmpty = gItems.length === 0}
             {@const G = groupOuterColSpan(g)}
             <div
-              class="editor-root-container-shell relative z-[2] flex h-full min-h-0 w-full max-w-full flex-col place-self-stretch rounded-md border border-slate-200/70 bg-transparent pt-2 pb-2 dark:border-gray-500/30 {editorGroupInPlay(g.id)
+              class="editor-root-container-shell {EDITOR_LAYOUT_ELEVATED_CLASS} relative z-[2] flex h-full min-h-0 w-full max-w-full flex-col place-self-stretch rounded-md border border-slate-200/70 bg-transparent pt-2 pb-2 dark:border-gray-500/30 {editorGroupInPlay(g.id)
                 ? 'editor-surface-in-play'
                 : ''}"
               style={placed?.grid ? gridAreaStyle(placed.grid) : ""}
@@ -876,7 +877,7 @@
             </div>
           {:else if cv}
             <div
-              class="{EDITOR_PLUGIN_HOVER_SHELL} relative z-[2] flex h-full min-h-0 w-full max-w-full flex-col place-self-stretch rounded-md border border-slate-200/80 bg-white dark:border-gray-700 dark:bg-gray-800 {editorTileInPlay(d.id)
+              class="{EDITOR_PLUGIN_HOVER_SHELL} {EDITOR_LAYOUT_ELEVATED_CLASS} relative z-[2] flex w-full max-w-full flex-col self-start rounded-md {editorTileInPlay(d.id)
                 ? 'editor-surface-in-play'
                 : ''}"
               style={placed?.grid ? gridAreaStyle(placed.grid) : gridColumnSpanStyle(cv)}

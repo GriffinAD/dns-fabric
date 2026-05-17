@@ -8,6 +8,7 @@ import {
   EDITOR_PLUGIN_CAPTION_BAR_CLASS,
   EDITOR_PLUGIN_HOVER_SHELL,
   EDITOR_PLUGIN_HOVER_VISIBLE,
+  EDITOR_LAYOUT_ELEVATED_CLASS,
   EDITOR_PLUGIN_SURFACE_CLASS,
   nestedContainerDisplayTitle,
 } from "./editorChrome";
@@ -39,6 +40,10 @@ describe("editorChrome", () => {
 
   it("surface class is stable for app.css :has() rules", () => {
     expect(EDITOR_PLUGIN_SURFACE_CLASS).toBe("editor-plugin-surface");
+  });
+
+  it("EDITOR_LAYOUT_ELEVATED_CLASS marks root shells for resting shadow", () => {
+    expect(EDITOR_LAYOUT_ELEVATED_CLASS).toBe("editor-layout-elevated");
   });
 
   it("EDITOR_PLUGIN_CAPTION_BAR_CLASS is always-visible (no hover opacity) with a light-mode gray strip", () => {

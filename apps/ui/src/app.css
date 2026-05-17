@@ -128,13 +128,38 @@ html[data-color-preset="gray"] {
   }
 
   /*
-   * Edit layout resting elevation: root grid children (tiles + containers) cast a shell shadow;
-   * anything inside a shadowed container stays flat (no stacked drop shadows).
+   * Elevation: container panels fill their grid area; root tiles hug content height so shadow
+   * wraps the control border, not an empty stretched grid row.
    */
-  [data-dashboard-editor="grid-chrome"] [data-dashboard-editor="drop-zone"] > [data-dashboard-editor="tile-row"],
-  [data-testid="editor-grid-chrome"] [data-testid="editor-drop-zone"] > [data-dashboard-editor="tile-row"],
-  [data-testid="editor-grid-chrome"] [data-testid="editor-drop-zone"] > [data-testid="editor-tile"] {
-    box-shadow: var(--editor-layout-resting-shadow);
+  .editor-root-container-shell.editor-layout-elevated,
+  [data-dashboard-editor="tile-row"][data-editor-group="true"].editor-layout-elevated,
+  [data-testid="editor-tile"][data-editor-group="true"].editor-layout-elevated {
+    box-shadow: var(--dashboard-shell-elevated-shadow, var(--editor-layout-resting-shadow)) !important;
+  }
+
+  [data-dashboard-editor="drop-zone"] > [data-dashboard-editor="tile-row"].editor-layout-elevated:not([data-editor-group]),
+  [data-testid="editor-drop-zone"] > [data-testid="editor-tile"].editor-layout-elevated:not([data-editor-group]),
+  [data-dashboard-tile-grid] > [data-tile-id].editor-layout-elevated {
+    align-self: start !important;
+    height: auto !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
+    --tw-shadow: 0 0 #0000 !important;
+  }
+
+  .editor-layout-elevated:not([data-editor-group]) .dashboard-section-tile-body,
+  .editor-layout-elevated:not([data-editor-group]) .editor-plugin-surface > [data-scope="card"][data-part="base"],
+  [data-dashboard-tile-grid] > [data-tile-id].editor-layout-elevated .dashboard-section-tile-body,
+  [data-dashboard-tile-grid] > [data-tile-id].editor-layout-elevated .editor-plugin-surface > [data-scope="card"][data-part="base"] {
+    box-shadow: var(--dashboard-shell-elevated-shadow, var(--editor-layout-resting-shadow)) !important;
+  }
+
+  [data-dashboard-group] .dashboard-section-tile-body,
+  [data-dashboard-group] .editor-plugin-surface [data-scope="card"],
+  [data-in-row-panel] .dashboard-section-tile-body,
+  [data-in-row-panel] .editor-plugin-surface [data-scope="card"] {
+    box-shadow: none !important;
+    --tw-shadow: 0 0 #0000 !important;
   }
 
   [data-dashboard-editor="grid-chrome"] .editor-root-container-shell .editor-plugin-hover-highlight,
@@ -362,6 +387,11 @@ html[data-color-preset="gray"] {
     justify-self: stretch;
   }
 
+  [data-dashboard-tile-grid] > [data-tile-id].editor-layout-elevated {
+    align-self: start;
+    height: auto;
+  }
+
   /* Row panel: one border around a subgrid group; inner Flowbite cards drop their own border. */
   [data-dashboard-tile-grid] [data-row-panel],
   [data-dashboard-tile-grid] [data-dashboard-group] {
@@ -516,11 +546,25 @@ html[data-color-preset="gray"] {
  * split, not a possibly different `100%` resolution used only for this background in some cases.
  * Parent grid chrome sets `container-type: inline-size`.
  */
+:root {
+  --dashboard-shell-elevated-shadow:
+    -2px 5px 14px -3px rgb(15 23 42 / 0.07), 0 1px 1px 0 rgb(15 23 42 / 0.04);
+}
+
+.dark {
+  --dashboard-shell-elevated-shadow: -2px 6px 20px -4px rgb(0 0 0 / 0.45);
+}
+
+[data-dashboard-editor="grid-chrome"],
+[data-testid="editor-grid-chrome"],
+[data-dashboard-tile-grid] {
+  --editor-layout-resting-shadow: var(--dashboard-shell-elevated-shadow);
+}
+
 [data-dashboard-editor="grid-chrome"],
 [data-testid="editor-grid-chrome"] {
   container-type: inline-size;
-  --editor-layout-resting-shadow:
-    -2px 5px 14px -3px rgb(15 23 42 / 0.07), 0 1px 1px 0 rgb(15 23 42 / 0.04);
+  --editor-layout-resting-shadow: var(--dashboard-shell-elevated-shadow);
   --editor-layout-hover-line: color-mix(in srgb, var(--color-emerald-500) 40%, transparent);
   --editor-layout-hover-glow: 0 0 16px color-mix(in srgb, var(--color-emerald-500) 40%, transparent);
   --editor-layout-container-hover-line: color-mix(in srgb, var(--color-blue-500) 40%, transparent);
@@ -529,7 +573,7 @@ html[data-color-preset="gray"] {
 
 .dark [data-dashboard-editor="grid-chrome"],
 .dark [data-testid="editor-grid-chrome"] {
-  --editor-layout-resting-shadow: -2px 6px 20px -4px rgb(0 0 0 / 0.45);
+  --editor-layout-resting-shadow: var(--dashboard-shell-elevated-shadow);
   --editor-layout-hover-line: color-mix(in srgb, var(--color-emerald-400) 40%, transparent);
   --editor-layout-hover-glow: 0 0 16px color-mix(in srgb, var(--color-emerald-400) 40%, transparent);
   --editor-layout-container-hover-line: color-mix(in srgb, var(--color-blue-400) 40%, transparent);

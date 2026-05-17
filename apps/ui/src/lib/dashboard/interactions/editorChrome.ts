@@ -64,6 +64,12 @@ export const EDITOR_PLUGIN_CAPTION_BAR_CLASS = [
 export const EDITOR_PLUGIN_SURFACE_CLASS = "editor-plugin-surface";
 
 /**
+ * Root grid shell marker — `app.css` applies resting shadow to container panels (fill grid area)
+ * or to the bordered control body for standalone tiles (`align-self: start`, not row stretch).
+ */
+export const EDITOR_LAYOUT_ELEVATED_CLASS = "editor-layout-elevated";
+
+/**
  * Visible label for a dashboard container (root or nested). The wire model uses `id` as the
  * stable name; show it so nested hierarchy matches **Tile settings → Parent** and read-mode
  * captions on plugin tiles.
