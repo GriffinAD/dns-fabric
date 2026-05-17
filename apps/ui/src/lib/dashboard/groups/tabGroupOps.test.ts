@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  activeTabChild,
   addTabChild,
   addTabContainer,
   removeTabChild,
   renameTabChild,
   reorderTabChildren,
   setActiveTab,
+  tabStripLabel,
 } from "./tabGroupOps";
 import type { DashboardGroup } from "../types";
 import { MAX_TAB_GROUP_CHILDREN } from "../types";
@@ -31,6 +33,19 @@ function tabGroup(): DashboardGroup {
 }
 
 describe("tabGroupOps", () => {
+  it("tabStripLabel uses tabLabel or falls back to id", () => {
+    const g = tabGroup();
+    expect(tabStripLabel(g.children[0]!)).toBe("A");
+    expect(tabStripLabel({ ...g.children[0]!, tabLabel: undefined })).toBe("a");
+  });
+
+  it("activeTabChild resolves hostState or first child", () => {
+    expect(activeTabChild(tabGroup())?.id).toBe("a");
+    const stale = { ...tabGroup(), hostState: { activeChildId: "missing" } };
+    expect(activeTabChild(stale)?.id).toBe("a");
+    expect(activeTabChild({ ...tabGroup(), children: [] })).toBeUndefined();
+  });
+
   it("addTabChild appends a new tile tab", () => {
     const next = addTabChild(tabGroup(), { pluginId: "perf.ram", tabLabel: "RAM" });
     expect(next.children).toHaveLength(2);

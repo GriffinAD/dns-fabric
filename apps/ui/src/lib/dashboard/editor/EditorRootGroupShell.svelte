@@ -15,8 +15,10 @@
   import type { DashboardDragPayload } from "../interactions/dashboardSveltedndTypes";
   import { rootCellPayload, rootSlotContainer } from "../interactions/dashboardSveltedndTypes";
   import { dedupeById } from "../layoutTree";
+  import TabGroupHost from "../groups/TabGroupHost.svelte";
   import EditorGroupInnerWrap from "./EditorGroupInnerWrap.svelte";
   import EditorGroupNoWrapStrip from "./EditorGroupNoWrapStrip.svelte";
+  import type { PluginEntry } from "../../api/types";
   import TileColSpanResizeHandle from "./TileColSpanResizeHandle.svelte";
   import type { DashboardGroup, DashboardTile, RootLayoutItem } from "../types";
 
@@ -31,6 +33,8 @@
     editorTileInPlay,
     editorGroupInPlay,
     onEditGroup,
+    onGroupChange,
+    plugins = [] as PluginEntry[],
     editLayout,
     onEditTile,
     onItemColSpanChange,
@@ -55,6 +59,8 @@
     editorTileInPlay: (id: string) => boolean;
     editorGroupInPlay: (id: string) => boolean;
     onEditGroup?: (g: DashboardGroup) => void;
+    onGroupChange?: (g: DashboardGroup) => void;
+    plugins?: PluginEntry[];
     editLayout: boolean;
     onEditTile?: (tile: DashboardTile) => void;
     onItemColSpanChange?: (
@@ -137,7 +143,17 @@
     aria-label="Container {group.id}: drop plugins or reorder tiles"
   >
     <div class="relative w-full min-h-0 flex-1" class:min-h-28={isGroupEmpty}>
-      {#if group.innerWrap === true}
+      {#if group.hostControl === "tab-control"}
+        <TabGroupHost
+          {group}
+          {editLayout}
+          {onGroupChange}
+          {plugins}
+          {onEditTile}
+          {onEditGroup}
+          {tileContent}
+        />
+      {:else if group.innerWrap === true}
         <EditorGroupInnerWrap
           {group}
           {gItems}

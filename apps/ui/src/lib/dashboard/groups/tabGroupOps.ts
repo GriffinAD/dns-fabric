@@ -2,6 +2,22 @@ import type { DisplayMode } from "../../api/types";
 import type { DashboardGroup, DashboardTile, GroupChild } from "../types";
 import { MAX_TAB_GROUP_CHILDREN } from "../types";
 
+/** Tab strip label; defaults to child `id` (ADR-0054). */
+export function tabStripLabel(child: GroupChild): string {
+  return child.tabLabel ?? child.id;
+}
+
+/** Active tab child; falls back to first child when `activeChildId` is missing or stale. */
+export function activeTabChild(group: DashboardGroup): GroupChild | undefined {
+  const children = group.children;
+  if (children.length === 0) return undefined;
+  const active = group.hostState?.activeChildId;
+  if (active != null && children.some((c) => c.id === active)) {
+    return children.find((c) => c.id === active);
+  }
+  return children[0];
+}
+
 export type AddTabChildOpts = {
   pluginId: string;
   tabLabel: string;

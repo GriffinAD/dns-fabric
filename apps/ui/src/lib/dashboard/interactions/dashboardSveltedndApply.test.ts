@@ -26,6 +26,8 @@ import {
   rootAppendContainer,
   rootCanvasContainer,
   rootGapAfterContainer,
+  tabGroupTabsContainer,
+  tabStripCellPayload,
 } from "./dashboardSveltedndTypes";
 import {
   applyDashboardDrop,
@@ -85,6 +87,7 @@ describe("dashboardSveltedndTypes", () => {
     expect(parseDropContainer("g:g1:canvas")).toEqual({ kind: "groupCanvas", groupId: "g1" });
     expect(parseDropContainer("g:g1:gap:c1")).toEqual({ kind: "groupGapAfter", groupId: "g1", childId: "c1" });
     expect(parseDropContainer("g:g1:append")).toEqual({ kind: "groupAppend", groupId: "g1" });
+    expect(parseDropContainer("g:g1:tabs")).toEqual({ kind: "groupTabs", groupId: "g1" });
     expect(parseDropContainer(null)).toBe(null);
   });
 
@@ -95,6 +98,8 @@ describe("dashboardSveltedndTypes", () => {
     expect(parseDragPayload({ k: "pg" })).toEqual(paletteAddGroupPayload());
     const cg = groupCellPayload("g1", "c1");
     expect(parseDragPayload(JSON.parse(JSON.stringify(cg)))).toEqual(cg);
+    const tt = tabStripCellPayload("g1", "c1");
+    expect(parseDragPayload(JSON.parse(JSON.stringify(tt)))).toEqual(tt);
     expect(groupCellPayload("a", "b")).toEqual({ k: "cg", g: "a", i: "b" });
     expect(parseDragPayload({ bad: true })).toBe(null);
     expect(parseDragPayload(null)).toBe(null);
@@ -120,11 +125,13 @@ describe("dashboardSveltedndTypes", () => {
       childId: "c",
     });
     expect(parseDropContainer(groupAppendContainer("g"))).toEqual({ kind: "groupAppend", groupId: "g" });
+    expect(parseDropContainer(tabGroupTabsContainer("g"))).toEqual({ kind: "groupTabs", groupId: "g" });
     expect(palettePluginContainer("dhcp.pools")).toBe("palette:p:dhcp.pools");
     expect(parseDropContainer("r:")).toBe(null);
     expect(parseDropContainer("nope")).toBe(null);
     expect(parseDropContainer("g:x:empty:extra")).toBe(null);
     expect(parseDropContainer("g::empty")).toBe(null);
+    expect(parseDropContainer("g::tabs")).toBe(null);
   });
 });
 

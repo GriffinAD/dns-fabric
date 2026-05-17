@@ -15,6 +15,7 @@
     packGroupChildrenRowWrapInOrder,
     reorderRootLayoutItemsPreservingSlotOrigins,
   } from "./gridPlacement";
+  import TabGroupHost from "./groups/TabGroupHost.svelte";
   import DashboardReadNestedHost from "./DashboardReadNestedHost.svelte";
   import GroupReadNoWrap from "./GroupReadNoWrap.svelte";
   import PluginTileMount from "./PluginTileMount.svelte";
@@ -32,7 +33,7 @@
   import type { DashboardDropContext } from "./interactions/dashboardSveltedndApply";
   import { parseDragPayload, parseDropContainer, type DashboardDragPayload } from "./interactions/dashboardSveltedndTypes";
   import { editorGroupInPlay, editorTileInPlay } from "./interactions/editorSelection";
-  import { dedupeById } from "./layoutTree";
+  import { dedupeById, mapLayoutReplaceGroupById } from "./layoutTree";
   import { noWrapReadRowGroups } from "./readModeLayout";
   import { stripScrollportObserve } from "./stripWidth";
   import type {
@@ -235,6 +236,13 @@
     });
   }
 
+  function onTabGroupChange(next: DashboardGroup) {
+    onLayoutStructureChange?.({
+      version: 3,
+      items: mapLayoutReplaceGroupById(layout.items, next.id, next),
+    });
+  }
+
 </script>
 
 {#snippet renderTile(tile: DashboardTile)}
@@ -271,6 +279,8 @@
       onAddTileToGroup={onAddTileToGroup}
       onAddGroupToGroup={onAddGroupToGroup}
       onEditGroup={onEditGroup}
+      onTabGroupChange={onTabGroupChange}
+      {plugins}
       {editLayout}
       {onEditTile}
       {onItemColSpanChange}
@@ -296,7 +306,20 @@
             style={it.grid ? gridAreaStyle(it.grid) : ""}
             aria-label="Group {it.id}"
           >
-            {#if it.innerWrap === true}
+            {#if it.hostControl === "tab-control"}
+              <TabGroupHost
+                group={it}
+                {editLayout}
+                onGroupChange={onTabGroupChange}
+                {plugins}
+                {onEditTile}
+                onEditGroup={onEditGroup}
+              >
+                {#snippet tileContent(t)}
+                  {@render renderTile(t)}
+                {/snippet}
+              </TabGroupHost>
+            {:else if it.innerWrap === true}
               {@const Gr = groupOuterColSpan(it)}
               {@const tilesOnly = dedupeById(it.children).filter(
                 (c): c is DashboardTile => !isDashboardGroupNode(c),
@@ -335,6 +358,8 @@
                   outerCols={Gr}
                   {editLayout}
                   {onEditTile}
+                  onGroupChange={onTabGroupChange}
+                  {plugins}
                 >
                   {#snippet tileContent(t)}
                     {@render renderTile(t)}

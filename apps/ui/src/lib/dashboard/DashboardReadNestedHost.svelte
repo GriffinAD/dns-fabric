@@ -4,6 +4,8 @@
    * paths via `stripWidth.ts` — keep those modules aligned when changing flex gaps or scrollports.
    */
   import type { Snippet } from "svelte";
+  import type { PluginEntry } from "../api/types";
+  import TabGroupHost from "./groups/TabGroupHost.svelte";
   import DashboardReadNestedHost from "./DashboardReadNestedHost.svelte";
   import TileEditChrome from "./TileEditChrome.svelte";
   import {
@@ -27,12 +29,16 @@
     outerCols,
     editLayout = false,
     onEditTile,
+    onGroupChange,
+    plugins = [] as PluginEntry[],
     tileContent,
   }: {
     group: DashboardGroup;
     outerCols: number;
     editLayout?: boolean;
     onEditTile?: (t: DashboardTile) => void;
+    onGroupChange?: (g: DashboardGroup) => void;
+    plugins?: PluginEntry[];
     tileContent: Snippet<[DashboardTile]>;
   } = $props();
 
@@ -101,7 +107,16 @@
         style:width={widthPxForChild(child, row.length)}
         data-dashboard-group={child.id}
       >
-        {#if child.innerWrap === true}
+        {#if child.hostControl === "tab-control"}
+          <TabGroupHost
+            group={child}
+            {editLayout}
+            {onGroupChange}
+            {plugins}
+            {onEditTile}
+            {tileContent}
+          />
+        {:else if child.innerWrap === true}
           {@const tiles = dedupeById(child.children).filter(
             (c): c is DashboardTile => !isDashboardGroupNode(c),
           )}
@@ -135,6 +150,8 @@
             outerCols={Gc}
             {editLayout}
             {onEditTile}
+            {onGroupChange}
+            {plugins}
             {tileContent}
           />
         {/if}

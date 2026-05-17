@@ -16,6 +16,7 @@
   import EditorDropZone from "./editor/EditorDropZone.svelte";
   import EditorRootGroupShell from "./editor/EditorRootGroupShell.svelte";
   import EditorRootTileCell from "./editor/EditorRootTileCell.svelte";
+  import type { PluginEntry } from "../api/types";
   import type { DashboardGroup, DashboardTile, RootLayoutItem } from "./types";
 
   let {
@@ -35,6 +36,8 @@
     onAddTileToGroup,
     onAddGroupToGroup,
     onEditGroup,
+    onTabGroupChange,
+    plugins = [] as PluginEntry[],
     editLayout,
     onEditTile,
     onItemColSpanChange,
@@ -57,6 +60,8 @@
     onAddTileToGroup?: (groupId: string, pluginId: string) => void;
     onAddGroupToGroup?: (parentGroupId: string) => void;
     onEditGroup?: (g: DashboardGroup) => void;
+    onTabGroupChange?: (g: DashboardGroup) => void;
+    plugins?: PluginEntry[];
     editLayout: boolean;
     onEditTile?: (tile: DashboardTile) => void;
     onItemColSpanChange?: (
@@ -242,6 +247,8 @@
             {editorTileInPlay}
             {editorGroupInPlay}
             {onEditGroup}
+            onGroupChange={onTabGroupChange}
+            {plugins}
             {editLayout}
             {onEditTile}
             {onItemColSpanChange}
