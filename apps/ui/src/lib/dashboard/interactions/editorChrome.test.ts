@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CONTAINER_DND_HANDLE,
   EDITOR_CHROME_BUTTON_LATERAL_OFFSET_PX,
   EDITOR_CHROME_TOP_OFFSET_PX,
   EDITOR_PLUGIN_HOVER_HIGHLIGHT_CLASS,
@@ -10,6 +11,9 @@ import {
   EDITOR_PLUGIN_HOVER_VISIBLE,
   EDITOR_LAYOUT_ELEVATED_CLASS,
   EDITOR_PLUGIN_SURFACE_CLASS,
+  EDITOR_TILE_DND_HANDLE,
+  editorDndDragAttrs,
+  editorDndDropAttrs,
   nestedContainerDisplayTitle,
 } from "./editorChrome";
 
@@ -50,5 +54,12 @@ describe("editorChrome", () => {
     expect(EDITOR_PLUGIN_CAPTION_BAR_CLASS).not.toContain("opacity-0");
     expect(EDITOR_PLUGIN_CAPTION_BAR_CLASS).toContain("bg-slate-100");
     expect(EDITOR_PLUGIN_CAPTION_BAR_CLASS).toContain("dark:bg-gray-800");
+  });
+
+  it("exports sveltednd handle selectors and drag/drop class maps", () => {
+    expect(CONTAINER_DND_HANDLE).toContain("editor-container-drag-handle");
+    expect(EDITOR_TILE_DND_HANDLE).toContain("editor-tile-drag-handle");
+    expect(editorDndDragAttrs.draggingClass).toContain("ring-primary-500");
+    expect(editorDndDropAttrs.dragOverClass).toContain("svelte-dnd-drop-target");
   });
 });

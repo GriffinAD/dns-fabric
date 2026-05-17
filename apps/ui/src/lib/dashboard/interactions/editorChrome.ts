@@ -77,3 +77,19 @@ export const EDITOR_LAYOUT_ELEVATED_CLASS = "editor-layout-elevated";
 export function nestedContainerDisplayTitle(groupId: string): string {
   return `Container: ${groupId}`;
 }
+
+/** sveltednd drag handle selector for root and nested container chrome. */
+export const CONTAINER_DND_HANDLE =
+  '[data-testid="editor-container-drag-handle"],[data-testid="editor-nested-group-drag-handle"]';
+
+/** sveltednd drag handle selector for tiles inside a group. */
+export const EDITOR_TILE_DND_HANDLE = '[data-testid="editor-tile-drag-handle"]';
+
+export const editorDndDragAttrs = {
+  draggingClass: "opacity-90 shadow-md rounded-md ring-2 ring-primary-500/35",
+};
+
+export const editorDndDropAttrs = {
+  dragOverClass:
+    "svelte-dnd-drop-target outline outline-2 outline-dashed outline-offset-[3px] rounded-md outline-primary-500",
+};
