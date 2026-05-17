@@ -1,4 +1,4 @@
-import type { DashboardTile } from "../dashboard/types";
+import type { DashboardTile } from "../../dashboard/types";
 
 /**
  * Perf tiles in compact mode use percent-only display for a smaller footprint (`docs/planning/UI_ENGINE_PLAN.md` P4.5).

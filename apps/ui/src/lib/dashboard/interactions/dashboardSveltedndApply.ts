@@ -1,8 +1,8 @@
 import type { DragDropState } from "@thisux/sveltednd";
 
-import type { DashboardDndListItem } from "../groupDndFinalize";
-import { buildRootLayoutFromDnd, isDndCellGroup } from "../groupDndFinalize";
-import { dedupeById } from "../layoutTree";
+import type { DashboardDndListItem } from "../grid/groupDndFinalize";
+import { buildRootLayoutFromDnd, isDndCellGroup } from "../grid/groupDndFinalize";
+import { dedupeById } from "../layout/layoutTree";
 import {
   applyRootLayoutPointerDropPlacement,
   packRootLayoutItems,
@@ -11,7 +11,7 @@ import {
   reorderRootLayoutItemsPreservingSlotOrigins,
   swapRootItemGridPlacements,
   swapRootSingleRowTilePlacements,
-} from "../gridPlacement";
+} from "../grid/gridPlacement";
 import type { DashboardLayout, RootLayoutItem } from "../types";
 
 import {
@@ -284,6 +284,11 @@ function rootInsertIndex(dndRoot: DashboardDndListItem[], slot: ParsedDropSlot, 
   return dropPosition === "before" ? idx : idx + 1;
 }
 
+type RootSurfaceSlotWithId = Extract<
+  ParsedDropSlot,
+  { kind: "root" } | { kind: "rootRowEnd" } | { kind: "rootGapAfter" }
+>;
+
 function isRootSurfaceSlot(slot: ParsedDropSlot): boolean {
   return (
     slot.kind === "root" ||
@@ -295,7 +300,20 @@ function isRootSurfaceSlot(slot: ParsedDropSlot): boolean {
   );
 }
 
-function isGroupSurfaceSlot(slot: ParsedDropSlot): boolean {
+function isRootSurfaceSlotWithId(slot: ParsedDropSlot): slot is RootSurfaceSlotWithId {
+  return slot.kind === "root" || slot.kind === "rootRowEnd" || slot.kind === "rootGapAfter";
+}
+
+type GroupSurfaceSlot = Extract<
+  ParsedDropSlot,
+  | { kind: "groupChild" }
+  | { kind: "groupEmpty" }
+  | { kind: "groupCanvas" }
+  | { kind: "groupGapAfter" }
+  | { kind: "groupAppend" }
+>;
+
+function isGroupSurfaceSlot(slot: ParsedDropSlot): slot is GroupSurfaceSlot {
   return (
     slot.kind === "groupChild" ||
     slot.kind === "groupEmpty" ||
@@ -401,7 +419,9 @@ export function applyDashboardDrop(
       const anchorId =
         slot.kind === "rootEmpty" || slot.kind === "rootCanvas" || slot.kind === "rootAppend"
           ? (ctx.dndRoot[ctx.dndRoot.length - 1]?.id ?? drag.i)
-          : slot.id;
+          : isRootSurfaceSlotWithId(slot)
+            ? slot.id
+            : /* v8 ignore next */ drag.i;
       const tileBand =
         slot.kind === "root"
           ? resolveRootTileDropBand(
@@ -443,6 +463,7 @@ export function applyDashboardDrop(
           tileBand && tileBand !== "center" ? tileBand : pos;
         nextG = insertRelativeTo(gList, removed, slot.childId, listPos);
       } else {
+        /* v8 ignore next 2 */
         nextG = gList;
       }
       const nextBy = { ...ctx.dndByGroup, [gid]: nextG };
@@ -471,7 +492,9 @@ export function applyDashboardDrop(
       const anchorId =
         slot.kind === "rootEmpty" || slot.kind === "rootCanvas" || slot.kind === "rootAppend"
           ? (ctx.dndRoot[ctx.dndRoot.length - 1]?.id ?? removed.id)
-          : slot.id;
+          : isRootSurfaceSlotWithId(slot)
+            ? slot.id
+            : /* v8 ignore next */ removed.id;
       const tileBand =
         slot.kind === "root"
           ? resolveRootTileDropBand(state.targetElement, rootPos, ctx.pointerClient)
@@ -517,6 +540,7 @@ export function applyDashboardDrop(
             ctx.pointerClient,
           );
         } else {
+          /* v8 ignore next 2 */
           return {};
         }
         const nextBy = { ...ctx.dndByGroup, [fromG]: dedupeById(nextTo) };
@@ -537,6 +561,7 @@ export function applyDashboardDrop(
           tileBand && tileBand !== "center" ? tileBand : pos;
         nextTarget = insertRelativeTo(toList, removed, slot.childId, listPos);
       } else {
+        /* v8 ignore next 2 */
         nextTarget = toList;
       }
       const nextBy = {

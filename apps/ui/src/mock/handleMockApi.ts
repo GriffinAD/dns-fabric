@@ -3,7 +3,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { dashboardLayoutExportFilename, parseDashboardLayout } from "../lib/dashboard/layoutStorage";
+import { dashboardLayoutExportFilename, parseDashboardLayout } from "../lib/dashboard/layout/layoutStorage";
 import { baseFixtures } from "./fixtures";
 import { perfSummaryForTick } from "./perfSimulate";
 import { getDiscoveryScan, getPerfTick, getSavedLayout, nextPerfTick, setDiscoveryPaused, setSavedLayout } from "./state";

@@ -7,7 +7,7 @@ import PiholeOperatorApp from "./lib/piholeCp/shell/PiholeOperatorApp.svelte";
 import {
   applyDocumentDashboardSettings,
   loadDashboardSettings,
-} from "./lib/dashboard/dashboardSettings";
+} from "./lib/dashboard/layout/dashboardSettings";
 import { applyDocumentTheme, getSystemPrefersDark, loadThemePreferences } from "./lib/theme/themeStorage";
 
 const prefs = loadThemePreferences();

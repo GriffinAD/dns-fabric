@@ -123,6 +123,7 @@ When unavailable:
 ### Task 1: Shared `write-vrrp-state.sh`
 
 **Files:**
+
 - Create: `pihole-ha/ops/lib/write-vrrp-state.sh`
 - Modify: `pihole-ha/ops/lib/install-wrappers.sh` (no change required unless you install the lib; scripts source by path)
 
@@ -191,6 +192,7 @@ git commit -s -m "feat(ops): add write-vrrp-state helper for control-plane dashb
 ### Task 2: Notify scripts write state
 
 **Files:**
+
 - Modify: `pihole-ha/ops/runtime/failover/on-master.sh`
 - Modify: `pihole-ha/ops/runtime/backup/on-backup.sh`
 
@@ -251,6 +253,7 @@ git commit -s -m "feat(ops): export VRRP role from Keepalived notify scripts"
 ### Task 3: Preflight + bootstrap seed
 
 **Files:**
+
 - Modify: `pihole-ha/ops/install/preflight.sh`
 - Modify: `pihole-ha/ops/install/bootstrap.sh` (end of successful bootstrap)
 
@@ -286,6 +289,7 @@ git commit -s -m "chore(ops): ensure keepalived state dir exists on install"
 ### Task 4: `vrrp_state` adapter (TDD)
 
 **Files:**
+
 - Create: `pihole-ha/platform/control-plane/app/adapters/vrrp_state.py`
 - Create: `pihole-ha/tests/test_vrrp_state.py`
 
@@ -456,6 +460,7 @@ git commit -s -m "feat(control-plane): read VRRP role from host notify state fil
 ### Task 5: Wire `keepalived_section` + compose mount
 
 **Files:**
+
 - Modify: `pihole-ha/platform/control-plane/app/sections/keepalived.py`
 - Modify: `pihole-ha/platform/core/docker-compose.control-plane.override.yml`
 - Modify: `pihole-ha/tests/test_control_plane.py`
@@ -557,6 +562,7 @@ git commit -s -m "feat(control-plane): expose VRRP role on dashboard keepalived 
 ### Task 6: Operator docs + smoke (`pihole-ha`)
 
 **Files:**
+
 - Modify: `pihole-ha/docs/operations/control-plane-ui.md`
 - Modify: `pihole-ha/docs/operations/control-plane-smoke.md`
 
@@ -592,6 +598,7 @@ git commit -s -m "docs: control-plane VRRP state file and smoke"
 ### Task 7: Keepalived tile — show role when available
 
 **Files:**
+
 - Modify: `apps/ui/src/lib/piholeCp/SectionDashboardTile.svelte` (keepalived block ~lines 148–157)
 - Modify: `apps/ui/src/lib/piholeCp/SectionDashboardTile.svelte.test.ts`
 
@@ -695,6 +702,7 @@ git commit -s -m "feat(ui): show live VRRP role on keepalived dashboard tile"
 ### Task 8: Embed UI into control-plane image
 
 **Files:**
+
 - `pihole-ha/platform/control-plane/app/static/next/` (built assets)
 - `pihole-ha` embed build script (follow existing `build:pihole-cp-embed` workflow in repo)
 
@@ -731,6 +739,7 @@ git commit -s -m "chore(control-plane): embed UI with VRRP role display"
 ### Task 9: ADR-0054 + spec closure
 
 **Files:**
+
 - Create: `docs/adr/ADR-0054-pihole-ha-control-plane-vrrp-read-model.md`
 - Modify: `docs/superpowers/specs/2026-05-13-pihole-ha-control-plane-ui-design.md` §8
 

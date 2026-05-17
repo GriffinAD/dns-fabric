@@ -1,0 +1,88 @@
+import type { DashboardLayoutV3, RootTileItem } from "../types";
+
+/** Initial layout: one `group` (status row) with four perf tiles on an inner 20-col grid; DHCP plugin tiles on the root grid. */
+export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutV3 = {
+  version: 3,
+  items: [
+    {
+      kind: "group",
+      id: "group-status",
+      showBorder: true,
+      grid: { col: 0, row: 0, colSpan: 20, rowSpan: 1 },
+      children: [
+        {
+          id: "tile-perf-cpu",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          region: "status-zone",
+          grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+          options: { cpu_total: false, display_style: "gauge" },
+        },
+        {
+          id: "tile-perf-ram",
+          pluginId: "perf.ram",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          region: "status-zone",
+          grid: { col: 8, row: 0, colSpan: 4, rowSpan: 1 },
+          options: { display_style: "gauge" },
+        },
+        {
+          id: "tile-perf-net",
+          pluginId: "perf.network",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          region: "status-zone",
+          grid: { col: 12, row: 0, colSpan: 4, rowSpan: 1 },
+          options: { network_by_adapter: true, display_style: "gauge" },
+        },
+        {
+          id: "tile-perf-disk",
+          pluginId: "perf.disk",
+          hostControl: "single-panel",
+          displayMode: "compact",
+          region: "status-zone",
+          grid: { col: 16, row: 0, colSpan: 4, rowSpan: 1 },
+          options: { disk_by_volume: true, display_style: "gauge" },
+        },
+      ],
+    },
+    {
+      kind: "tile",
+      id: "tile-pools",
+      pluginId: "dhcp.pools",
+      hostControl: "single-panel",
+      displayMode: "full",
+      region: "primary-grid",
+      grid: { col: 5, row: 1, colSpan: 5, rowSpan: 1 },
+    } as RootTileItem,
+    {
+      kind: "tile",
+      id: "tile-discovery",
+      pluginId: "discovery.records",
+      hostControl: "single-panel",
+      displayMode: "full",
+      region: "primary-grid",
+      grid: { col: 10, row: 1, colSpan: 5, rowSpan: 1 },
+    } as RootTileItem,
+    {
+      kind: "tile",
+      id: "tile-clients",
+      pluginId: "dhcp.clients",
+      hostControl: "single-panel",
+      displayMode: "full",
+      region: "primary-grid",
+      grid: { col: 15, row: 1, colSpan: 5, rowSpan: 1 },
+    } as RootTileItem,
+    {
+      kind: "tile",
+      id: "tile-reservations",
+      pluginId: "dhcp.reservations",
+      hostControl: "single-panel",
+      displayMode: "full",
+      region: "primary-grid",
+      grid: { col: 0, row: 2, colSpan: 20, rowSpan: 1 },
+    } as RootTileItem,
+  ],
+};

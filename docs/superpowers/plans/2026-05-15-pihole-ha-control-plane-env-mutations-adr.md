@@ -30,6 +30,7 @@
 ### Task 1: Classify `.env` keys (inventory → tiers)
 
 **Files:**
+
 - Read: `pihole-ha/.env_example`
 - Read: `pihole-ha/platform/core/docker-compose.control-plane.override.yml`
 - Read: `pihole-ha/ops/lib/compose-core.sh`
@@ -78,6 +79,7 @@ Add to ADR-0053: any key not listed in the ADR appendix is **T3 (deny)** until t
 ### Task 2: Write ADR-0053 (full text)
 
 **Files:**
+
 - Create: `docs/adr/ADR-0053-pihole-ha-control-plane-env-mutations.md`
 
 - [x] **Step 1: Create ADR from template with this body**
@@ -239,6 +241,7 @@ On apply success add `"backup_path": "/opt/pihole-ha/.env.bak.1715760000"`, `"re
 | Date | Status | Reviewer | Notes |
 |------|--------|----------|-------|
 | 2026-05-15 | Proposed | GriffinAD | Option B allowlist + rollback |
+
 ```
 
 - [x] **Step 2: Self-review ADR against ADR-0051**
@@ -267,11 +270,13 @@ EOF
 ### Task 3: Cross-link ADR-0052
 
 **Files:**
+
 - Modify: `docs/adr/ADR-0052-pihole-ha-control-plane-phase3-mutations-auth-audit.md`
 
 - [x] **Step 1: Add under Decision outcome (after DNSCrypt bullet)**
 
 ```markdown
+
 - **Env / feature toggles (Tier-1):** see **`ADR-0053`** — supersedes the
   “no HTTP DNSCrypt toggle” bullet **only** for allowlisted `.env` keys and
   routes documented there. Tier-2/Tier-3 keys remain host-deferred (**202**).
@@ -297,6 +302,7 @@ git commit -s -m "docs(adr): cross-link ADR-0052 to env mutations ADR-0053"
 ### Task 4: Operator matrix docs (dns-fabric + pihole-ha)
 
 **Files:**
+
 - Create: `docs/operations/control-plane-env-mutations.md`
 - Create: `pihole-ha/docs/operations/control-plane-env-mutations.md` (identical body; adjust relative links)
 
@@ -331,13 +337,14 @@ sudo /usr/local/bin/pihole-ha-refresh.sh --node pi1
 
 Passwords, `CONTROL_PLANE_API_TOKEN`, `CONFIG_SCHEMA_VERSION`.
 
-## Rollback
+## Tier rollback (operator)
 
 ```bash
 sudo /usr/local/bin/pihole-ha-apply-env-patch.sh --node pi2 --rollback
 ```
 
 Or `POST /v1/mutations/env/rollback` with valid API token when host apply is enabled.
+
 ```
 
 - [ ] **Step 2: Patch `pihole-ha/docs/operations/control-plane-mutations.md`**
@@ -369,11 +376,13 @@ pihole-ha: `docs/operations/control-plane-env-mutations.md` + `control-plane-mut
 ### Task 5: Spec §8 — close open decision
 
 **Files:**
+
 - Modify: `docs/superpowers/specs/2026-05-13-pihole-ha-control-plane-ui-design.md`
 
 - [x] **Step 1: Add to §8 Open decisions**
 
 ```markdown
+
 - **Env / settings UI:** gated on **ADR-0053** (`Accepted`) + implementation plan
   `2026-05-15-pihole-ha-control-plane-env-mutations-impl.md`; read-only display until then.
 ```

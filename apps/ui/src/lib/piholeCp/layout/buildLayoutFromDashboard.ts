@@ -1,6 +1,6 @@
 import type { PluginEntry, UiDashboardManifest } from "../../api/types";
-import { DEFAULT_DASHBOARD_LAYOUT } from "../../dashboard/defaultLayout";
-import { cloneLayoutJson, layoutWithGrid } from "../../dashboard/gridPlacement";
+import { DEFAULT_DASHBOARD_LAYOUT } from "../../dashboard/layout/defaultLayout";
+import { cloneLayoutJson, layoutWithGrid } from "../../dashboard/grid/gridPlacement";
 import { ensureLayoutV3 } from "../../dashboard/migration";
 import {
   isDashboardGroupNode,
@@ -16,6 +16,7 @@ import { isKeaDhcpTilesEnabled, isPiholeCpDhcpTilePluginId, isPiholeCpKeaFabricO
 import type { PiholeCpMeta } from "../gateway/PiholeCpGateway";
 import {
   humanizePiholeCpSectionKey,
+  isLegacyPiholeHaSectionPluginId,
   PIHOLE_HA_SECTION_PLUGIN_ID,
   pluginIdForPiholeDashboardSection,
   isPiholeHaPerSectionPluginId,
@@ -23,13 +24,13 @@ import {
 
 type DashboardWidget = DashboardResponse["widgets"][number];
 
+const PIHOLE_CP_KEA_MODE_SECTION_PLUGIN_IDS = new Set(
+  (["kea_dhcp", "peer_telemetry", "peer_dhcp"] as const).map(pluginIdForPiholeDashboardSection),
+);
+
 /** Section-backed tiles that only belong in the UI when Kea DHCP mode is active (see control-plane `WIDGETS`). */
 function isPiholeCpKeaModeSectionPluginId(pluginId: string): boolean {
-  return (
-    pluginId === pluginIdForPiholeDashboardSection("kea_dhcp") ||
-    pluginId === pluginIdForPiholeDashboardSection("peer_telemetry") ||
-    pluginId === pluginIdForPiholeDashboardSection("peer_dhcp")
-  );
+  return PIHOLE_CP_KEA_MODE_SECTION_PLUGIN_IDS.has(pluginId);
 }
 
 /** Tiles to remove from layout/palette when `DHCP_MODE` ≠ `kea` (Kea DHCP + Fabric operator path). */
@@ -39,7 +40,7 @@ function tileHiddenWhenKeaDhcpDisabled(tile: { pluginId: string; options?: unkno
   if (isPiholeCpKeaModeSectionPluginId(tile.pluginId)) return true;
   const sec = (tile.options as { section?: unknown } | undefined)?.section;
   return (
-    tile.pluginId === PIHOLE_HA_SECTION_PLUGIN_ID &&
+    isLegacyPiholeHaSectionPluginId(tile.pluginId) &&
     typeof sec === "string" &&
     (sec === "kea_dhcp" || sec === "peer_telemetry" || sec === "peer_dhcp")
   );
@@ -95,18 +96,19 @@ export function buildPiholeCpPluginPalette(
 
 export function collectPiholeSectionWidgetIds(items: RootLayoutItem[]): Set<string> {
   const ids = new Set<string>();
-  function walk(list: RootLayoutItem[]) {
+  function walk(list: readonly GroupChild[]) {
     for (const it of list) {
-      if (it.kind === "tile") {
-        const o = it.options as { widgetId?: unknown } | undefined;
-        if (
-          typeof o?.widgetId === "string" &&
-          (it.pluginId === PIHOLE_HA_SECTION_PLUGIN_ID || isPiholeHaPerSectionPluginId(it.pluginId))
-        ) {
-          ids.add(o.widgetId);
-        }
+      if (isDashboardGroupNode(it)) {
+        walk(it.children);
+        continue;
       }
-      if (it.kind === "group") walk(it.children);
+      const o = it.options as { widgetId?: unknown } | undefined;
+      if (
+        typeof o?.widgetId === "string" &&
+        (isLegacyPiholeHaSectionPluginId(it.pluginId) || isPiholeHaPerSectionPluginId(it.pluginId))
+      ) {
+        ids.add(o.widgetId);
+      }
     }
   }
   walk(items);
@@ -171,17 +173,17 @@ export function layoutContainsPiholeCpKeaDisabledTiles(
   dashboard: DashboardResponse,
 ): boolean {
   if (isKeaDhcpTilesEnabled(meta, dashboard)) return false;
-  function walk(items: RootLayoutItem[]): boolean {
+  function walkChildren(items: readonly GroupChild[]): boolean {
     for (const it of items) {
-      if (it.kind === "tile" && tileHiddenWhenKeaDhcpDisabled(it)) return true;
-      if (it.kind === "group") {
-        const g = it as DashboardGroup;
-        if (walk(g.children)) return true;
+      if (isDashboardGroupNode(it)) {
+        if (walkChildren(it.children)) return true;
+        continue;
       }
+      if (tileHiddenWhenKeaDhcpDisabled(it)) return true;
     }
     return false;
   }
-  return walk(layout.items);
+  return walkChildren(layout.items);
 }
 
 /** Strip forbidden tiles and reflow the grid when Kea DHCP is not active; otherwise returns `layout` unchanged. */

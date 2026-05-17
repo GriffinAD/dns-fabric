@@ -16,7 +16,7 @@ import {
   perfSummaryResponseSchema,
   pluginListResponseSchema,
 } from "../api/openapiZod";
-import { dashboardLayoutJsonSchema, normalizeLayoutFromJson } from "../dashboard/layoutZod";
+import { dashboardLayoutJsonSchema, normalizeLayoutFromJson } from "../dashboard/layout/layoutZod";
 import type {
   DhcpClientListResponse,
   DhcpClientPatch,

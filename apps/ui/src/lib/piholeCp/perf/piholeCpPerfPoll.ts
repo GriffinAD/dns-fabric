@@ -1,4 +1,4 @@
-import type { FabricEventBus } from "../../dashboard/eventBus";
+import type { FabricEventBus } from "../../dashboard/bus/eventBus";
 import type { PerfSummaryResponse } from "../../api/types";
 import type { PiholeCpDashboardGateway } from "../gateway/PiholeCpDashboardGateway";
 import {

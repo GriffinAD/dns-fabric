@@ -276,6 +276,55 @@ describe("buildLayoutFromDashboard", () => {
     expect(rootPluginIds).not.toContain("discovery.records");
   });
 
+  it("layoutContainsPiholeCpKeaDisabledTiles walks nested groups", () => {
+    const metaOff = { dhcp_mode: "none" as const, node: "n", peer_ui_base_url: null, kea_fabric_api_base_url: null };
+    const dashOff = dashboardResponseSchema.parse({
+      node: "n",
+      version: "1",
+      widgets: [],
+      sections: { ha: { dhcp_mode: "none" } },
+    });
+    const layout: DashboardLayoutV3 = {
+      version: 3,
+      items: [
+        {
+          kind: "group" as const,
+          id: "outer",
+          showBorder: true,
+          children: [
+            {
+              kind: "group" as const,
+              id: "inner",
+              showBorder: true,
+              children: [
+                {
+                  id: "dhcp",
+                  pluginId: "dhcp.pools",
+                  hostControl: "single-panel" as const,
+                  displayMode: "full" as const,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(layoutContainsPiholeCpKeaDisabledTiles(layout, metaOff, dashOff)).toBe(true);
+  });
+
+  it("layoutContainsPiholeCpKeaDisabledTiles is false when Kea DHCP is enabled", () => {
+    const metaOn = { dhcp_mode: "kea" as const, node: "n", peer_ui_base_url: null, kea_fabric_api_base_url: null };
+    const dashOn = dashboardResponseSchema.parse({
+      node: "n",
+      version: "1",
+      widgets: [],
+      sections: { ha: { dhcp_mode: "kea" } },
+    });
+    const layout = buildPiholeCpDefaultLayout(dashOn, metaOn);
+    expect(layoutContainsPiholeCpKeaDisabledTiles(layout, metaOn, dashOn)).toBe(false);
+    expect(stripPiholeCpLayoutWhenKeaDhcpDisabled(layout, metaOn, dashOn)).toBe(layout);
+  });
+
   it("layoutContainsPiholeCpKeaDisabledTiles is false after strip when meta says Kea DHCP is off", () => {
     const dashKeaLayout = buildPiholeCpDefaultLayout(
       dashboardResponseSchema.parse({

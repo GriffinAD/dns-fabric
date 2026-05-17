@@ -1,8 +1,8 @@
 import { get } from "svelte/store";
 
 import type { DataGateway } from "../gateway/dataGateway";
-import { createLayoutStore } from "../dashboard/layoutStore";
-import { createOverlayActions } from "../dashboard/overlayActions";
+import { createLayoutStore } from "../dashboard/layout/layoutStore";
+import { createOverlayActions } from "../dashboard/layout/overlayActions";
 import type { DashboardGroup, DashboardTile } from "../dashboard/types";
 
 export type OverlaySettingsBinding = {

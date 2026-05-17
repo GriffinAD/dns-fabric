@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./piholeCpPostApplyWait", async (importOriginal) => {
-  const mod = await importOriginal<typeof import("./piholeCpPostApplyWait")>();
+vi.mock("../perf/piholeCpPostApplyWait", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("../perf/piholeCpPostApplyWait")>();
   return { ...mod, sleep: vi.fn(async () => undefined) };
 });
 
@@ -107,7 +107,10 @@ describe("waitForHostEnvApplyComplete", () => {
     vi.spyOn(gw, "getEnvConfig").mockImplementation(async () => {
       envCalls += 1;
       if (envCalls < 9) {
-        return { effective: {}, pending: { DNSCRYPT_PROXY_ENABLED: "1" } };
+        return {
+          effective: {} as Record<string, string>,
+          pending: { DNSCRYPT_PROXY_ENABLED: "1" },
+        };
       }
       return { effective: { DNSCRYPT_PROXY_ENABLED: "1" }, pending: null };
     });

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { BaseDataTableSelectOption } from "./baseDataTable";
+  import type { BaseDataTableSelectOption } from "../baseDataTable/baseDataTable";
 
   let {
     value,

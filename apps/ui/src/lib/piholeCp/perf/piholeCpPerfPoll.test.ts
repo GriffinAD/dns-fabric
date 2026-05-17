@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createFabricEventBus, perfUpdatedFullSummary } from "../../dashboard/eventBus";
+import { createFabricEventBus, perfUpdatedFullSummary } from "../../dashboard/bus/eventBus";
 import type { PerfSummaryResponse } from "../../api/types";
 import { PiholeCpDashboardGateway } from "../gateway/PiholeCpDashboardGateway";
 import { startPiholeCpPerfPolling } from "../perf/piholeCpPerfPoll";
@@ -91,6 +91,19 @@ describe("startPiholeCpPerfPolling", () => {
     expect(received.at(-1)?.disk_used_percent).toBe(99);
 
     stop();
+  });
+
+  it("does not poll again after stop", async () => {
+    vi.useFakeTimers();
+    const gw = new PiholeCpDashboardGateway("");
+    const spy = vi.spyOn(gw, "getPerfSummary").mockResolvedValue(snap(10));
+    const bus = createFabricEventBus(gw);
+    const stop = startPiholeCpPerfPolling(gw, bus, { sampleMs: 1000, uiAverageSamples: 3 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(spy).toHaveBeenCalledTimes(1);
+    stop();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 
   it("ignores getPerfSummary errors and keeps polling", async () => {

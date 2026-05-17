@@ -1,7 +1,7 @@
 import type { DragDropState } from "@thisux/sveltednd";
 import { describe, expect, it, vi } from "vitest";
 
-import type { DashboardDndListItem } from "../groupDndFinalize";
+import type { DashboardDndListItem } from "../grid/groupDndFinalize";
 import type { DashboardGroup, RootLayoutItem } from "../types";
 
 import {
@@ -122,6 +122,12 @@ describe("dashboardSveltedndTypes", () => {
     expect(parseDropContainer(groupAppendContainer("g"))).toEqual({ kind: "groupAppend", groupId: "g" });
     expect(palettePluginContainer("dhcp.pools")).toBe("palette:p:dhcp.pools");
     expect(parseDropContainer("r:")).toBe(null);
+    expect(parseDropContainer("r:gap:")).toBe(null);
+    expect(parseDropContainer("r:end:")).toBe(null);
+    expect(parseDropContainer("g::append")).toBe(null);
+    expect(parseDropContainer("g:g1:gap:")).toBe(null);
+    expect(parseDropContainer("g::canvas")).toBe(null);
+    expect(parseDropContainer("g::c:x")).toBe(null);
     expect(parseDropContainer("nope")).toBe(null);
     expect(parseDropContainer("g:x:empty:extra")).toBe(null);
     expect(parseDropContainer("g::empty")).toBe(null);
@@ -162,9 +168,43 @@ describe("resolveRootTileDropBand", () => {
     expect(resolveRootTileDropBand(el, "after", { x: 20, y: 20 })).toBe("before");
     expect(resolveRootTileDropBand(el, "before", { x: 180, y: 20 })).toBe("after");
   });
+
+  it("returns dropPosition when target element or pointer is missing", () => {
+    expect(resolveRootTileDropBand(null, "before", { x: 1, y: 1 })).toBe("before");
+    const el = document.createElement("div");
+    expect(resolveRootTileDropBand(el, "after", undefined)).toBe("after");
+  });
+
+  it("returns dropPosition when bounding rect is empty", () => {
+    const el = document.createElement("div");
+    el.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0 }) as DOMRect;
+    expect(resolveRootTileDropBand(el, "before", { x: 0, y: 0 })).toBe("before");
+  });
+
+  it("returns dropPosition when vertical offset dominates", () => {
+    const el = document.createElement("div");
+    el.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 200, height: 200, right: 200, bottom: 200 }) as DOMRect;
+    expect(resolveRootTileDropBand(el, "before", { x: 100, y: 20 })).toBe("before");
+    expect(resolveRootTileDropBand(el, "after", { x: 100, y: 180 })).toBe("after");
+  });
 });
 
 describe("applyDashboardDrop", () => {
+  it("preview drops can skip layout persistence", () => {
+    const onLayoutStructureChange = vi.fn();
+    applyDashboardDrop(
+      state({
+        draggedItem: palettePluginPayload("new.plugin"),
+        targetContainer: ROOT_EMPTY_CONTAINER,
+      }),
+      { dndRoot: [], dndByGroup: {}, layoutItems: [], onAddTile: vi.fn() },
+      { persist: false },
+    );
+    expect(onLayoutStructureChange).not.toHaveBeenCalled();
+  });
+
   it("calls onAddTile with insert index for palette → root", () => {
     const onAddTile = vi.fn();
     const root = [dndTile("t1"), dndTile("t2")];
@@ -345,6 +385,119 @@ describe("applyDashboardDrop", () => {
       col: 0,
     });
     expect(next?.items?.find((it: { id: string }) => it.id === "a")?.grid?.col).toBe(4);
+  });
+
+  it("swaps multi-row-span tiles on center band via grid placement swap", () => {
+    const onLayoutStructureChange = vi.fn();
+    const el = document.createElement("div");
+    el.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 200, height: 120, right: 200, bottom: 120 }) as DOMRect;
+    const tall: RootLayoutItem = {
+      ...layoutTile("tall"),
+      grid: { col: 0, row: 0, colSpan: 8, rowSpan: 2 },
+    };
+    const b: RootLayoutItem = {
+      ...layoutTile("b"),
+      grid: { col: 8, row: 0, colSpan: 4, rowSpan: 1 },
+    };
+    applyDashboardDrop(
+      state({
+        draggedItem: rootCellPayload("b"),
+        targetContainer: rootSlotContainer("tall"),
+        dropPosition: "before",
+        targetElement: el,
+      }),
+      {
+        dndRoot: [
+          { id: "tall", item: tall },
+          { id: "b", item: b },
+        ],
+        dndByGroup: {},
+        layoutItems: [tall, b],
+        pointerClient: { x: 100, y: 60 },
+        onLayoutStructureChange,
+      },
+    );
+    const next = onLayoutStructureChange.mock.calls[0]?.[0];
+    expect(next?.items?.find((it: { id: string }) => it.id === "b")?.grid).toMatchObject({
+      row: 0,
+      col: 0,
+      rowSpan: 2,
+    });
+    expect(next?.items?.find((it: { id: string }) => it.id === "tall")?.grid).toMatchObject({
+      row: 0,
+      col: 8,
+      rowSpan: 1,
+    });
+  });
+
+  it("reflows target row when a multi-row-span tile lands on a single-row target", () => {
+    const onLayoutStructureChange = vi.fn();
+    const el = document.createElement("div");
+    el.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 200, height: 120, right: 200, bottom: 120 }) as DOMRect;
+    const tall: RootLayoutItem = {
+      ...layoutTile("tall"),
+      grid: { col: 0, row: 1, colSpan: 8, rowSpan: 2 },
+    };
+    const anchor: RootLayoutItem = {
+      ...layoutTile("anchor"),
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+    };
+    applyDashboardDrop(
+      state({
+        draggedItem: rootCellPayload("tall"),
+        targetContainer: rootSlotContainer("anchor"),
+        dropPosition: "before",
+        targetElement: el,
+      }),
+      {
+        dndRoot: [
+          { id: "anchor", item: anchor },
+          { id: "tall", item: tall },
+        ],
+        dndByGroup: {},
+        layoutItems: [anchor, tall],
+        pointerClient: { x: 20, y: 60 },
+        onLayoutStructureChange,
+      },
+    );
+    expect(onLayoutStructureChange).toHaveBeenCalled();
+  });
+
+  it("relocates a tile onto a multi-row-span target row for edge band drops", () => {
+    const onLayoutStructureChange = vi.fn();
+    const el = document.createElement("div");
+    el.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 200, height: 120, right: 200, bottom: 120 }) as DOMRect;
+    const tall: RootLayoutItem = {
+      ...layoutTile("tall"),
+      grid: { col: 0, row: 0, colSpan: 8, rowSpan: 2 },
+    };
+    const b: RootLayoutItem = {
+      ...layoutTile("b"),
+      grid: { col: 8, row: 2, colSpan: 4, rowSpan: 1 },
+    };
+    applyDashboardDrop(
+      state({
+        draggedItem: rootCellPayload("b"),
+        targetContainer: rootSlotContainer("tall"),
+        dropPosition: "before",
+        targetElement: el,
+      }),
+      {
+        dndRoot: [
+          { id: "tall", item: tall },
+          { id: "b", item: b },
+        ],
+        dndByGroup: {},
+        layoutItems: [tall, b],
+        pointerClient: { x: 20, y: 60 },
+        onLayoutStructureChange,
+      },
+    );
+    const next = onLayoutStructureChange.mock.calls[0]?.[0];
+    expect(next?.items?.find((it: { id: string }) => it.id === "b")?.grid?.row).toBe(0);
   });
 
   it("swaps tiles when dropped on the center band from another row", () => {
@@ -722,6 +875,50 @@ describe("applyDashboardDrop", () => {
     expect(onLayoutStructureChange).toHaveBeenCalled();
   });
 
+  it("root tile into group append slot appends to group list", () => {
+    const onLayoutStructureChange = vi.fn();
+    const g = layoutGroup("g1", [childTile("c1")]);
+    const root = [{ id: "g1", item: g }, dndTile("t-root")];
+    applyDashboardDrop(
+      state({
+        draggedItem: rootCellPayload("t-root"),
+        targetContainer: groupAppendContainer("g1"),
+      }),
+      {
+        dndRoot: root,
+        dndByGroup: { g1: [{ id: "c1", item: childTile("c1") }] },
+        layoutItems: [g, layoutTile("t-root")],
+        onLayoutStructureChange,
+      },
+    );
+    expect(onLayoutStructureChange).toHaveBeenCalled();
+  });
+
+  it("root tile into group gap-after uses insertRelativeTo", () => {
+    const onLayoutStructureChange = vi.fn();
+    const g = layoutGroup("g1", [childTile("c1"), childTile("c2")]);
+    const root = [{ id: "g1", item: g }, dndTile("t-root")];
+    applyDashboardDrop(
+      state({
+        draggedItem: rootCellPayload("t-root"),
+        targetContainer: groupGapAfterContainer("g1", "c1"),
+        dropPosition: "after",
+      }),
+      {
+        dndRoot: root,
+        dndByGroup: {
+          g1: [
+            { id: "c1", item: childTile("c1") },
+            { id: "c2", item: childTile("c2") },
+          ],
+        },
+        layoutItems: [g, layoutTile("t-root")],
+        onLayoutStructureChange,
+      },
+    );
+    expect(onLayoutStructureChange).toHaveBeenCalled();
+  });
+
   it("root tile into group child uses insertRelativeTo", () => {
     const onLayoutStructureChange = vi.fn();
     const g = layoutGroup("g1", [childTile("c1"), childTile("c2")]);
@@ -860,7 +1057,7 @@ describe("applyDashboardDrop", () => {
     const group = merged?.items?.[0];
     expect(group?.kind).toBe("group");
     if (group?.kind === "group") {
-      expect(group.children.map((ch) => ch.id)).toEqual(["c2", "c1"]);
+      expect(group.children.map((ch: { id: string }) => ch.id)).toEqual(["c2", "c1"]);
     }
   });
 
@@ -922,6 +1119,83 @@ describe("applyDashboardDrop", () => {
         dropPosition: "before",
       }),
       { dndRoot: root, dndByGroup: by, layoutItems: [g], onLayoutStructureChange },
+    );
+    expect(onLayoutStructureChange).toHaveBeenCalled();
+  });
+
+  it("group child reorders within same group via gap-after slot", () => {
+    const onLayoutStructureChange = vi.fn();
+    const g = layoutGroup("g1", [childTile("c1"), childTile("c2")]);
+    const root = [{ id: "g1", item: g }];
+    const by = {
+      g1: [
+        { id: "c1", item: childTile("c1") },
+        { id: "c2", item: childTile("c2") },
+      ],
+    };
+    applyDashboardDrop(
+      state({
+        draggedItem: groupCellPayload("g1", "c2"),
+        targetContainer: groupGapAfterContainer("g1", "c1"),
+        dropPosition: "after",
+      }),
+      { dndRoot: root, dndByGroup: by, layoutItems: [g], onLayoutStructureChange },
+    );
+    expect(onLayoutStructureChange).toHaveBeenCalled();
+  });
+
+  it("group child moves across groups via gap-after slot", () => {
+    const onLayoutStructureChange = vi.fn();
+    const g1 = layoutGroup("g1", [childTile("a")]);
+    const g2 = layoutGroup("g2", [childTile("b")]);
+    const root = [
+      { id: "g1", item: g1 },
+      { id: "g2", item: g2 },
+    ];
+    applyDashboardDrop(
+      state({
+        draggedItem: groupCellPayload("g1", "a"),
+        targetContainer: groupGapAfterContainer("g2", "b"),
+        dropPosition: "after",
+      }),
+      {
+        dndRoot: root,
+        dndByGroup: {
+          g1: [{ id: "a", item: childTile("a") }],
+          g2: [{ id: "b", item: childTile("b") }],
+        },
+        layoutItems: [g1, g2],
+        onLayoutStructureChange,
+      },
+    );
+    expect(onLayoutStructureChange).toHaveBeenCalled();
+  });
+
+  it("group child promotes to root with center band swap", () => {
+    const onLayoutStructureChange = vi.fn();
+    const g = layoutGroup("g1", [childTile("c1")]);
+    const anchor: RootLayoutItem = {
+      ...layoutTile("anchor"),
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+    };
+    const root = [{ id: "anchor", item: anchor }, { id: "g1", item: g }];
+    const el = document.createElement("div");
+    el.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 200, height: 80, right: 200, bottom: 80 }) as DOMRect;
+    applyDashboardDrop(
+      state({
+        draggedItem: groupCellPayload("g1", "c1"),
+        targetContainer: rootSlotContainer("anchor"),
+        dropPosition: "before",
+        targetElement: el,
+      }),
+      {
+        dndRoot: root,
+        dndByGroup: { g1: [{ id: "c1", item: childTile("c1") }] },
+        layoutItems: [anchor, g],
+        pointerClient: { x: 100, y: 40 },
+        onLayoutStructureChange,
+      },
     );
     expect(onLayoutStructureChange).toHaveBeenCalled();
   });
@@ -1057,5 +1331,41 @@ describe("applyDashboardInvalidDrop", () => {
     });
     applyDashboardInvalidDrop(st, []);
     expect(st.invalidDrop).toBe(false);
+  });
+
+  it("does not flag when root cell drag target is missing from dnd root", () => {
+    const st = state({
+      draggedItem: rootCellPayload("missing"),
+      targetContainer: groupChildSlotContainer("g1", "t1"),
+    });
+    applyDashboardInvalidDrop(st, []);
+    expect(st.invalidDrop).toBe(false);
+  });
+
+  it("flags when dragging root group over its own inner group strip", () => {
+    const groupItem: DashboardDndListItem = {
+      id: "g1",
+      item: { kind: "group", id: "g1", showBorder: true, children: [] },
+    };
+    const st = state({
+      draggedItem: rootCellPayload("g1"),
+      targetContainer: "g:g1:c:child",
+    });
+    applyDashboardInvalidDrop(st, [groupItem]);
+    expect(st.invalidDrop).toBe(true);
+  });
+
+  it("flags root tile drag on canvas when pointer is over inner tile row chrome", () => {
+    const row = document.createElement("div");
+    row.setAttribute("data-dashboard-editor", "tile-row");
+    const inner = document.createElement("span");
+    row.appendChild(inner);
+    const st = state({
+      draggedItem: rootCellPayload("t1"),
+      targetContainer: ROOT_CANVAS_CONTAINER,
+      targetElement: inner,
+    });
+    applyDashboardInvalidDrop(st, [dndTile("t1")]);
+    expect(st.invalidDrop).toBe(true);
   });
 });

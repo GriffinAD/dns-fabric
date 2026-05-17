@@ -2,8 +2,8 @@
  * Layout document upgrades (v1 → v2 dedupe/migrate, v2 → v3 version bump). Pure functions; no I/O.
  * Call from persistence hydrate path after wire parse.
  */
-import { compareRootItemsByPosition } from "../layoutCompare";
-import { dedupeById } from "../layoutDedupe";
+import { compareRootItemsByPosition } from "../layout/layoutCompare";
+import { dedupeById } from "../layout/layoutDedupe";
 import type {
   DashboardGroup,
   DashboardLayout,

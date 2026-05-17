@@ -7,16 +7,16 @@
  * localStorage is overwritten with that document; subsequent edits are dirty vs that snapshot
  * until the debounced PUT succeeds (see `layoutStore` / Phase 8 for undo interaction).
  */
-import { DEFAULT_DASHBOARD_LAYOUT } from "../defaultLayout";
-import * as gridPlacement from "../gridPlacement";
-import { iterateTilesInLayout } from "../layoutTree";
+import { DEFAULT_DASHBOARD_LAYOUT } from "../layout/defaultLayout";
+import * as gridPlacement from "../grid/gridPlacement";
+import { iterateTilesInLayout } from "../layout/layoutTree";
 import { ensureLayoutV3 } from "../migration";
 import {
   clearLayoutLocalPersistGate,
   DASHBOARD_LAYOUT_STORAGE_KEY,
   loadDashboardLayout,
   saveDashboardLayout,
-} from "../layoutStorage";
+} from "../layout/layoutStorage";
 import { stripLegacyPerfSummaryTiles } from "../migrations/stripLegacyPerfSummary";
 import type { DashboardLayout, DashboardLayoutV3, DashboardTile, RootTileItem } from "../types";
 
