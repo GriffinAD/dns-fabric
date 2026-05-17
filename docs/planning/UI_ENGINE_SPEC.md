@@ -231,6 +231,15 @@ Responsibilities stay; plugin dispatch moves out:
 
 Target: < 350 lines, no pluginId literals.
 
+**Editor pointer tracking:** During edit-mode drag, document-level pointer
+position for root tile band detection and drop-hover sync is owned by
+`apps/ui/src/lib/dashboard/interactions/editorPointerTracking.ts`
+(`attachEditorPointerTracking`). `DashboardHost` wires `onPointer` into
+`pointerClient` and palette `dropEffect` via `onDragOver`; drop handlers may
+still consult `getLastEditorDragClient()` from
+`dashboardEditorDragHover.ts` when the final `dragover`/`drop` event lacks
+reliable coordinates.
+
 ### 4.3 Host controls (blueprint §"Host controls")
 
 Implement the four host controls as Svelte components inside the host layer:

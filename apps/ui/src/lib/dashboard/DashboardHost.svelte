@@ -18,6 +18,7 @@
   import DashboardReadNestedHost from "./DashboardReadNestedHost.svelte";
   import GroupReadNoWrap from "./GroupReadNoWrap.svelte";
   import PluginTileMount from "./PluginTileMount.svelte";
+  import DashboardTileShell from "./DashboardTileShell.svelte";
   import TileEditChrome from "./TileEditChrome.svelte";
   import { buildRootLayoutFromDnd, type DashboardDndListItem } from "./groupDndFinalize";
   import DashboardEditRootGrid from "./DashboardEditRootGrid.svelte";
@@ -26,6 +27,7 @@
     getLastEditorDragClient,
     syncEditorDragHoverFromPointer,
   } from "./interactions/dashboardEditorDragHover";
+  import { attachEditorPointerTracking } from "./interactions/editorPointerTracking";
   import { applyDashboardDrop, applyDashboardInvalidDrop } from "./interactions/dashboardSveltedndApply";
   import type { DashboardDropContext } from "./interactions/dashboardSveltedndApply";
   import { parseDragPayload, parseDropContainer, type DashboardDragPayload } from "./interactions/dashboardSveltedndTypes";
@@ -161,40 +163,22 @@
       pointerClient = undefined;
       return;
     }
-    const onMove = (e: PointerEvent) => {
-      pointerClient = { x: e.clientX, y: e.clientY };
-      syncEditorDragHoverFromPointer(e.clientX, e.clientY, dndRoot);
-    };
-    document.addEventListener("pointermove", onMove, { passive: true });
-    return () => document.removeEventListener("pointermove", onMove);
-  });
-
-  $effect(() => {
-    if (!editorPointerDndActive) {
-      clearEditorDragHover();
-      return;
-    }
-    const onDragOver = (e: DragEvent) => {
-      if (e.clientX === 0 && e.clientY === 0) return;
-      pointerClient = { x: e.clientX, y: e.clientY };
-      const overGrid =
-        document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-dashboard-editor="grid-chrome"]') !=
-        null;
-      if (overGrid) e.preventDefault();
-      syncEditorDragHoverFromPointer(e.clientX, e.clientY, dndRoot);
-      const drag = parseDragPayload(dndState.draggedItem);
-      if (e.dataTransfer && (drag?.k === "pp" || drag?.k === "pg")) {
-        e.dataTransfer.dropEffect = dndState.invalidDrop ? "none" : "copy";
-      }
-    };
-    const onDragEnd = () => clearEditorDragHover();
-    document.addEventListener("dragover", onDragOver);
-    document.addEventListener("dragend", onDragEnd, true);
-    return () => {
-      document.removeEventListener("dragover", onDragOver);
-      document.removeEventListener("dragend", onDragEnd, true);
-      clearEditorDragHover();
-    };
+    return attachEditorPointerTracking(
+      true,
+      {
+        onPointer: (pt) => {
+          pointerClient = pt;
+        },
+        onDragOver: (e) => {
+          const drag = parseDragPayload(dndState.draggedItem);
+          if (e.dataTransfer && (drag?.k === "pp" || drag?.k === "pg")) {
+            e.dataTransfer.dropEffect = dndState.invalidDrop ? "none" : "copy";
+          }
+        },
+        onDragEnd: () => clearEditorDragHover(),
+      },
+      { getDndRoot: () => dndRoot },
+    );
   });
 
   function buildDropContext(): DashboardDropContext {
@@ -373,20 +357,10 @@
             {/if}
           </div>
         {:else}
-          <div
-            class="editor-layout-elevated flex w-full min-w-0 max-w-full flex-col self-start"
-            data-tile-id={it.id}
-            style={it.grid ? gridAreaStyle(it.grid) : gridColumnSpanStyle(it)}
-          >
-            <TileEditChrome
-              tile={it}
-              onEdit={onEditTile}
-              showEditButton={editLayout}
-            >
-              {#snippet children()}
-                {@render renderTile(it)}
-              {/snippet}
-            </TileEditChrome>
+          <div style={it.grid ? gridAreaStyle(it.grid) : gridColumnSpanStyle(it)}>
+            <DashboardTileShell tile={it} elevated {editLayout} {onEditTile}>
+              {@render renderTile(it)}
+            </DashboardTileShell>
           </div>
         {/if}
       {/each}
