@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import TileEditChrome from "./TileEditChrome.svelte";
+  import DashboardTileShell from "./DashboardTileShell.svelte";
   import { effectiveColSpan } from "./gridPlacement";
   import {
     DASHBOARD_STRIP_GAP_2_PX,
@@ -63,18 +63,11 @@
         <div
           class="flex h-full min-h-0 max-w-none shrink-0 flex-col [min-width:2.5rem]"
           style:width={widthPx(tile, rowTiles.length)}
-          data-tile-id={tile.id}
           data-in-row-panel={showPanelChrome ? "true" : undefined}
         >
-          <TileEditChrome
-            {tile}
-            onEdit={onEditTile}
-            showEditButton={editLayout}
-          >
-            {#snippet children()}
-              {@render tileContent(tile)}
-            {/snippet}
-          </TileEditChrome>
+          <DashboardTileShell {tile} {editLayout} {onEditTile}>
+            {@render tileContent(tile)}
+          </DashboardTileShell>
         </div>
       {/each}
     </div>
