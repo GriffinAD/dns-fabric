@@ -212,6 +212,76 @@ describe("applyDashboardDrop", () => {
     expect(onAddTileToGroup).toHaveBeenCalledWith("g1", "p1");
   });
 
+  it("calls onAddTabToGroup for palette → tab strip container", () => {
+    const onAddTabToGroup = vi.fn();
+    const onAddTileToGroup = vi.fn();
+    const tabs = layoutGroup("tabs1", [childTile("tab-a")]);
+    tabs.hostControl = "tab-control";
+    tabs.hostState = { activeChildId: "tab-a" };
+    tabs.children[0] = { ...childTile("tab-a"), tabLabel: "CPU" };
+    applyDashboardDrop(
+      state({
+        draggedItem: palettePluginPayload("dhcp.reservations"),
+        targetContainer: tabGroupTabsContainer("tabs1"),
+        dropPosition: "after",
+      }),
+      {
+        dndRoot: [{ id: "tabs1", item: tabs }],
+        dndByGroup: {},
+        layoutItems: [tabs],
+        onAddTabToGroup,
+        onAddTileToGroup,
+      },
+    );
+    expect(onAddTabToGroup).toHaveBeenCalledWith("tabs1", "dhcp.reservations");
+    expect(onAddTileToGroup).not.toHaveBeenCalled();
+  });
+
+  it("does not add tile when palette drops on tab strip of a panel group", () => {
+    const onAddTabToGroup = vi.fn();
+    const onAddTileToGroup = vi.fn();
+    const panel = layoutGroup("g1", [childTile("c1")]);
+    applyDashboardDrop(
+      state({
+        draggedItem: palettePluginPayload("dhcp.clients"),
+        targetContainer: tabGroupTabsContainer("g1"),
+      }),
+      {
+        dndRoot: [{ id: "g1", item: panel }],
+        dndByGroup: {},
+        layoutItems: [panel],
+        onAddTabToGroup,
+        onAddTileToGroup,
+      },
+    );
+    expect(onAddTabToGroup).not.toHaveBeenCalled();
+    expect(onAddTileToGroup).not.toHaveBeenCalled();
+  });
+
+  it("calls onAddTabToGroup for palette → tab-control group child slot", () => {
+    const onAddTabToGroup = vi.fn();
+    const onAddTileToGroup = vi.fn();
+    const tabs = layoutGroup("tabs1", [childTile("tab-a"), childTile("tab-b")]);
+    tabs.hostControl = "tab-control";
+    tabs.hostState = { activeChildId: "tab-a" };
+    applyDashboardDrop(
+      state({
+        draggedItem: palettePluginPayload("dhcp.clients"),
+        targetContainer: groupChildSlotContainer("tabs1", "tab-b"),
+        dropPosition: "after",
+      }),
+      {
+        dndRoot: [{ id: "tabs1", item: tabs }],
+        dndByGroup: {},
+        layoutItems: [tabs],
+        onAddTabToGroup,
+        onAddTileToGroup,
+      },
+    );
+    expect(onAddTabToGroup).toHaveBeenCalledWith("tabs1", "dhcp.clients");
+    expect(onAddTileToGroup).not.toHaveBeenCalled();
+  });
+
   it("reorders root via onLayoutStructureChange", () => {
     const onLayoutStructureChange = vi.fn();
     const a = dndTile("a");

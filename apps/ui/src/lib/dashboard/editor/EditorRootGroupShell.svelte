@@ -148,6 +148,7 @@
           {group}
           {editLayout}
           {onGroupChange}
+          layoutDropCb={dropCb}
           {plugins}
           {onEditTile}
           {onEditGroup}

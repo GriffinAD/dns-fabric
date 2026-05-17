@@ -12,6 +12,7 @@ import {
   swapRootItemGridPlacements,
   swapRootSingleRowTilePlacements,
 } from "../gridPlacement";
+import { findGroupByIdInItems } from "../layoutTree";
 import type { DashboardLayout, RootLayoutItem } from "../types";
 
 import {
@@ -37,6 +38,8 @@ export type DashboardDropContext = {
   onAddTile?: (pluginId: string, insertBeforeIndex?: number) => void;
   onAddGroup?: (insertBeforeIndex?: number) => void;
   onAddTileToGroup?: (groupId: string, pluginId: string) => void;
+  /** Palette drop onto a `hostControl: tab-control` strip (append tab via `addTabChild`). */
+  onAddTabToGroup?: (groupId: string, pluginId: string) => void;
   onAddGroupToGroup?: (parentGroupId: string) => void;
 };
 
@@ -309,6 +312,14 @@ function isGroupEndSlot(slot: ParsedDropSlot): boolean {
   return slot.kind === "groupEmpty" || slot.kind === "groupCanvas" || slot.kind === "groupAppend";
 }
 
+function isTabGroupSurfaceSlot(slot: ParsedDropSlot): boolean {
+  return isGroupSurfaceSlot(slot) || slot.kind === "groupTabs";
+}
+
+function isTabControlGroupInLayout(items: RootLayoutItem[], groupId: string): boolean {
+  return findGroupByIdInItems(items, groupId)?.hostControl === "tab-control";
+}
+
 /** Reorder within one group list using canvas-style bands on a child tile. */
 function reorderGroupChildDrag(
   list: DashboardDndListItem[],
@@ -368,9 +379,13 @@ export function applyDashboardDrop(
     return {};
   }
 
-  // Palette → group
-  if (drag.k === "pp" && isGroupSurfaceSlot(slot)) {
-    ctx.onAddTileToGroup?.(slot.groupId, drag.i);
+  // Palette → group (tab-control strip uses addTabChild, not nowrap child append)
+  if (drag.k === "pp" && isTabGroupSurfaceSlot(slot)) {
+    if (isTabControlGroupInLayout(ctx.layoutItems, slot.groupId)) {
+      ctx.onAddTabToGroup?.(slot.groupId, drag.i);
+    } else if (isGroupSurfaceSlot(slot)) {
+      ctx.onAddTileToGroup?.(slot.groupId, drag.i);
+    }
     return {};
   }
   if (drag.k === "pg" && isGroupSurfaceSlot(slot)) {

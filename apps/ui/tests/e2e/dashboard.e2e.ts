@@ -1,6 +1,9 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-import { seedEditorLayoutInLocalStorageBeforeNavigation } from "./fixtures/editorGridFixture";
+import {
+  seedEditorLayoutInLocalStorageBeforeNavigation,
+  seedTabGroupLayoutInLocalStorageBeforeNavigation,
+} from "./fixtures/editorGridFixture";
 
 async function readRootEditorTileIds(zone: Locator): Promise<string[]> {
   return zone.evaluate((el) =>
@@ -196,6 +199,33 @@ test("tile settings parent: move tile from container to dashboard root", async (
   expect(stored.items.some((i) => i.kind === "tile" && i.id === "tile-perf-ram")).toBe(true);
   const groupStatus = stored.items.find((i) => i.kind === "group" && i.id === "group-status");
   expect(groupStatus?.children?.some((c) => c.id === "tile-perf-ram")).toBe(false);
+});
+
+test("palette drop on tab strip adds a tab", async ({ page }) => {
+  await seedTabGroupLayoutInLocalStorageBeforeNavigation(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Edit layout" }).click();
+  const strip = page.getByTestId("tab-group-strip");
+  await expect(strip).toBeVisible();
+  const tabsBefore = await strip.getByTestId("tab-strip-item").count();
+  await simulateSveltedndDrop(
+    page,
+    '.inline-flex[data-palette-drag-plugin-id="dhcp.reservations"]',
+    '[data-palette-drag-plugin-id="dhcp.reservations"] [data-testid="palette-chip-drag"]',
+    '[data-dnd-container="g:tabs-e2e:tabs"]',
+    { k: "pp", i: "dhcp.reservations" },
+  );
+  await expect(strip.getByTestId("tab-strip-item")).toHaveCount(tabsBefore + 1, { timeout: 8000 });
+  await expect(strip.getByTestId("tab-strip-label").filter({ hasText: "Static reservations" })).toBeVisible();
+  const raw = await page.evaluate(() => localStorage.getItem("kea-fabric-dashboard-layout"));
+  expect(raw).toBeTruthy();
+  const stored = JSON.parse(raw!) as {
+    version: number;
+    items: { kind: string; id: string; hostControl?: string; children?: { pluginId?: string }[] }[];
+  };
+  const tabsGroup = stored.items.find((i) => i.kind === "group" && i.id === "tabs-e2e");
+  expect(tabsGroup?.hostControl).toBe("tab-control");
+  expect(tabsGroup?.children?.some((c) => c.pluginId === "dhcp.reservations")).toBe(true);
 });
 
 test("palette drag adds tile to editor grid", async ({ page }) => {

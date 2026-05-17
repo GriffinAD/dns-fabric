@@ -40,6 +40,7 @@
     group,
     editLayout = false,
     onGroupChange,
+    layoutDropCb,
     tileContent,
     plugins = [] as PluginEntry[],
     onEditTile,
@@ -48,6 +49,12 @@
     group: DashboardGroup;
     editLayout?: boolean;
     onGroupChange?: (next: DashboardGroup) => void;
+    /** Editor grid drop handler — palette drops on the tab strip delegate here (H3). */
+    layoutDropCb?: {
+      onDrop: (state: DragDropState<DashboardDragPayload>) => void;
+      onDragOver: (state: DragDropState<DashboardDragPayload>) => void;
+      onDragEnd: (state: DragDropState<DashboardDragPayload>) => void;
+    };
     tileContent: Snippet<[DashboardTile]>;
     plugins?: PluginEntry[];
     onEditTile?: (tile: DashboardTile) => void;
@@ -72,12 +79,30 @@
   let renameDraft = $state("");
   let addPluginPick = $state("");
 
+  function isPaletteDrag(drag: DashboardDragPayload | null): boolean {
+    return drag?.k === "pp" || drag?.k === "pg";
+  }
+
   const tabStripDropCb = {
-    onDrop: onTabStripDrop,
+    onDrop: (state: DragDropState<DashboardDragPayload>) => {
+      const drag = parseDragPayload(state.draggedItem);
+      if (isPaletteDrag(drag)) {
+        layoutDropCb?.onDrop(state);
+        return;
+      }
+      onTabStripDrop(state);
+    },
     onDragOver: (state: DragDropState<DashboardDragPayload>) => {
+      const drag = parseDragPayload(state.draggedItem);
+      if (isPaletteDrag(drag)) {
+        layoutDropCb?.onDragOver(state);
+        return;
+      }
       state.invalidDrop = false;
     },
-    onDragEnd: () => {},
+    onDragEnd: (state: DragDropState<DashboardDragPayload>) => {
+      layoutDropCb?.onDragEnd(state);
+    },
   };
 
   function commit(next: DashboardGroup) {

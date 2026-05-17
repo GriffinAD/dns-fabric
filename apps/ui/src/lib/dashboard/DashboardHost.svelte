@@ -16,6 +16,7 @@
     reorderRootLayoutItemsPreservingSlotOrigins,
   } from "./gridPlacement";
   import TabGroupHost from "./groups/TabGroupHost.svelte";
+  import { addTabChild } from "./groups/tabGroupOps";
   import DashboardReadNestedHost from "./DashboardReadNestedHost.svelte";
   import GroupReadNoWrap from "./GroupReadNoWrap.svelte";
   import PluginTileMount from "./PluginTileMount.svelte";
@@ -33,7 +34,7 @@
   import type { DashboardDropContext } from "./interactions/dashboardSveltedndApply";
   import { parseDragPayload, parseDropContainer, type DashboardDragPayload } from "./interactions/dashboardSveltedndTypes";
   import { editorGroupInPlay, editorTileInPlay } from "./interactions/editorSelection";
-  import { dedupeById, mapLayoutReplaceGroupById } from "./layoutTree";
+  import { dedupeById, findGroupByIdInItems, mapLayoutReplaceGroupById } from "./layoutTree";
   import { noWrapReadRowGroups } from "./readModeLayout";
   import { stripScrollportObserve } from "./stripWidth";
   import type {
@@ -182,6 +183,21 @@
     );
   });
 
+  function onAddTabToGroup(groupId: string, pluginId: string) {
+    const group = findGroupByIdInItems(layout.items, groupId);
+    if (!group || group.hostControl !== "tab-control") return;
+    const tabLabel = plugins.find((p) => p.id === pluginId)?.name ?? pluginId;
+    try {
+      const next = addTabChild(group, { pluginId, tabLabel });
+      onLayoutStructureChange?.({
+        version: 3,
+        items: mapLayoutReplaceGroupById(layout.items, groupId, next),
+      });
+    } catch {
+      /* max tabs */
+    }
+  }
+
   function buildDropContext(): DashboardDropContext {
     return {
       dndRoot,
@@ -192,6 +208,7 @@
       onAddTile,
       onAddGroup,
       onAddTileToGroup,
+      onAddTabToGroup,
       onAddGroupToGroup,
     };
   }
