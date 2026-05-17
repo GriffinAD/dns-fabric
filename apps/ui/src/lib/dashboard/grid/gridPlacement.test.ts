@@ -2499,7 +2499,7 @@ describe("resizeGroupChildTileColSpan", () => {
   });
 
   it("returns items unchanged when the group is missing", () => {
-    const items: RootLayoutItem[] = [wrapTile("t1", 2)];
+    const items: RootLayoutItem[] = [{ kind: "tile", ...wrapTile("t1", 2) }];
     expect(resizeGroupChildTileColSpan(items, "missing", "t1", 4)).toBe(items);
   });
 

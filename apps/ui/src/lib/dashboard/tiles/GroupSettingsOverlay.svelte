@@ -2,7 +2,7 @@
   import Button from "flowbite-svelte/Button.svelte";
 
   import { clampGridColSpan, clampGridRowSpan, GRID_COLUMNS } from "../grid/gridPlacement";
-  import type { DashboardGroup } from "../../types";
+  import type { DashboardGroup } from "../types";
 
   let {
     group,

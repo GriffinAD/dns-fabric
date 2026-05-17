@@ -7,7 +7,7 @@
     flexStripDistributedWidth,
     stripScrollportObserve,
   } from "../layout/stripWidth";
-  import type { DashboardTile } from "../../types";
+  import type { DashboardTile } from "../types";
 
   let {
     rowGroups,

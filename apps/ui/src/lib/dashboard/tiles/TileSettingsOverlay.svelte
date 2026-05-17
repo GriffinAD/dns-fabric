@@ -1,7 +1,7 @@
 <script lang="ts">
   import Button from "flowbite-svelte/Button.svelte";
 
-  import type { HostControl, PluginEntry } from "../../types";
+  import type { HostControl, PluginEntry } from "../../api/types";
   import {
     clampGridColSpan,
     clampGridRowSpan,
@@ -13,7 +13,7 @@
   import { PARENT_ID_DASHBOARD } from "../layout/layoutTree";
   import TileGenericFields from "./TileGenericFields.svelte";
   import TilePlacementForm from "./TilePlacementForm.svelte";
-  import type { DashboardTile } from "../../types";
+  import type { DashboardTile } from "../types";
 
   let {
     tile,

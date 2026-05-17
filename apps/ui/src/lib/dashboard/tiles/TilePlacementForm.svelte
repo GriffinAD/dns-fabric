@@ -8,7 +8,7 @@
     groupInnerWidthInPhysicalTracks,
   } from "../grid/gridPlacement";
   import { PARENT_ID_DASHBOARD } from "../layout/layoutTree";
-  import type { DashboardTile } from "../../types";
+  import type { DashboardTile } from "../types";
 
   let {
     draft = $bindable<DashboardTile>(),

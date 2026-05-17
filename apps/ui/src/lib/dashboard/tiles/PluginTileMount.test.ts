@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { mount, unmount } from "svelte";
 
-import type { PluginEntry } from "../../types";
-import type { DataGateway } from "../../../gateway/dataGateway";
+import type { PluginEntry } from "../../api/types";
+import type { DataGateway } from "../../gateway/dataGateway";
 import PluginTileMount from "./PluginTileMount.svelte";
-import type { DashboardTile } from "../../types";
+import type { DashboardTile } from "../types";
 
 const gateway = {} as DataGateway;
 

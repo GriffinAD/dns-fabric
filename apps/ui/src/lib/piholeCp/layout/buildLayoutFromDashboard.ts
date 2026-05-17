@@ -95,18 +95,19 @@ export function buildPiholeCpPluginPalette(
 
 export function collectPiholeSectionWidgetIds(items: RootLayoutItem[]): Set<string> {
   const ids = new Set<string>();
-  function walk(list: RootLayoutItem[]) {
+  function walk(list: readonly GroupChild[]) {
     for (const it of list) {
-      if (it.kind === "tile") {
-        const o = it.options as { widgetId?: unknown } | undefined;
-        if (
-          typeof o?.widgetId === "string" &&
-          (it.pluginId === PIHOLE_HA_SECTION_PLUGIN_ID || isPiholeHaPerSectionPluginId(it.pluginId))
-        ) {
-          ids.add(o.widgetId);
-        }
+      if (isDashboardGroupNode(it)) {
+        walk(it.children);
+        continue;
       }
-      if (it.kind === "group") walk(it.children);
+      const o = it.options as { widgetId?: unknown } | undefined;
+      if (
+        typeof o?.widgetId === "string" &&
+        (it.pluginId === PIHOLE_HA_SECTION_PLUGIN_ID || isPiholeHaPerSectionPluginId(it.pluginId))
+      ) {
+        ids.add(o.widgetId);
+      }
     }
   }
   walk(items);
@@ -171,17 +172,17 @@ export function layoutContainsPiholeCpKeaDisabledTiles(
   dashboard: DashboardResponse,
 ): boolean {
   if (isKeaDhcpTilesEnabled(meta, dashboard)) return false;
-  function walk(items: RootLayoutItem[]): boolean {
+  function walkChildren(items: readonly GroupChild[]): boolean {
     for (const it of items) {
-      if (it.kind === "tile" && tileHiddenWhenKeaDhcpDisabled(it)) return true;
-      if (it.kind === "group") {
-        const g = it as DashboardGroup;
-        if (walk(g.children)) return true;
+      if (isDashboardGroupNode(it)) {
+        if (walkChildren(it.children)) return true;
+        continue;
       }
+      if (tileHiddenWhenKeaDhcpDisabled(it)) return true;
     }
     return false;
   }
-  return walk(layout.items);
+  return walkChildren(layout.items);
 }
 
 /** Strip forbidden tiles and reflow the grid when Kea DHCP is not active; otherwise returns `layout` unchanged. */

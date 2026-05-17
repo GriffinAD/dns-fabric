@@ -59,7 +59,7 @@ describe("noWrapReadRowGroups", () => {
       hostControl: "single-panel",
       displayMode: "full",
       grid: { row: 1, col: undefined, colSpan: 1, rowSpan: 1 },
-    } as DashboardTile;
+    } as unknown as DashboardTile;
     const rows = noWrapReadRowGroups([tile("x", 1, 3), noColField]);
     expect(rows[0].map((t) => t.id)).toEqual(["y", "x"]);
   });

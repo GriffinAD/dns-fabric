@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
-  import type { HostControl } from "../../types";
+  import type { HostControl } from "../../api/types";
   import SinglePanelHost from "../hosts/SinglePanelHost.svelte";
   import TileFallback from "./TileFallback.svelte";
 

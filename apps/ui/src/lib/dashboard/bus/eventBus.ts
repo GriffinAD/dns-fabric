@@ -1,7 +1,7 @@
 import { readonly, writable, type Readable } from "svelte/store";
 
 import { perfSummaryResponseSchema } from "../../api/openapiZod";
-import type { FabricEvent, PerfSummaryResponse } from "../types";
+import type { FabricEvent, PerfSummaryResponse } from "../../api/types";
 import { DataGateway } from "../../gateway/dataGateway";
 
 /** Svelte context key for the fabric SSE fan-out bus (`docs/planning/UI_ENGINE_PLAN.md` P5). */
@@ -81,7 +81,14 @@ export function createFabricEventBus(gateway: DataGateway): FabricEventBus {
   }
 
   function emit(topic: string, payload: unknown): void {
-    dispatch({ topic, payload });
+    dispatch({
+      topic,
+      occurred_at: new Date().toISOString(),
+      payload:
+        typeof payload === "object" && payload !== null && !Array.isArray(payload)
+          ? (payload as Record<string, unknown>)
+          : { value: payload },
+    });
   }
 
   return {

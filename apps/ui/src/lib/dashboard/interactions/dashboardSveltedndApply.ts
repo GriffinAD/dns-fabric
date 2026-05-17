@@ -284,6 +284,11 @@ function rootInsertIndex(dndRoot: DashboardDndListItem[], slot: ParsedDropSlot, 
   return dropPosition === "before" ? idx : idx + 1;
 }
 
+type RootSurfaceSlotWithId = Extract<
+  ParsedDropSlot,
+  { kind: "root" } | { kind: "rootRowEnd" } | { kind: "rootGapAfter" }
+>;
+
 function isRootSurfaceSlot(slot: ParsedDropSlot): boolean {
   return (
     slot.kind === "root" ||
@@ -295,7 +300,20 @@ function isRootSurfaceSlot(slot: ParsedDropSlot): boolean {
   );
 }
 
-function isGroupSurfaceSlot(slot: ParsedDropSlot): boolean {
+function isRootSurfaceSlotWithId(slot: ParsedDropSlot): slot is RootSurfaceSlotWithId {
+  return slot.kind === "root" || slot.kind === "rootRowEnd" || slot.kind === "rootGapAfter";
+}
+
+type GroupSurfaceSlot = Extract<
+  ParsedDropSlot,
+  | { kind: "groupChild" }
+  | { kind: "groupEmpty" }
+  | { kind: "groupCanvas" }
+  | { kind: "groupGapAfter" }
+  | { kind: "groupAppend" }
+>;
+
+function isGroupSurfaceSlot(slot: ParsedDropSlot): slot is GroupSurfaceSlot {
   return (
     slot.kind === "groupChild" ||
     slot.kind === "groupEmpty" ||
@@ -401,7 +419,9 @@ export function applyDashboardDrop(
       const anchorId =
         slot.kind === "rootEmpty" || slot.kind === "rootCanvas" || slot.kind === "rootAppend"
           ? (ctx.dndRoot[ctx.dndRoot.length - 1]?.id ?? drag.i)
-          : slot.id;
+          : isRootSurfaceSlotWithId(slot)
+            ? slot.id
+            : drag.i;
       const tileBand =
         slot.kind === "root"
           ? resolveRootTileDropBand(
@@ -471,7 +491,9 @@ export function applyDashboardDrop(
       const anchorId =
         slot.kind === "rootEmpty" || slot.kind === "rootCanvas" || slot.kind === "rootAppend"
           ? (ctx.dndRoot[ctx.dndRoot.length - 1]?.id ?? removed.id)
-          : slot.id;
+          : isRootSurfaceSlotWithId(slot)
+            ? slot.id
+            : removed.id;
       const tileBand =
         slot.kind === "root"
           ? resolveRootTileDropBand(state.targetElement, rootPos, ctx.pointerClient)

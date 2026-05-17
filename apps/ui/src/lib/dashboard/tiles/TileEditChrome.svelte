@@ -3,7 +3,7 @@
   import Pencil from "lucide-svelte/icons/pencil";
 
   import { EDITOR_PLUGIN_HOVER_VISIBLE, EDITOR_PLUGIN_SURFACE_CLASS } from "../interactions/editorChrome";
-  import type { DashboardTile } from "../../types";
+  import type { DashboardTile } from "../types";
 
   let {
     tile,

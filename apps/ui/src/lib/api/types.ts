@@ -22,6 +22,11 @@ export interface TileOptions {
   gauge_gradient_mode?: GaugeGradientMode;
   /** Max dashboard columns for this perf tile; gauges wrap inside when count exceeds this (1–12). */
   perf_max_cols?: number;
+  /** Pi-hole HA section tiles (validated per-plugin via zod). */
+  section?: string;
+  title?: string;
+  widgetId?: string;
+  view?: string;
 }
 
 export interface MetaResponse {

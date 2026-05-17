@@ -96,7 +96,7 @@ export function syncEditorDragHoverFromPointer(
     const container = nextHover.getAttribute(DND_CONTAINER_ATTR);
     if (container) {
       dndState.targetContainer = container;
-      dndState.targetElement = hit instanceof Element ? hit : nextHover;
+      dndState.targetElement = hit instanceof HTMLElement ? hit : nextHover;
       syncDropPositionFromPointer(container, nextHover, hit, clientX, clientY);
     }
   } else {

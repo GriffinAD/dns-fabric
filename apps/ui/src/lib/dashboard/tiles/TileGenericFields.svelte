@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { DisplayMode, HostControl } from "../../types";
-  import type { DashboardTile } from "../../types";
+  import type { DisplayMode, HostControl } from "../../api/types";
+  import type { DashboardTile } from "../types";
 
   let {
     draft = $bindable<DashboardTile>(),

@@ -1,4 +1,4 @@
-import type { PluginEntry } from "../types";
+import type { PluginEntry } from "../../api/types";
 import { DataGateway } from "../../gateway/dataGateway";
 import { layoutWithGrid } from "../grid/gridPlacement";
 import type { FabricEventBus } from "../bus/eventBus";

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { get } from "svelte/store";
 
-import type { FabricEvent } from "../types";
+import type { FabricEvent } from "../../api/types";
 import { DataGateway } from "../../gateway/dataGateway";
 import { perfSummaryForTick } from "../../../mock/perfSimulate";
 import { createFabricEventBus, perfUpdatedCpuPercent, perfUpdatedFullSummary } from "./eventBus";

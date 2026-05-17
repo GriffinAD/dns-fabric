@@ -860,7 +860,7 @@ describe("applyDashboardDrop", () => {
     const group = merged?.items?.[0];
     expect(group?.kind).toBe("group");
     if (group?.kind === "group") {
-      expect(group.children.map((ch) => ch.id)).toEqual(["c2", "c1"]);
+      expect(group.children.map((ch: { id: string }) => ch.id)).toEqual(["c2", "c1"]);
     }
   });
 
