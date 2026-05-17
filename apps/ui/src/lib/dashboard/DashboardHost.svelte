@@ -4,6 +4,7 @@
 
   import type { PluginEntry } from "../api/types";
   import { DataGateway } from "../dataGateway";
+  import type { FabricEventBus } from "./eventBus";
   import PluginPalette from "../palette/PluginPalette.svelte";
   import {
     gridAreaStyle,
@@ -52,6 +53,7 @@
   let {
     layout,
     gateway,
+    bus,
     onEditTile,
     onEditGroup,
     editLayout = false,
@@ -68,6 +70,7 @@
   }: {
     layout: DashboardLayoutV3;
     gateway: DataGateway;
+    bus: FabricEventBus;
     onEditTile?: (tile: DashboardTile) => void;
     onEditGroup?: (g: DashboardGroup) => void;
     editLayout?: boolean;
@@ -265,6 +268,7 @@
 {#snippet renderTile(tile: DashboardTile)}
   <PluginTileMount
     {gateway}
+    {bus}
     {tile}
     {plugins}
     {editLayout}
@@ -275,7 +279,7 @@
 
 <div class="flex flex-col gap-4" data-testid="dashboard-host">
   {#if editLayout && (palette.length > 0 || onAddGroup)}
-    <PluginPalette {plugins} {onAddTile} {onAddGroup} {gateway} />
+    <PluginPalette {plugins} {onAddTile} {onAddGroup} {gateway} {bus} />
   {/if}
 
   {#if editLayout}

@@ -6,6 +6,7 @@
 
   import type { PluginEntry } from "../api/types";
   import type { DataGateway } from "../dataGateway";
+  import type { FabricEventBus } from "../dashboard/eventBus";
   import PluginTileMount from "../dashboard/PluginTileMount.svelte";
   import type { DashboardTile } from "../dashboard/types";
   import {
@@ -51,11 +52,13 @@
   let {
     plugins = [] as PluginEntry[],
     gateway,
+    bus,
     onAddTile,
     onAddGroup,
   }: {
     plugins?: PluginEntry[];
     gateway?: DataGateway;
+    bus?: FabricEventBus;
     onAddTile?: (pluginId: string, insertBeforeIndex?: number) => void;
     onAddGroup?: (insertBeforeIndex?: number) => void;
   } = $props();
@@ -634,7 +637,7 @@
   </div>
 </div>
 
-{#if dragImageTile && gateway}
+{#if dragImageTile && gateway && bus}
   <div
     class="pointer-events-none fixed left-0 top-0 z-[120]"
     bind:this={dragGhostEl}
@@ -642,7 +645,7 @@
     aria-hidden="true"
   >
     <div class="h-full w-full overflow-hidden rounded-md border border-primary-500/65 bg-white shadow-lg dark:bg-gray-900">
-      <PluginTileMount {gateway} tile={dragImageTile} {plugins} editLayout={false} />
+      <PluginTileMount {gateway} {bus} tile={dragImageTile} {plugins} editLayout={false} />
     </div>
   </div>
 {/if}

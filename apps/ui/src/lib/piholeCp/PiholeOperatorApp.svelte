@@ -2,12 +2,14 @@
   import { onMount, setContext } from "svelte";
 
   import type { PluginEntry } from "../api/types";
-  import { createFabricEventBus, FABRIC_EVENT_BUS } from "../dashboard/eventBus";
+  import { attachFabricBusKernel } from "../dashboard/fabricBusKernel";
+  import { FABRIC_EVENT_BUS } from "../dashboard/eventBus";
   import type { DashboardResponse } from "./dashboardZod";
   import LogStreamPanel from "./LogStreamPanel.svelte";
   import { mergeOperatorPluginsForPiholeCp } from "./operatorBaselinePlugins";
   import { waitForPiholeCpDashboardCoherent, type PiholeCpMeta } from "./PiholeCpGateway";
   import PiholeCpDashboardShell from "./PiholeCpDashboardShell.svelte";
+  import type { PiholeCpDashboardGateway } from "./PiholeCpDashboardGateway";
   import { createPiholeCpSession } from "./piholeCpSession";
   import { startPiholeCpPerfPolling } from "./piholeCpPerfPoll";
 
@@ -28,15 +30,18 @@
   const session = createPiholeCpSession(baseUrl);
   /** Kea API + layout no-op; perf gauges use the control-plane `/v1/node/perf/summary`. */
   const gateway = session.dashboardGateway;
-  const fabricEventBus = createFabricEventBus(gateway);
-  setContext(FABRIC_EVENT_BUS, fabricEventBus);
+  const fabricBusKernel = attachFabricBusKernel({
+    gateway,
+    registerCpTransports: (bus, gw) =>
+      startPiholeCpPerfPolling(gw as PiholeCpDashboardGateway, bus),
+  });
+  setContext(FABRIC_EVENT_BUS, fabricBusKernel.bus);
 
   let apiPlugins = $state<PluginEntry[] | null>(null);
 
   const plugins = $derived(mergeOperatorPluginsForPiholeCp(apiPlugins, dashboard, meta));
 
   let fabricSseRelease: (() => void) | null = null;
-  let perfPollRelease: (() => void) | null = null;
   let lastKeaApiOrigin = "";
 
   function syncFabricSseAfterKeaBaseChange(): void {
@@ -48,13 +53,13 @@
       return;
     }
     if (fabricSseRelease == null) {
-      fabricSseRelease = fabricEventBus.connect();
+      fabricSseRelease = fabricBusKernel.bus.connect();
       lastKeaApiOrigin = next;
       return;
     }
     if (next !== lastKeaApiOrigin) {
       fabricSseRelease();
-      fabricSseRelease = fabricEventBus.connect();
+      fabricSseRelease = fabricBusKernel.bus.connect();
       lastKeaApiOrigin = next;
     }
   }
@@ -113,12 +118,11 @@
   }
 
   onMount(() => {
-    perfPollRelease = startPiholeCpPerfPolling(gateway, fabricEventBus);
     void loadAll();
     return () => {
-      perfPollRelease?.();
-      perfPollRelease = null;
       fabricSseRelease?.();
+      fabricSseRelease = null;
+      fabricBusKernel.dispose();
     };
   });
 </script>

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DataGateway } from "./dataGateway";
 import { appendBootFailureUi, mountOperatorApp } from "./operatorBoot";
+import { createFabricEventBus } from "./dashboard/eventBus";
 import { resolvePluginTileMount } from "./plugins/registry";
 
 describe("appendBootFailureUi", () => {
@@ -67,8 +68,10 @@ describe("mountOperatorApp", () => {
 
     expect(spy).toHaveBeenCalledWith("e2e.throwing", expect.any(Function));
     expect((globalThis as { __KEA_FABRIC_E2E_THROWING?: boolean }).__KEA_FABRIC_E2E_THROWING).toBe(true);
+    const gateway = new DataGateway("");
     const mountRes = resolvePluginTileMount({
-      gateway: new DataGateway(""),
+      gateway,
+      bus: createFabricEventBus(gateway),
       tile: {
         id: "e2e-t",
         pluginId: "e2e.throwing",

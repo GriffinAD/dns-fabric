@@ -1,6 +1,7 @@
 import type { Component } from "svelte";
 
 import type { DataGateway } from "../dataGateway";
+import type { FabricEventBus } from "../dashboard/eventBus";
 import type { DashboardTile } from "../dashboard/types";
 import { applyPerfCompactAsPercentOnly } from "./tileDisplay";
 import DhcpClientsTile from "./DhcpClientsTile.svelte";
@@ -20,6 +21,7 @@ export type PluginRegistration = {
 
 export type TileHostContext = {
   gateway: DataGateway;
+  bus: FabricEventBus;
   tile: DashboardTile;
   editLayout: boolean;
   onEditTile?: (t: DashboardTile) => void;
