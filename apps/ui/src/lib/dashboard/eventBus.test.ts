@@ -4,7 +4,15 @@ import { get } from "svelte/store";
 import type { FabricEvent } from "../api/types";
 import { DataGateway } from "../dataGateway";
 import { perfSummaryForTick } from "../../mock/perfSimulate";
-import { createFabricEventBus, perfUpdatedCpuPercent, perfUpdatedFullSummary } from "./eventBus";
+import {
+  createFabricEventBus,
+  dhcpClientsListUpdated,
+  dhcpPoolsListUpdated,
+  dhcpReservationsListUpdated,
+  discoveryScanUpdated,
+  perfUpdatedCpuPercent,
+  perfUpdatedFullSummary,
+} from "./eventBus";
 
 describe("createFabricEventBus", () => {
   it("returns the same disconnect when connect is called twice", () => {
@@ -159,5 +167,25 @@ describe("perfUpdatedFullSummary", () => {
 
   it("returns null when shape is invalid", () => {
     expect(perfUpdatedFullSummary({ tick: 1, cpu_percent_total: 1 })).toBeNull();
+  });
+});
+
+describe("discoveryScanUpdated", () => {
+  it("parses scan snapshots", () => {
+    expect(
+      discoveryScanUpdated({ state: "running", updated_at: "2026-01-01T00:00:00Z" }),
+    ).toEqual({ state: "running", updated_at: "2026-01-01T00:00:00Z" });
+    expect(discoveryScanUpdated({ state: "nope", updated_at: "t" })).toBeNull();
+  });
+});
+
+describe("dhcp list selectors", () => {
+  it("parse list payloads and reject revision-only signals", () => {
+    expect(dhcpPoolsListUpdated({ items: [] })).toEqual([]);
+    expect(dhcpPoolsListUpdated({ revision: 1 })).toBeNull();
+    expect(dhcpClientsListUpdated({ items: [] })).toEqual([]);
+    expect(dhcpClientsListUpdated({ revision: 1 })).toBeNull();
+    expect(dhcpReservationsListUpdated({ items: [] })).toEqual([]);
+    expect(dhcpReservationsListUpdated({ revision: 1 })).toBeNull();
   });
 });

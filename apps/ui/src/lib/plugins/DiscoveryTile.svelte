@@ -7,14 +7,23 @@ import Spinner from "flowbite-svelte/Spinner.svelte";
   import Settings from "lucide-svelte/icons/settings";
   import { onMount } from "svelte";
 
+  import type { DiscoveryScanResponse } from "../api/types";
+  import { discoveryScanUpdated, type FabricEventBus } from "../dashboard/eventBus";
   import { DataGateway } from "../dataGateway";
   import type { DashboardTile } from "../dashboard/types";
+  import { subscribeWithInitialFetch } from "./pluginDataBus";
 
   let {
     gateway,
+    bus,
     tile: _tile,
     onOpenSettings,
-  }: { gateway: DataGateway; tile: DashboardTile; onOpenSettings?: () => void } = $props();
+  }: {
+    gateway: DataGateway;
+    bus: FabricEventBus;
+    tile: DashboardTile;
+    onOpenSettings?: () => void;
+  } = $props();
 
   let scanState = $state<string>("—");
   let lastUpdate = $state<string>("—");
@@ -73,27 +82,21 @@ import Spinner from "flowbite-svelte/Spinner.svelte";
   const pauseBtnClass =
     "inline-flex shrink-0 items-center justify-center rounded-md border border-gray-400 bg-gray-300 text-gray-800 hover:bg-gray-200 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700";
 
-  async function refresh() {
-    err = null;
-    try {
-      const scan = await gateway.getDiscoveryScan();
-      scanState = scan.state;
-      lastUpdate = scan.updated_at;
-      let count: number | null = null;
-      if (_tile.displayMode === "compact") {
-        count = scan.record_count ?? null;
-        if (count == null) {
-          try {
-            count = (await gateway.listDiscoveryRecords()).items.length;
-          } catch {
-            count = null;
-          }
+  async function applyScan(scan: DiscoveryScanResponse) {
+    scanState = scan.state;
+    lastUpdate = scan.updated_at;
+    let count: number | null = null;
+    if (_tile.displayMode === "compact") {
+      count = scan.record_count ?? null;
+      if (count == null) {
+        try {
+          count = (await gateway.listDiscoveryRecords()).items.length;
+        } catch {
+          count = null;
         }
       }
-      recordCount = count;
-    } catch (e: unknown) {
-      err = e instanceof Error ? e.message : String(e);
     }
+    recordCount = count;
   }
 
   async function togglePause() {
@@ -103,8 +106,7 @@ import Spinner from "flowbite-svelte/Spinner.svelte";
       const scan = await gateway.getDiscoveryScan();
       const nextPaused = scan.state !== "paused";
       const updated = await gateway.pauseDiscoveryScan(nextPaused);
-      scanState = updated.state;
-      lastUpdate = updated.updated_at;
+      await applyScan(updated);
     } catch (e: unknown) {
       err = e instanceof Error ? e.message : String(e);
     } finally {
@@ -125,7 +127,19 @@ import Spinner from "flowbite-svelte/Spinner.svelte";
   }
 
   onMount(() => {
-    void refresh();
+    return subscribeWithInitialFetch({
+      bus,
+      topic: "fabric.discovery.scan.updated",
+      selector: discoveryScanUpdated,
+      fetch: async () => {
+        const scan = await gateway.getDiscoveryScan();
+        err = null;
+        return scan;
+      },
+      onValue: (scan) => {
+        void applyScan(scan);
+      },
+    });
   });
 </script>
 

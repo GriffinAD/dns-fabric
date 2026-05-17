@@ -1,7 +1,20 @@
 import { readonly, writable, type Readable } from "svelte/store";
 
-import { perfSummaryResponseSchema } from "../api/openapiZod";
-import type { FabricEvent, PerfSummaryResponse } from "../api/types";
+import {
+  dhcpClientListResponseSchema,
+  dhcpPoolListResponseSchema,
+  dhcpReservationListResponseSchema,
+  discoveryScanResponseSchema,
+  perfSummaryResponseSchema,
+} from "../api/openapiZod";
+import type {
+  DhcpClient,
+  DhcpPool,
+  DhcpReservation,
+  DiscoveryScanResponse,
+  FabricEvent,
+  PerfSummaryResponse,
+} from "../api/types";
 import { DataGateway } from "../dataGateway";
 
 /** Svelte context key for the fabric SSE fan-out bus (`docs/planning/UI_ENGINE_PLAN.md` P5). */
@@ -106,4 +119,28 @@ export function perfUpdatedFullSummary(payload: unknown): PerfSummaryResponse | 
   delete p.tick;
   const parsed = perfSummaryResponseSchema.safeParse(p);
   return parsed.success ? parsed.data : null;
+}
+
+/** `fabric.discovery.scan.updated` scan snapshot. */
+export function discoveryScanUpdated(payload: unknown): DiscoveryScanResponse | null {
+  const parsed = discoveryScanResponseSchema.safeParse(payload);
+  return parsed.success ? parsed.data : null;
+}
+
+/** `fabric.dhcp.pools.updated` list payload (or revision signal handled by refetch helper). */
+export function dhcpPoolsListUpdated(payload: unknown): DhcpPool[] | null {
+  const parsed = dhcpPoolListResponseSchema.safeParse(payload);
+  return parsed.success ? parsed.data.items : null;
+}
+
+/** `fabric.dhcp.clients.updated` list payload. */
+export function dhcpClientsListUpdated(payload: unknown): DhcpClient[] | null {
+  const parsed = dhcpClientListResponseSchema.safeParse(payload);
+  return parsed.success ? parsed.data.items : null;
+}
+
+/** `fabric.dhcp.reservations.updated` list payload. */
+export function dhcpReservationsListUpdated(payload: unknown): DhcpReservation[] | null {
+  const parsed = dhcpReservationListResponseSchema.safeParse(payload);
+  return parsed.success ? parsed.data.items : null;
 }

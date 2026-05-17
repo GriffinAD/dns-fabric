@@ -1,34 +1,32 @@
 <script lang="ts">
-  import { getContext, onMount } from "svelte";
-
   import type { PerfSummaryResponse } from "../api/types";
   import GaugeTileLayout from "../components/GaugeTileLayout.svelte";
   import MetricList from "../components/MetricList.svelte";
   import SemicircleGauge from "../components/SemicircleGauge.svelte";
   import { clampGridColSpan, GRID_COLUMNS, tileColSpanForPlugin } from "./builtinMeta";
-  import { FABRIC_EVENT_BUS, perfUpdatedFullSummary, type FabricEventBus } from "../dashboard/eventBus";
+  import { perfUpdatedFullSummary, type FabricEventBus } from "../dashboard/eventBus";
   import { DataGateway } from "../dataGateway";
   import type { DashboardTile } from "../dashboard/types";
+  import { usePluginBusSubscription } from "./pluginDataBus";
 
   let {
     gateway,
+    bus,
     tile,
     metric,
     onGridHint,
   }: {
     gateway: DataGateway;
+    bus: FabricEventBus;
     tile: DashboardTile;
     metric: "cpu" | "ram" | "network" | "disk";
     onGridHint?: (hint: { colSpan: number; rowSpan: number }) => void;
   } = $props();
 
-  const fabricBus = getContext<FabricEventBus | undefined>(FABRIC_EVENT_BUS);
-
   let summary = $state<PerfSummaryResponse | null>(null);
   let err = $state<string | null>(null);
-  let liveSummary = $state<PerfSummaryResponse | null>(null);
 
-  const effective = $derived(liveSummary ?? summary);
+  const effective = $derived(summary);
 
   const title = $derived(
     metric === "cpu" ? "CPU" : metric === "ram" ? "RAM" : metric === "network" ? "Network" : "Disk",
@@ -96,21 +94,24 @@
     return `grid-template-columns: repeat(${n}, minmax(0, 1fr)); column-gap: 0.25rem; justify-items: stretch; align-items: stretch;`;
   });
 
-  onMount(() => {
-    void gateway
-      .getPerfSummary()
-      .then((r) => {
-        summary = r;
-      })
-      .catch((e: unknown) => {
+  usePluginBusSubscription(
+    bus,
+    "fabric.perf.updated",
+    perfUpdatedFullSummary,
+    async () => {
+      try {
+        const r = await gateway.getPerfSummary();
+        err = null;
+        return r;
+      } catch (e: unknown) {
         err = e instanceof Error ? e.message : String(e);
-      });
-
-    if (!fabricBus) return;
-    return fabricBus.subscribe("fabric.perf.updated", perfUpdatedFullSummary, (snap) => {
-      liveSummary = snap;
-    });
-  });
+        throw e;
+      }
+    },
+    (snap) => {
+      summary = snap;
+    },
+  );
 
   const cpuDisplay = $derived(effective?.cpu_percent_total ?? 0);
 

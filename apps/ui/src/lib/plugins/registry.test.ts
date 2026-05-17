@@ -77,6 +77,7 @@ describe("resolvePluginTileMount", () => {
     const m = resolvePluginTileMount(hostCtx({ tile: t }));
     expect(m).not.toBeNull();
     expect(m!.props.gateway).toBe(gateway);
+    expect(m!.props.bus).toBe(bus);
     expect(m!.props.tile).toBe(t);
   });
 
@@ -199,7 +200,7 @@ describe("registerDynamicPluginResolver", () => {
     const id = `dynamic.${Math.random().toString(36).slice(2, 10)}`;
     const teardown = registerDynamicPluginResolver(id, (ctx) => ({
       component: DhcpPoolsTile as Component<Record<string, unknown>>,
-      props: { gateway: ctx.gateway, tile: ctx.tile },
+      props: { gateway: ctx.gateway, bus: ctx.bus, tile: ctx.tile },
     }));
     const m = resolvePluginTileMount(hostCtx({ tile: tile(id) }));
     expect(m).not.toBeNull();
@@ -213,7 +214,7 @@ describe("registerDynamicPluginPrefixResolver", () => {
   it("resolves ids under prefix except excluded ids", () => {
     const mount = (ctx: TileHostContext) => ({
       component: DhcpPoolsTile as Component<Record<string, unknown>>,
-      props: { gateway: ctx.gateway, tile: ctx.tile },
+      props: { gateway: ctx.gateway, bus: ctx.bus, tile: ctx.tile },
     });
     const exactId = `pfx.${Math.random().toString(36).slice(2, 8)}.root`;
     const childId = `pfx.${Math.random().toString(36).slice(2, 8)}.child`;

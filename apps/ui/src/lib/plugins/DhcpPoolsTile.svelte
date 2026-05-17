@@ -5,14 +5,18 @@
   import BaseDataTable from "../components/BaseDataTable.svelte";
   import type { BaseDataTableColumn, BaseDataTableSettingsPatch } from "../components/baseDataTable";
   import { defaultBaseDataTableSettings, mergeBaseDataTableSettings } from "../components/baseDataTable";
+  import { dhcpPoolsListUpdated, type FabricEventBus } from "../dashboard/eventBus";
   import { DataGateway } from "../dataGateway";
   import type { DashboardTile } from "../dashboard/types";
+  import { subscribeListWithInitialFetch } from "./pluginDataBus";
 
   let {
     gateway,
+    bus,
     tile,
   }: {
     gateway: DataGateway;
+    bus: FabricEventBus;
     tile: DashboardTile;
   } = $props();
 
@@ -50,23 +54,32 @@
     { header: "Domain", accessor: (p) => (p as DhcpPool).dns_domain ?? "—", hideWhenCompact: true },
   ]);
 
-  function load() {
+  function applyItems(next: DhcpPool[]) {
+    items = next;
     err = null;
+    loading = false;
+  }
+
+  function reload() {
     loading = true;
     void gateway
       .listDhcpPools()
-      .then((r) => {
-        items = r.items;
-      })
+      .then((r) => applyItems(r.items))
       .catch((e: unknown) => {
         err = e instanceof Error ? e.message : String(e);
-      })
-      .finally(() => {
         loading = false;
       });
   }
 
-  onMount(load);
+  onMount(() => {
+    return subscribeListWithInitialFetch({
+      bus,
+      topic: "fabric.dhcp.pools.updated",
+      fetch: () => gateway.listDhcpPools(),
+      parseItems: dhcpPoolsListUpdated,
+      onItems: applyItems,
+    });
+  });
 </script>
 
 <BaseDataTable
@@ -79,8 +92,8 @@
   {columns}
   rowKey={(p) => (p as DhcpPool).id}
   settings={tableSettings}
-  onRetry={load}
-  onRefresh={load}
+  onRetry={reload}
+  onRefresh={reload}
 >
   {#snippet compactSummary()}
     {#if items.length > 0}
