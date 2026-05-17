@@ -15,7 +15,7 @@
     palettePluginPayload,
     parseDragPayload,
   } from "../dashboard/interactions/dashboardSveltedndTypes";
-  import { tileColSpanForPlugin } from "../plugins/pluginGridPolicy";
+  import { tileColSpanForPlugin } from "../plugins/core/pluginGridPolicy";
   import { buildPaletteCatalog } from "./paletteCatalog";
   import {
     paletteDisplaySettings,

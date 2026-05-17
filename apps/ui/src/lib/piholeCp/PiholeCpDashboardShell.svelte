@@ -1,11 +1,11 @@
 <script lang="ts" module>
   import type { Component } from "svelte";
 
-  import type { TileHostContext } from "../plugins/registry";
+  import type { TileHostContext } from "../plugins/core/registry";
   import {
     registerDynamicPluginPrefixResolver,
     registerDynamicPluginResolver,
-  } from "../plugins/registry";
+  } from "../plugins/core/registry";
   import PiholeHaSectionPluginTile from "./PiholeHaSectionPluginTile.svelte";
 
   function piholeHaTileMount(ctx: TileHostContext) {

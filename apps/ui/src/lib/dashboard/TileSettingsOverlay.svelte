@@ -9,7 +9,7 @@
     clampTileGridPlacement,
     tileColSpan,
   } from "./gridPlacement";
-  import { resolvePluginTileSettings } from "../plugins/registry";
+  import { resolvePluginTileSettings } from "../plugins/core/registry";
   import { PARENT_ID_DASHBOARD } from "./layoutTree";
   import TileGenericFields from "./TileGenericFields.svelte";
   import TilePlacementForm from "./TilePlacementForm.svelte";

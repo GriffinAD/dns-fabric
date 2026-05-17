@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
-  import type { DhcpClient } from "../api/types";
-  import BaseDataTable from "../components/baseDataTable/BaseDataTable.svelte";
-  import type { BaseDataTableColumn, BaseDataTableSettingsPatch } from "../components/baseDataTable/baseDataTable";
-  import { defaultBaseDataTableSettings, mergeBaseDataTableSettings } from "../components/baseDataTable/baseDataTable";
-  import { DataGateway } from "../dataGateway";
-  import type { DashboardTile } from "../dashboard/types";
+  import type { DhcpClient } from "../../api/types";
+  import BaseDataTable from "../../components/baseDataTable/BaseDataTable.svelte";
+  import type { BaseDataTableColumn, BaseDataTableSettingsPatch } from "../../components/baseDataTable/baseDataTable";
+  import { defaultBaseDataTableSettings, mergeBaseDataTableSettings } from "../../components/baseDataTable/baseDataTable";
+  import { DataGateway } from "../../dataGateway";
+  import type { DashboardTile } from "../../dashboard/types";
 
   let {
     gateway,

@@ -2,7 +2,7 @@
   import type { PluginEntry } from "../api/types";
   import type { DataGateway } from "../dataGateway";
   import { resolvePluginTileMount } from "../platform/extensions/dashboardTileRegistry";
-  import { tileOptionsSchemaForPlugin } from "../plugins/tileOptionsZod";
+  import { tileOptionsSchemaForPlugin } from "../plugins/core/tileOptionsZod";
   import TileErrorBoundary from "./TileErrorBoundary.svelte";
   import TileFallback from "./TileFallback.svelte";
   import TileHostControl from "./TileHostControl.svelte";

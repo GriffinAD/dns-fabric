@@ -1,14 +1,14 @@
 <script lang="ts">
   import { getContext, onMount } from "svelte";
 
-  import type { PerfSummaryResponse } from "../api/types";
-  import GaugeTileLayout from "../components/gauge/GaugeTileLayout.svelte";
-  import MetricList from "../components/metrics/MetricList.svelte";
-  import SemicircleGauge from "../components/gauge/SemicircleGauge.svelte";
-  import { clampGridColSpan, GRID_COLUMNS, tileColSpanForPlugin } from "./builtinMeta";
-  import { FABRIC_EVENT_BUS, perfUpdatedFullSummary, type FabricEventBus } from "../dashboard/eventBus";
-  import { DataGateway } from "../dataGateway";
-  import type { DashboardTile } from "../dashboard/types";
+  import type { PerfSummaryResponse } from "../../api/types";
+  import GaugeTileLayout from "../../components/gauge/GaugeTileLayout.svelte";
+  import MetricList from "../../components/metrics/MetricList.svelte";
+  import SemicircleGauge from "../../components/gauge/SemicircleGauge.svelte";
+  import { clampGridColSpan, GRID_COLUMNS, tileColSpanForPlugin } from "../core/builtinMeta";
+  import { FABRIC_EVENT_BUS, perfUpdatedFullSummary, type FabricEventBus } from "../../dashboard/eventBus";
+  import { DataGateway } from "../../dataGateway";
+  import type { DashboardTile } from "../../dashboard/types";
 
   let {
     gateway,

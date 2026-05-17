@@ -1,4 +1,4 @@
-import { perfGridHintOnlyExpandColSpan } from "../plugins/builtinMeta";
+import { perfGridHintOnlyExpandColSpan } from "../plugins/core/builtinMeta";
 import { clampGridColSpan, clampGridRowSpan, tileColSpan } from "./gridPlacement";
 import { findTileInLayout, mapTileInLayout } from "./layoutTree";
 import type { DashboardLayout, DashboardLayoutV3, DashboardTile } from "./types";

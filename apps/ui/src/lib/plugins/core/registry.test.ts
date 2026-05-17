@@ -1,12 +1,12 @@
 import type { Component } from "svelte";
 import { describe, expect, it } from "vitest";
 
-import type { DashboardTile } from "../dashboard/types";
-import type { DataGateway } from "../dataGateway";
+import type { DashboardTile } from "../../dashboard/types";
+import type { DataGateway } from "../../dataGateway";
 import type { TileHostContext } from "./registry";
-import DhcpClientsTile from "./DhcpClientsTile.svelte";
-import DhcpPoolsTile from "./DhcpPoolsTile.svelte";
-import DhcpReservationsTile from "./DhcpReservationsTile.svelte";
+import DhcpClientsTile from "../dhcp/DhcpClientsTile.svelte";
+import DhcpPoolsTile from "../dhcp/DhcpPoolsTile.svelte";
+import DhcpReservationsTile from "../dhcp/DhcpReservationsTile.svelte";
 import {
   manifestRegistry,
   registerDynamicPluginPrefixResolver,

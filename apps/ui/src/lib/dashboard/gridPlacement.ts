@@ -1,4 +1,4 @@
-import { clampGridColSpan, GRID_COLUMNS, tileColSpanForPlugin } from "../plugins/builtinMeta";
+import { clampGridColSpan, GRID_COLUMNS, tileColSpanForPlugin } from "../plugins/core/builtinMeta";
 import {
   ensureLayoutV3,
   findGroupByIdInItems,
@@ -25,7 +25,7 @@ export function cloneLayoutJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-export { clampGridColSpan, GRID_COLUMNS } from "../plugins/builtinMeta";
+export { clampGridColSpan, GRID_COLUMNS } from "../plugins/core/builtinMeta";
 
 /** Max vertical span of a single tile (dashboard rows are unbounded). */
 export const GRID_ROW_SPAN_MAX = 12;

@@ -2,13 +2,13 @@
   import Card from "flowbite-svelte/Card.svelte";
   import { getContext, onMount } from "svelte";
 
-  import type { PerfSummaryResponse } from "../api/types";
-  import MetricList from "../components/metrics/MetricList.svelte";
-  import SemicircleGauge from "../components/gauge/SemicircleGauge.svelte";
-  import { clampGridColSpan, tileColSpanForPlugin } from "./builtinMeta";
-  import { FABRIC_EVENT_BUS, perfUpdatedFullSummary, type FabricEventBus } from "../dashboard/eventBus";
-  import { DataGateway } from "../dataGateway";
-  import type { DashboardTile } from "../dashboard/types";
+  import type { PerfSummaryResponse } from "../../api/types";
+  import MetricList from "../../components/metrics/MetricList.svelte";
+  import SemicircleGauge from "../../components/gauge/SemicircleGauge.svelte";
+  import { clampGridColSpan, tileColSpanForPlugin } from "../core/builtinMeta";
+  import { FABRIC_EVENT_BUS, perfUpdatedFullSummary, type FabricEventBus } from "../../dashboard/eventBus";
+  import { DataGateway } from "../../dataGateway";
+  import type { DashboardTile } from "../../dashboard/types";
 
   let { gateway, tile }: { gateway: DataGateway; tile: DashboardTile } = $props();
 

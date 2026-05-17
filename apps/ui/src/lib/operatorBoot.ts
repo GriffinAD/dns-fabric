@@ -50,8 +50,8 @@ export async function mountOperatorApp(
   try {
     if (import.meta.env.VITE_E2E_THROWING === "1") {
       const [{ registerDynamicPluginResolver }, { default: E2EThrowingTile }] = await Promise.all([
-        import("./plugins/registry"),
-        import("./plugins/E2EThrowingTile.svelte"),
+        import("./plugins/core/registry"),
+        import("./plugins/fixtures/E2EThrowingTile.svelte"),
       ]);
       registerDynamicPluginResolver("e2e.throwing", () => ({
         component: E2EThrowingTile,

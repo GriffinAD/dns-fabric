@@ -1,15 +1,15 @@
 import type { Component } from "svelte";
 
-import type { DataGateway } from "../dataGateway";
-import type { DashboardTile } from "../dashboard/types";
+import type { DataGateway } from "../../dataGateway";
+import type { DashboardTile } from "../../dashboard/types";
 import { applyPerfCompactAsPercentOnly } from "./tileDisplay";
-import DhcpClientsTile from "./DhcpClientsTile.svelte";
-import DhcpPoolsTile from "./DhcpPoolsTile.svelte";
-import DhcpReservationsTile from "./DhcpReservationsTile.svelte";
-import DiscoveryTile from "./DiscoveryTile.svelte";
-import PerfMetricTile from "./PerfMetricTile.svelte";
-import PerfTile from "./PerfTile.svelte";
-import PerfTileSettingsForm from "./perf/PerfOptionsForm.svelte";
+import DhcpClientsTile from "../dhcp/DhcpClientsTile.svelte";
+import DhcpPoolsTile from "../dhcp/DhcpPoolsTile.svelte";
+import DhcpReservationsTile from "../dhcp/DhcpReservationsTile.svelte";
+import DiscoveryTile from "../discovery/DiscoveryTile.svelte";
+import PerfMetricTile from "../perf/PerfMetricTile.svelte";
+import PerfTile from "../perf/PerfTile.svelte";
+import PerfTileSettingsForm from "../perf/PerfOptionsForm.svelte";
 
 /**
  * Runtime plugin registration (built-ins). See `docs/planning/UI_ENGINE_SPEC.md` §3.4.

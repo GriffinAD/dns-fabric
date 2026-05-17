@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
-  import type { DhcpReservation } from "../api/types";
-  import BaseDataTable from "../components/baseDataTable/BaseDataTable.svelte";
-  import type { BaseDataTableColumn, BaseDataTableSettingsPatch } from "../components/baseDataTable/baseDataTable";
-  import { defaultBaseDataTableSettings, mergeBaseDataTableSettings } from "../components/baseDataTable/baseDataTable";
-  import { validateIpv4Address, validateMacAddress } from "../components/validation/netValidation";
-  import { DataGateway } from "../dataGateway";
-  import type { DashboardTile } from "../dashboard/types";
+  import type { DhcpReservation } from "../../api/types";
+  import BaseDataTable from "../../components/baseDataTable/BaseDataTable.svelte";
+  import type { BaseDataTableColumn, BaseDataTableSettingsPatch } from "../../components/baseDataTable/baseDataTable";
+  import { defaultBaseDataTableSettings, mergeBaseDataTableSettings } from "../../components/baseDataTable/baseDataTable";
+  import { validateIpv4Address, validateMacAddress } from "../../components/validation/netValidation";
+  import { DataGateway } from "../../dataGateway";
+  import type { DashboardTile } from "../../dashboard/types";
 
   let {
     gateway,

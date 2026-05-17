@@ -7,8 +7,8 @@ import Spinner from "flowbite-svelte/Spinner.svelte";
   import Settings from "lucide-svelte/icons/settings";
   import { onMount } from "svelte";
 
-  import { DataGateway } from "../dataGateway";
-  import type { DashboardTile } from "../dashboard/types";
+  import { DataGateway } from "../../dataGateway";
+  import type { DashboardTile } from "../../dashboard/types";
 
   let {
     gateway,
