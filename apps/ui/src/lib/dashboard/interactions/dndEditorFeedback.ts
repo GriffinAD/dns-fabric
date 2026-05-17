@@ -3,8 +3,8 @@
  * Placement semantics stay in `groupDndFinalize` / `layoutStore`; this module is presentation only.
  */
 
-import type { DashboardDndListItem } from "../groupDndFinalize";
-import { isDndCellGroup } from "../groupDndFinalize";
+import type { DashboardDndListItem } from "../grid/groupDndFinalize";
+import { isDndCellGroup } from "../grid/groupDndFinalize";
 
 /** Read OS “reduce motion” preference (false in SSR or when matchMedia is missing). */
 export function readPrefersReducedMotion(): boolean {

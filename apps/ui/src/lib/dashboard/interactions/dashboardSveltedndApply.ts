@@ -1,8 +1,8 @@
 import type { DragDropState } from "@thisux/sveltednd";
 
-import type { DashboardDndListItem } from "../groupDndFinalize";
-import { buildRootLayoutFromDnd, isDndCellGroup } from "../groupDndFinalize";
-import { dedupeById } from "../layoutTree";
+import type { DashboardDndListItem } from "../grid/groupDndFinalize";
+import { buildRootLayoutFromDnd, isDndCellGroup } from "../grid/groupDndFinalize";
+import { dedupeById } from "../layout/layoutTree";
 import {
   applyRootLayoutPointerDropPlacement,
   packRootLayoutItems,
@@ -11,7 +11,7 @@ import {
   reorderRootLayoutItemsPreservingSlotOrigins,
   swapRootItemGridPlacements,
   swapRootSingleRowTilePlacements,
-} from "../gridPlacement";
+} from "../grid/gridPlacement";
 import type { DashboardLayout, RootLayoutItem } from "../types";
 
 import {

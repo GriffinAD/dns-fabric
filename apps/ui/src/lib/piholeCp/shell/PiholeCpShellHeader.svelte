@@ -11,8 +11,8 @@
   import Undo2 from "lucide-svelte/icons/undo-2";
 
   import ThemeControls from "../../theme/ThemeControls.svelte";
-  import DashboardControls from "../../dashboard/DashboardControls.svelte";
-  import type { LayoutStore } from "../../dashboard/layoutStore";
+  import DashboardControls from "../../dashboard/pages/DashboardControls.svelte";
+  import type { LayoutStore } from "../../dashboard/layout/layoutStore";
 
   let {
     nodeLabel,

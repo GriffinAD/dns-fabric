@@ -1,7 +1,7 @@
 import type { DragDropState } from "@thisux/sveltednd";
 import { dndState } from "@thisux/sveltednd";
 
-import type { DashboardDndListItem } from "../groupDndFinalize";
+import type { DashboardDndListItem } from "../grid/groupDndFinalize";
 import { applyDashboardInvalidDrop } from "./dashboardSveltedndApply";
 import {
   parseDropContainer,

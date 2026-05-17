@@ -2,7 +2,7 @@
   import { onMount, setContext } from "svelte";
 
   import type { PluginEntry } from "../../api/types";
-  import { createFabricEventBus, FABRIC_EVENT_BUS } from "../../dashboard/eventBus";
+  import { createFabricEventBus, FABRIC_EVENT_BUS } from "../../dashboard/bus/eventBus";
   import type { DashboardResponse } from "../layout/dashboardZod";
   import LogStreamPanel from "../logs/LogStreamPanel.svelte";
   import { mergeOperatorPluginsForPiholeCp } from "../plugins/operatorBaselinePlugins";

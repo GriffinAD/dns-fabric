@@ -3,7 +3,7 @@ import "@thisux/sveltednd";
 import {
   applyDocumentDashboardSettings,
   loadDashboardSettings,
-} from "./lib/dashboard/dashboardSettings";
+} from "./lib/dashboard/layout/dashboardSettings";
 import { mountOperatorApp } from "./lib/app/operatorBoot";
 import { applyDocumentTheme, getSystemPrefersDark, loadThemePreferences } from "./lib/theme/themeStorage";
 

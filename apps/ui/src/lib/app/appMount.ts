@@ -1,8 +1,8 @@
 import type { PluginEntry } from "../api/types";
 import type { DataGateway } from "../gateway/dataGateway";
-import { mountDashboardGatewaySideEffects } from "../dashboard/dashboardBootstrap";
-import type { FabricEventBus } from "../dashboard/eventBus";
-import { createLayoutStore } from "../dashboard/layoutStore";
+import { mountDashboardGatewaySideEffects } from "../dashboard/bootstrap/dashboardBootstrap";
+import type { FabricEventBus } from "../dashboard/bus/eventBus";
+import { createLayoutStore } from "../dashboard/layout/layoutStore";
 import { loadThemePreferences, resyncDocumentThemeFromStorage } from "../theme/themeStorage";
 
 type LayoutStore = ReturnType<typeof createLayoutStore>;

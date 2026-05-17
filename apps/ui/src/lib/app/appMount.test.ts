@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { attachOperatorShellLifecycle } from "./appMount";
-import type { DashboardDataBootstrapHandlers } from "../dashboard/dashboardBootstrap";
-import { createFabricEventBus, type FabricEventBus } from "../dashboard/eventBus";
-import { createLayoutStore } from "../dashboard/layoutStore";
+import type { DashboardDataBootstrapHandlers } from "../dashboard/bootstrap/dashboardBootstrap";
+import { createFabricEventBus, type FabricEventBus } from "../dashboard/bus/eventBus";
+import { createLayoutStore } from "../dashboard/layout/layoutStore";
 import { DataGateway } from "../gateway/dataGateway";
 import * as themeStorage from "../theme/themeStorage";
 import type { DashboardLayoutV3 } from "../dashboard/types";
@@ -12,7 +12,7 @@ const { mountDashboardSideEffectsMock } = vi.hoisted(() => ({
   mountDashboardSideEffectsMock: vi.fn(() => vi.fn()),
 }));
 
-vi.mock("../dashboard/dashboardBootstrap", () => ({
+vi.mock("../dashboard/bootstrap/dashboardBootstrap", () => ({
   mountDashboardGatewaySideEffects: mountDashboardSideEffectsMock,
 }));
 

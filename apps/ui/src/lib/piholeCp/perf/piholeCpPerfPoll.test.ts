@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createFabricEventBus, perfUpdatedFullSummary } from "../../dashboard/eventBus";
+import { createFabricEventBus, perfUpdatedFullSummary } from "../../dashboard/bus/eventBus";
 import type { PerfSummaryResponse } from "../../api/types";
 import { PiholeCpDashboardGateway } from "../gateway/PiholeCpDashboardGateway";
 import { startPiholeCpPerfPolling } from "../perf/piholeCpPerfPoll";

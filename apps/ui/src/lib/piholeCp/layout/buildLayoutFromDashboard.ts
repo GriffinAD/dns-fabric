@@ -1,6 +1,6 @@
 import type { PluginEntry, UiDashboardManifest } from "../../api/types";
-import { DEFAULT_DASHBOARD_LAYOUT } from "../../dashboard/defaultLayout";
-import { cloneLayoutJson, layoutWithGrid } from "../../dashboard/gridPlacement";
+import { DEFAULT_DASHBOARD_LAYOUT } from "../../dashboard/layout/defaultLayout";
+import { cloneLayoutJson, layoutWithGrid } from "../../dashboard/grid/gridPlacement";
 import { ensureLayoutV3 } from "../../dashboard/migration";
 import {
   isDashboardGroupNode,

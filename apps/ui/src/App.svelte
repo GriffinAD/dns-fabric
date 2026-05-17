@@ -7,10 +7,10 @@
   import { createAppDashboardShell } from "./lib/app/appDashboardShell";
   import { attachOperatorShellLifecycle } from "./lib/app/appMount";
   import { DataGateway } from "./lib/gateway/dataGateway";
-  import DashboardPage from "./lib/dashboard/DashboardPage.svelte";
-  import { createFabricEventBus, FABRIC_EVENT_BUS } from "./lib/dashboard/eventBus";
-  import { handlePerfTileGridHint as applyPerfTileGridHint } from "./lib/dashboard/gridHints";
-  import ShellHeader from "./lib/dashboard/ShellHeader.svelte";
+  import DashboardPage from "./lib/dashboard/pages/DashboardPage.svelte";
+  import { createFabricEventBus, FABRIC_EVENT_BUS } from "./lib/dashboard/bus/eventBus";
+  import { handlePerfTileGridHint as applyPerfTileGridHint } from "./lib/dashboard/grid/gridHints";
+  import ShellHeader from "./lib/dashboard/pages/ShellHeader.svelte";
   import type { DashboardGroup, DashboardTile } from "./lib/dashboard/types";
 
   let plugins = $state<PluginEntry[]>([]);

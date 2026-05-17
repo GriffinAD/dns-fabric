@@ -23,11 +23,11 @@
   import { get } from "svelte/store";
 
   import type { PluginEntry } from "../../api/types";
-  import DashboardPage from "../../dashboard/DashboardPage.svelte";
-  import { handlePerfTileGridHint as applyPerfTileGridHint } from "../../dashboard/gridHints";
-  import { loadDashboardLayout } from "../../dashboard/layoutStorage";
-  import { createLayoutStore } from "../../dashboard/layoutStore";
-  import { createOverlayActions } from "../../dashboard/overlayActions";
+  import DashboardPage from "../../dashboard/pages/DashboardPage.svelte";
+  import { handlePerfTileGridHint as applyPerfTileGridHint } from "../../dashboard/grid/gridHints";
+  import { loadDashboardLayout } from "../../dashboard/layout/layoutStorage";
+  import { createLayoutStore } from "../../dashboard/layout/layoutStore";
+  import { createOverlayActions } from "../../dashboard/layout/overlayActions";
   import type { DashboardGroup, DashboardTile } from "../../dashboard/types";
   import type { DataGateway } from "../../gateway/dataGateway";
   import {

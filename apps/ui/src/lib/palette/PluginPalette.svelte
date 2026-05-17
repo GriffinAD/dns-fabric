@@ -6,7 +6,7 @@
 
   import type { PluginEntry } from "../api/types";
   import type { DataGateway } from "../gateway/dataGateway";
-  import PluginTileMount from "../dashboard/PluginTileMount.svelte";
+  import PluginTileMount from "../dashboard/tiles/PluginTileMount.svelte";
   import type { DashboardTile } from "../dashboard/types";
   import {
     PALETTE_ADD_GROUP_CONTAINER,
