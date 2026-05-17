@@ -11,8 +11,8 @@
   import type { Snippet } from "svelte";
 
   import BaseDataTableModal from "./BaseDataTableModal.svelte";
-  import BasePagination from "./BasePagination.svelte";
-  import InlineSelectEditor from "./InlineSelectEditor.svelte";
+  import BasePagination from "../BasePagination.svelte";
+  import InlineSelectEditor from "../InlineSelectEditor.svelte";
   import type { BaseDataTableColumn, BaseDataTableSettingsPatch } from "./baseDataTable";
   import {
     columnStableId,
