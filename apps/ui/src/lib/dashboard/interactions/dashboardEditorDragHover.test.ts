@@ -99,6 +99,18 @@ describe("dashboardEditorDragHover", () => {
     }
   });
 
+  it("sets dropPosition from tile band on group child slots", () => {
+    drop.setAttribute(DND_CONTAINER_ATTR, "g:g1:c:c1");
+    const orig = document.elementFromPoint;
+    document.elementFromPoint = () => drop;
+    try {
+      syncEditorDragHoverFromPointer(190, 40, []);
+      expect(dndState.dropPosition).toBe("after");
+    } finally {
+      document.elementFromPoint = orig;
+    }
+  });
+
   it("sets dropPosition to after for row-end and gap-after slots", () => {
     drop.setAttribute(DND_CONTAINER_ATTR, "r:end:t1");
     const orig = document.elementFromPoint;

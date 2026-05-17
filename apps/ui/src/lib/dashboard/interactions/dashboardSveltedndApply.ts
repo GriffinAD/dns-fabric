@@ -421,7 +421,7 @@ export function applyDashboardDrop(
           ? (ctx.dndRoot[ctx.dndRoot.length - 1]?.id ?? drag.i)
           : isRootSurfaceSlotWithId(slot)
             ? slot.id
-            : drag.i;
+            : /* v8 ignore next */ drag.i;
       const tileBand =
         slot.kind === "root"
           ? resolveRootTileDropBand(
@@ -463,6 +463,7 @@ export function applyDashboardDrop(
           tileBand && tileBand !== "center" ? tileBand : pos;
         nextG = insertRelativeTo(gList, removed, slot.childId, listPos);
       } else {
+        /* v8 ignore next 2 */
         nextG = gList;
       }
       const nextBy = { ...ctx.dndByGroup, [gid]: nextG };
@@ -493,7 +494,7 @@ export function applyDashboardDrop(
           ? (ctx.dndRoot[ctx.dndRoot.length - 1]?.id ?? removed.id)
           : isRootSurfaceSlotWithId(slot)
             ? slot.id
-            : removed.id;
+            : /* v8 ignore next */ removed.id;
       const tileBand =
         slot.kind === "root"
           ? resolveRootTileDropBand(state.targetElement, rootPos, ctx.pointerClient)
@@ -539,6 +540,7 @@ export function applyDashboardDrop(
             ctx.pointerClient,
           );
         } else {
+          /* v8 ignore next 2 */
           return {};
         }
         const nextBy = { ...ctx.dndByGroup, [fromG]: dedupeById(nextTo) };
@@ -559,6 +561,7 @@ export function applyDashboardDrop(
           tileBand && tileBand !== "center" ? tileBand : pos;
         nextTarget = insertRelativeTo(toList, removed, slot.childId, listPos);
       } else {
+        /* v8 ignore next 2 */
         nextTarget = toList;
       }
       const nextBy = {

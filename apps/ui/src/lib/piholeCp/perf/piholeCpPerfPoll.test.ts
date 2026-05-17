@@ -93,6 +93,19 @@ describe("startPiholeCpPerfPolling", () => {
     stop();
   });
 
+  it("does not poll again after stop", async () => {
+    vi.useFakeTimers();
+    const gw = new PiholeCpDashboardGateway("");
+    const spy = vi.spyOn(gw, "getPerfSummary").mockResolvedValue(snap(10));
+    const bus = createFabricEventBus(gw);
+    const stop = startPiholeCpPerfPolling(gw, bus, { sampleMs: 1000, uiAverageSamples: 3 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(spy).toHaveBeenCalledTimes(1);
+    stop();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
   it("ignores getPerfSummary errors and keeps polling", async () => {
     vi.useFakeTimers();
     const gw = new PiholeCpDashboardGateway("");

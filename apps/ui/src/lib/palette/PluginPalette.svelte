@@ -15,6 +15,7 @@
     palettePluginPayload,
     parseDragPayload,
   } from "../dashboard/interactions/dashboardSveltedndTypes";
+  import { pluginIdsEqual } from "../plugins/core/pluginIds";
   import { tileColSpanForPlugin } from "../plugins/core/pluginGridPolicy";
   import { buildPaletteCatalog } from "./paletteCatalog";
   import {
@@ -74,7 +75,7 @@
 
   function preparePluginDragImage(pluginId: string): void {
     if (!gateway) return;
-    if (dragImageTile?.pluginId === pluginId) return;
+    if (dragImageTile && pluginIdsEqual(dragImageTile.pluginId, pluginId)) return;
     dragImageTile = buildDragImageTile(pluginId);
   }
 

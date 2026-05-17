@@ -2260,6 +2260,11 @@ describe("resizeRootLayoutItemColSpan", () => {
     expect(resizeRootLayoutItemColSpan(items, "a", 8)).toBe(items);
   });
 
+  it("returns items unchanged when the target id is missing", () => {
+    const items: RootLayoutItem[] = [tile("a", 0, 4)];
+    expect(resizeRootLayoutItemColSpan(items, "missing", 8)).toBe(items);
+  });
+
   it("widens a tile and shifts siblings on the same row left without gaps", () => {
     const items: RootLayoutItem[] = [
       tile("a", 0, 4),

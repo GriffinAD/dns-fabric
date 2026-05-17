@@ -52,6 +52,18 @@ describe("noWrapReadRowGroups", () => {
     expect(rows[0].map((t) => t.id)).toEqual(["y", "x"]);
   });
 
+  it("treats missing grid.row as row zero when sorting", () => {
+    const noRow = {
+      id: "y",
+      pluginId: "perf.summary",
+      hostControl: "single-panel",
+      displayMode: "full",
+      grid: { col: 2, colSpan: 1, rowSpan: 1 },
+    } as DashboardTile;
+    const rows = noWrapReadRowGroups([tile("x", 1, 1), noRow]);
+    expect(rows[0].map((t) => t.id)).toEqual(["y", "x"]);
+  });
+
   it("treats missing grid.col as column zero when rows match", () => {
     const noColField = {
       id: "y",

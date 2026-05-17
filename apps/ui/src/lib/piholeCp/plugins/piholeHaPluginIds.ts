@@ -4,6 +4,12 @@ export const PIHOLE_HA_PLUGIN_PREFIX = "pihole_ha.";
 /** Legacy umbrella plugin id (still accepted in saved layouts). */
 export const PIHOLE_HA_SECTION_PLUGIN_ID = "pihole_ha.section";
 
+const LEGACY_PIHOLE_HA_SECTION_PLUGIN_IDS = new Set([PIHOLE_HA_SECTION_PLUGIN_ID]);
+
+export function isLegacyPiholeHaSectionPluginId(pluginId: string): boolean {
+  return LEGACY_PIHOLE_HA_SECTION_PLUGIN_IDS.has(pluginId);
+}
+
 export function pluginIdForPiholeDashboardSection(section: string): string {
   return `${PIHOLE_HA_PLUGIN_PREFIX}${section}`;
 }
@@ -25,7 +31,7 @@ export function humanizePiholeCpSectionKey(section: string): string {
 export function defaultPaletteOptionsForPiholeHaPlugin(
   pluginId: string,
 ): Record<string, string> | undefined {
-  if (pluginId === PIHOLE_HA_SECTION_PLUGIN_ID) {
+  if (isLegacyPiholeHaSectionPluginId(pluginId)) {
     return {
       section: "ha",
       title: humanizePiholeCpSectionKey("ha"),
