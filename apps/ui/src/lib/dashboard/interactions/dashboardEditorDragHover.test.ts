@@ -40,6 +40,7 @@ describe("dashboardEditorDragHover", () => {
     document.body.appendChild(grid);
     dndState.isDragging = true;
     dndState.draggedItem = { k: "pp", i: "demo" };
+    dndState.dropPosition = null;
   });
 
   afterEach(() => {
@@ -108,6 +109,57 @@ describe("dashboardEditorDragHover", () => {
     expect(dndState.dropPosition).toBe("after");
     document.elementFromPoint = orig;
     rowEnd.remove();
+  });
+
+  it("ignores hover sync when container id does not parse", () => {
+    const bad = document.createElement("div");
+    bad.setAttribute(DND_CONTAINER_ATTR, "not-a-container");
+    grid.appendChild(bad);
+    const orig = document.elementFromPoint;
+    document.elementFromPoint = () => bad;
+    syncEditorDragHoverFromPointer(8, 8, []);
+    expect(dndState.dropPosition).toBeNull();
+    document.elementFromPoint = orig;
+    bad.remove();
+  });
+
+  it("sets dropPosition after for root gap-after containers", () => {
+    const gap = document.createElement("div");
+    gap.setAttribute(DND_CONTAINER_ATTR, "r:gap:tile-a");
+    grid.appendChild(gap);
+    const orig = document.elementFromPoint;
+    document.elementFromPoint = () => gap;
+    syncEditorDragHoverFromPointer(6, 6, []);
+    expect(dndState.dropPosition).toBe("after");
+    document.elementFromPoint = orig;
+    gap.remove();
+  });
+
+  it("sets dropPosition after when pointer is on the right half of a root tile", () => {
+    const tile = document.createElement("div");
+    tile.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 100, height: 40, right: 100, bottom: 40 }) as DOMRect;
+    const rootDrop = document.createElement("div");
+    rootDrop.setAttribute(DND_CONTAINER_ATTR, "r:tile-a");
+    rootDrop.appendChild(tile);
+    grid.appendChild(rootDrop);
+    const orig = document.elementFromPoint;
+    document.elementFromPoint = () => tile;
+    syncEditorDragHoverFromPointer(80, 20, []);
+    expect(dndState.dropPosition).toBe("after");
+    document.elementFromPoint = orig;
+    rootDrop.remove();
+  });
+
+  it("uses the hit element as targetElement when it is an Element but not HTMLElement", () => {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    drop.appendChild(svg);
+    const orig = document.elementFromPoint;
+    document.elementFromPoint = () => svg;
+    syncEditorDragHoverFromPointer(40, 40, []);
+    expect(dndState.targetElement).toBe(svg);
+    document.elementFromPoint = orig;
+    svg.remove();
   });
 
   it("sets dropPosition from group child tile band", () => {

@@ -111,6 +111,26 @@ describe("cpFabricTransport", () => {
     stop();
   });
 
+  it("skips a scheduled tick that starts after stop is called", async () => {
+    vi.useFakeTimers();
+    const gw = new PiholeCpDashboardGateway("");
+    const getPerf = vi.spyOn(gw, "getPerfSummary").mockResolvedValue(snap(10));
+    let intervalCb: (() => void) | undefined;
+    const intervalSpy = vi.spyOn(globalThis, "setInterval").mockImplementation((fn) => {
+      intervalCb = fn as () => void;
+      return 1 as unknown as ReturnType<typeof setInterval>;
+    });
+
+    const bus = createFabricEventBus(gw);
+    const stop = startPiholeCpPerfPolling(gw, bus, { sampleMs: 1000, uiAverageSamples: 3 });
+    await vi.advanceTimersByTimeAsync(0);
+    stop();
+    intervalCb?.();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(getPerf).toHaveBeenCalledOnce();
+    intervalSpy.mockRestore();
+  });
+
   it("does not poll after stop", async () => {
     vi.useFakeTimers();
     const gw = new PiholeCpDashboardGateway("");

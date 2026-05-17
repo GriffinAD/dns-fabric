@@ -56,6 +56,16 @@ describe("waitForEnvPendingCleared", () => {
     expect(env.pending).toBeNull();
   });
 
+  it("reports staged patch cleared on success when onProgress is set", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    const labels: string[] = [];
+    vi.spyOn(gw, "getEnvConfig")
+      .mockResolvedValueOnce({ effective: {}, pending: { DNSCRYPT_PROXY_ENABLED: "1" } })
+      .mockResolvedValueOnce({ effective: {}, pending: null });
+    await waitForEnvPendingCleared(gw, { attempts: 3, delayMs: 1, onProgress: (l) => labels.push(l) });
+    expect(labels).toContain("Staged patch cleared");
+  });
+
   it("reports slow apply progress and throws on timeout", async () => {
     const gw = new PiholeCpGateway("http://127.0.0.1:8091");
     const labels: string[] = [];
@@ -295,6 +305,50 @@ describe("waitForControlPlaneRestart", () => {
       waitForUpAttempts: 5,
     });
     expect(calls).toBeGreaterThan(3);
+  });
+
+  it("reports restart progress labels when onProgress is provided", async () => {
+    let calls = 0;
+    const labels: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        calls += 1;
+        if (calls <= 2) return { ok: true, status: 200 };
+        if (calls <= 4) return { ok: false, status: 503 };
+        return { ok: true, status: 200 };
+      }),
+    );
+    await waitForControlPlaneRestart("http://127.0.0.1:8091", {
+      graceMs: 1,
+      pollMs: 1,
+      waitForDownMs: 5000,
+      waitForUpAttempts: 5,
+      onProgress: (label) => labels.push(label),
+    });
+    expect(labels).toContain("Host apply starting…");
+    expect(labels).toContain("Control plane is back online");
+  });
+
+  it("reports slow progress while waiting for health to go down", async () => {
+    let calls = 0;
+    const labels: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        calls += 1;
+        return { ok: true, status: 200 };
+      }),
+    );
+    await expect(
+      waitForControlPlaneRestart("http://127.0.0.1:8091", {
+        graceMs: 1,
+        pollMs: 1,
+        waitForDownMs: 25,
+        onProgress: (label) => labels.push(label),
+      }),
+    ).rejects.toMatchObject({ path: "/health" });
+    expect(labels).toContain("Still waiting for control plane to stop…");
   });
 
   it("throws when health never goes down", async () => {
@@ -778,6 +832,23 @@ describe("PiholeCpGateway", () => {
       code: "http_error",
       status: 403,
       message: "Mutation denied.",
+    });
+  });
+
+  it("patchEnvConfig throws http_error with API detail when token request is forbidden", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 403,
+        json: async () => ({ detail: "forbidden" }),
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    await expect(gw.patchEnvConfig({ DNSCRYPT_PROXY_ENABLED: "1" }, "secret")).rejects.toMatchObject({
+      code: "http_error",
+      status: 403,
+      message: "forbidden",
     });
   });
 

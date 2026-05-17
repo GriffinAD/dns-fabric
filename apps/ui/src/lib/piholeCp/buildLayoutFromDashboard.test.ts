@@ -276,6 +276,49 @@ describe("buildLayoutFromDashboard", () => {
     expect(rootPluginIds).not.toContain("discovery.records");
   });
 
+  it("layoutContainsPiholeCpKeaDisabledTiles is false when Kea DHCP is enabled", () => {
+    const metaKea = { dhcp_mode: "kea" as const, node: "n", peer_ui_base_url: null, kea_fabric_api_base_url: null };
+    const dashKea = dashboardResponseSchema.parse({
+      node: "n",
+      version: "1",
+      widgets: [],
+      sections: { ha: { dhcp_mode: "kea" } },
+    });
+    const layout = buildPiholeCpDefaultLayout(dashKea, metaKea);
+    expect(layoutContainsPiholeCpKeaDisabledTiles(layout, metaKea, dashKea)).toBe(false);
+    expect(stripPiholeCpLayoutWhenKeaDhcpDisabled(layout, metaKea, dashKea)).toBe(layout);
+  });
+
+  it("layoutContainsPiholeCpKeaDisabledTiles walks nested groups", () => {
+    const dashOff = dashboardResponseSchema.parse({
+      node: "n",
+      version: "1",
+      widgets: [],
+      sections: { ha: { dhcp_mode: "none" } },
+    });
+    const metaOff = { dhcp_mode: "none" as const, node: "n", peer_ui_base_url: null, kea_fabric_api_base_url: null };
+    const layout: DashboardLayoutV3 = {
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "g",
+          showBorder: true,
+          children: [
+            {
+              kind: "tile",
+              id: "dhcp-inner",
+              pluginId: "dhcp.pools",
+              hostControl: "single-panel",
+              displayMode: "full",
+            },
+          ],
+        },
+      ],
+    };
+    expect(layoutContainsPiholeCpKeaDisabledTiles(layout, metaOff, dashOff)).toBe(true);
+  });
+
   it("layoutContainsPiholeCpKeaDisabledTiles is false after strip when meta says Kea DHCP is off", () => {
     const dashKeaLayout = buildPiholeCpDefaultLayout(
       dashboardResponseSchema.parse({

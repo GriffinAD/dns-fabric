@@ -64,6 +64,12 @@ describe("averagePerfSamples", () => {
     expect(averagePerfSamples([noCores, { ...base(20), cpu_core_percent: undefined }])!.cpu_core_percent).toBeUndefined();
   });
 
+  it("returns undefined core percent when samples lack core arrays", () => {
+    const a: PerfSummaryResponse = { ...base(10), cpu_core_percent: [] };
+    const b: PerfSummaryResponse = { ...base(20), cpu_core_percent: [] };
+    expect(averagePerfSamples([a, b])!.cpu_core_percent).toBeUndefined();
+  });
+
   it("handles sparse core and memory fields", () => {
     const sparse: PerfSummaryResponse = {
       ...base(10),

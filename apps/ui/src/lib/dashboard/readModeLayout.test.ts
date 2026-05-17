@@ -35,6 +35,37 @@ describe("noWrapReadRowGroups", () => {
     expect(rows[0].map((t) => t.id)).toEqual(["z", "a"]);
   });
 
+  it("sorts by row without comparing columns when rows differ", () => {
+    const high = tile("high", 9, 0);
+    const low = tile("low", 0, 0);
+    const rows = noWrapReadRowGroups([high, low]);
+    expect(rows[0].map((t) => t.id)).toEqual(["low", "high"]);
+  });
+
+  it("uses column order when both tiles share implicit row zero", () => {
+    const left: DashboardTile = {
+      id: "l",
+      pluginId: "perf.summary",
+      hostControl: "single-panel",
+      displayMode: "full",
+      grid: { col: 4, colSpan: 1, rowSpan: 1 },
+    };
+    const right: DashboardTile = {
+      id: "r",
+      pluginId: "perf.summary",
+      hostControl: "single-panel",
+      displayMode: "full",
+      grid: { col: 1, colSpan: 1, rowSpan: 1 },
+    };
+    const rows = noWrapReadRowGroups([left, right]);
+    expect(rows[0].map((t) => t.id)).toEqual(["r", "l"]);
+  });
+
+  it("orders by row before column when rows differ", () => {
+    const rows = noWrapReadRowGroups([tile("high", 3, 1), tile("low", 0, 9)]);
+    expect(rows[0].map((t) => t.id)).toEqual(["low", "high"]);
+  });
+
   it("orders by column when tiles share the same row", () => {
     const rows = noWrapReadRowGroups([tile("b", 1, 5), tile("a", 1, 2)]);
     expect(rows[0].map((t) => t.id)).toEqual(["a", "b"]);
@@ -49,6 +80,18 @@ describe("noWrapReadRowGroups", () => {
       grid: { row: 2, rowSpan: 1, colSpan: 1 },
     } as DashboardTile;
     const rows = noWrapReadRowGroups([tile("x", 2, 4), noCol]);
+    expect(rows[0].map((t) => t.id)).toEqual(["y", "x"]);
+  });
+
+  it("sorts by row when only one tile omits grid.row", () => {
+    const noRow: DashboardTile = {
+      id: "y",
+      pluginId: "perf.summary",
+      hostControl: "single-panel",
+      displayMode: "full",
+      grid: { col: 0, colSpan: 1, rowSpan: 1 },
+    };
+    const rows = noWrapReadRowGroups([tile("x", 2, 0), noRow]);
     expect(rows[0].map((t) => t.id)).toEqual(["y", "x"]);
   });
 

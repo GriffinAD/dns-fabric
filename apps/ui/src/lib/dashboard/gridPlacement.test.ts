@@ -2158,6 +2158,54 @@ describe("gridPlacementForRootDndShadowSlot", () => {
       rowSpan: 1,
     });
   });
+
+  it("returns null when the dragged item has no grid or spans multiple rows", () => {
+    const noGrid: RootLayoutItem = {
+      kind: "tile",
+      id: "b",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+    };
+    const tall: RootLayoutItem = {
+      ...tile("b", 0, 4),
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 2 },
+    };
+    expect(gridPlacementForRootDndShadowSlot([tile("a", 0, 4)], "b", 0, null)).toBeNull();
+    expect(gridPlacementForRootDndShadowSlot([noGrid], "b", 0, null)).toBeNull();
+    expect(gridPlacementForRootDndShadowSlot([tall], "b", 0, null)).toBeNull();
+  });
+
+  it("ignores a multi-row anchor and falls back to insert index placement", () => {
+    const anchor: RootLayoutItem = {
+      ...tile("a", 0, 4, 0),
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 2 },
+    };
+    expect(gridPlacementForRootDndShadowSlot([anchor, tile("b", 0, 4, 1)], "b", 0, "a")).toEqual({
+      col: 0,
+      row: 2,
+      colSpan: 4,
+      rowSpan: 1,
+    });
+  });
+
+  it("skips layout items without grid when computing the next row", () => {
+    const bare: RootLayoutItem = {
+      kind: "tile",
+      id: "x",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+    };
+    expect(
+      gridPlacementForRootDndShadowSlot([tile("a", 0, 4, 0), bare, tile("b", 0, 4, 1)], "b", undefined, null),
+    ).toEqual({
+      col: 0,
+      row: 1,
+      colSpan: 4,
+      rowSpan: 1,
+    });
+  });
 });
 
 describe("applyRootLayoutPointerDropPlacement", () => {
@@ -2230,6 +2278,31 @@ describe("applyRootLayoutPointerDropPlacement", () => {
     expect(out).toHaveLength(1);
     expect(out[0]!.id).toBe("a");
   });
+
+  it("uses reordered rows when prev has no matching id", () => {
+    const prev: RootLayoutItem[] = [tile("a", 0, 4, 0)];
+    const reordered: RootLayoutItem[] = [
+      prev[0]!,
+      {
+        kind: "tile",
+        id: "b",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "compact",
+        grid: { col: 4, row: 0, colSpan: 4, rowSpan: 1 },
+      },
+    ];
+    const out = applyRootLayoutPointerDropPlacement(prev, reordered, "b", "a");
+    expect(out.find((it) => it.id === "b")!.grid).toMatchObject({ col: 4, row: 0 });
+  });
+
+  it("reflows the source row when the dragged tile moves to another row", () => {
+    const prev: RootLayoutItem[] = [tile("a", 0, 4, 0), tile("b", 0, 4, 1)];
+    const reordered: RootLayoutItem[] = [prev[0]!, prev[1]!];
+    const out = applyRootLayoutPointerDropPlacement(prev, reordered, "b", "a");
+    expect(out.find((it) => it.id === "b")!.grid).toMatchObject({ row: 0, col: 4 });
+    expect(out.find((it) => it.id === "a")!.grid).toMatchObject({ row: 0, col: 0 });
+  });
 });
 
 describe("resizeRootLayoutItemColSpan", () => {
@@ -2258,6 +2331,19 @@ describe("resizeRootLayoutItemColSpan", () => {
     };
     const items: RootLayoutItem[] = [tall];
     expect(resizeRootLayoutItemColSpan(items, "a", 8)).toBe(items);
+  });
+
+  it("returns items unchanged when the id is missing or has no grid", () => {
+    const items: RootLayoutItem[] = [tile("a", 0, 4)];
+    expect(resizeRootLayoutItemColSpan(items, "missing", 6)).toBe(items);
+    const noGrid: RootLayoutItem = {
+      kind: "tile",
+      id: "b",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+    };
+    expect(resizeRootLayoutItemColSpan([noGrid], "b", 6)).toEqual([noGrid]);
   });
 
   it("widens a tile and shifts siblings on the same row left without gaps", () => {
@@ -2391,6 +2477,26 @@ describe("resizeRootLayoutItemColSpan", () => {
     });
   });
 
+  it("relocateRootItemToRow leaves items without grid unchanged", () => {
+    const bare: RootLayoutItem = {
+      kind: "tile",
+      id: "a",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+    };
+    expect(relocateRootItemToRow([bare], "a", 2)).toEqual([bare]);
+  });
+
+  it("swapRootSingleRowTilePlacements is a no-op when either tile spans multiple rows", () => {
+    const tall: RootLayoutItem = {
+      ...tile("a", 0, 4, 0),
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 2 },
+    };
+    const items: RootLayoutItem[] = [tall, tile("b", 0, 4, 1)];
+    expect(swapRootSingleRowTilePlacements(items, "a", "b")).toBe(items);
+  });
+
   it("swapRootSingleRowTilePlacements leaves unrelated items unchanged", () => {
     const items: RootLayoutItem[] = [tile("a", 0, 4, 0), tile("b", 8, 4, 0), tile("c", 16, 4, 0)];
     const next = swapRootSingleRowTilePlacements(items, "a", "b");
@@ -2469,6 +2575,35 @@ describe("mergeRootLayoutGridsForEdit", () => {
     grid: { col, row: 0, colSpan, rowSpan: 1 },
   });
 
+  it("keeps persisted grid when ordered tile omits grid metadata", () => {
+    const prev = [tile("a", 2, 6)];
+    const ordered: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "a",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "compact",
+      },
+    ];
+    expect(mergeRootLayoutGridsForEdit(prev, ordered)[0]!.grid!.col).toBe(2);
+  });
+
+  it("uses ordered grid when prev tile had no persisted grid", () => {
+    const prev: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "a",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "compact",
+      },
+    ];
+    const ordered = [tile("a", 2, 6)];
+    const out = mergeRootLayoutGridsForEdit(prev, ordered);
+    expect(out[0]!.grid!.col).toBe(2);
+  });
+
   it("keeps persisted grids while adopting DnD list order (no slot swap)", () => {
     const prev = [tile("a", 0, 4), tile("b", 8, 4)];
     const ordered = [tile("b", 0, 4), tile("a", 8, 4)];
@@ -2476,6 +2611,35 @@ describe("mergeRootLayoutGridsForEdit", () => {
     expect(out.map((it) => it.id)).toEqual(["b", "a"]);
     expect(out.find((it) => it.id === "b")!.grid!.col).toBe(8);
     expect(out.find((it) => it.id === "a")!.grid!.col).toBe(0);
+  });
+
+  it("returns ordered rows not present in prev unchanged", () => {
+    const ordered = [tile("new", 0, 4)];
+    expect(mergeRootLayoutGridsForEdit([], ordered)[0]).toBe(ordered[0]);
+  });
+
+  it("merges group grids from prev while preserving ordered children", () => {
+    const prev: RootLayoutItem[] = [
+      {
+        kind: "group",
+        id: "g",
+        showBorder: true,
+        children: [wrapTile("c", 2)],
+        grid: { col: 4, row: 0, colSpan: 8, rowSpan: 1 },
+      },
+    ];
+    const ordered: RootLayoutItem[] = [
+      {
+        kind: "group",
+        id: "g",
+        showBorder: false,
+        children: [wrapTile("c", 2)],
+        grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
+      },
+    ];
+    const out = mergeRootLayoutGridsForEdit(prev, ordered)[0] as DashboardGroup;
+    expect(out.showBorder).toBe(false);
+    expect(out.grid!.col).toBe(4);
   });
 
   it("returns ordered item unchanged when kinds differ", () => {
