@@ -4,6 +4,7 @@
    * paths via `stripWidth.ts` — keep those modules aligned when changing flex gaps or scrollports.
    */
   import type { Snippet } from "svelte";
+  import DashboardReadNestedHost from "./DashboardReadNestedHost.svelte";
   import TileEditChrome from "../tiles/TileEditChrome.svelte";
   import {
     effectiveColSpan,
