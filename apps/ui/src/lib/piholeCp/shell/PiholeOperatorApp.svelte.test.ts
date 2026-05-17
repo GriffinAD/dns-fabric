@@ -165,9 +165,9 @@ describe("PiholeOperatorApp", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(PiholeOperatorApp);
-    await tick();
-    await tick();
-    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(0));
+    await waitFor(() => {
+      expect(screen.getByTestId("pihole-cp-refresh")).toBeTruthy();
+    });
 
     const before = fetchMock.mock.calls.length;
     fireEvent.click(screen.getByTestId("pihole-cp-refresh"));
