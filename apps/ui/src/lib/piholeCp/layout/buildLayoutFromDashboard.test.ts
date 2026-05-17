@@ -288,21 +288,20 @@ describe("buildLayoutFromDashboard", () => {
       version: 3,
       items: [
         {
-          kind: "group",
+          kind: "group" as const,
           id: "outer",
           showBorder: true,
           children: [
             {
-              kind: "group",
+              kind: "group" as const,
               id: "inner",
               showBorder: true,
               children: [
                 {
-                  kind: "tile",
                   id: "dhcp",
                   pluginId: "dhcp.pools",
-                  hostControl: "single-panel",
-                  displayMode: "full",
+                  hostControl: "single-panel" as const,
+                  displayMode: "full" as const,
                 },
               ],
             },
