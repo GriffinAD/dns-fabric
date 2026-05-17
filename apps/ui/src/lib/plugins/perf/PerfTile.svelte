@@ -6,7 +6,7 @@
   import MetricList from "../../components/metrics/MetricList.svelte";
   import SemicircleGauge from "../../components/gauge/SemicircleGauge.svelte";
   import { clampGridColSpan, tileColSpanForPlugin } from "../core/builtinMeta";
-  import { FABRIC_EVENT_BUS, perfUpdatedFullSummary, type FabricEventBus } from "../../dashboard/bus/eventBus";
+  import { FABRIC_EVENT_BUS, perfUpdatedFullSummary, type FabricEventBus } from "../../dashboard/eventBus";
   import { DataGateway } from "../../gateway/dataGateway";
   import type { DashboardTile } from "../../dashboard/types";
 
