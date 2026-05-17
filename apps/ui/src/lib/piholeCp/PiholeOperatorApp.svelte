@@ -9,9 +9,9 @@
   import { mergeOperatorPluginsForPiholeCp } from "./operatorBaselinePlugins";
   import { waitForPiholeCpDashboardCoherent, type PiholeCpMeta } from "./PiholeCpGateway";
   import PiholeCpDashboardShell from "./PiholeCpDashboardShell.svelte";
+  import { attachCpFabricTransport } from "../dashboard/transports/cpFabricTransport";
   import type { PiholeCpDashboardGateway } from "./PiholeCpDashboardGateway";
   import { createPiholeCpSession } from "./piholeCpSession";
-  import { startPiholeCpPerfPolling } from "./piholeCpPerfPoll";
 
   let error = $state<string | null>(null);
   let dashboard = $state<DashboardResponse | null>(null);
@@ -33,7 +33,7 @@
   const fabricBusKernel = attachFabricBusKernel({
     gateway,
     registerCpTransports: (bus, gw) =>
-      startPiholeCpPerfPolling(gw as PiholeCpDashboardGateway, bus),
+      attachCpFabricTransport(bus, gw as PiholeCpDashboardGateway),
   });
   setContext(FABRIC_EVENT_BUS, fabricBusKernel.bus);
 

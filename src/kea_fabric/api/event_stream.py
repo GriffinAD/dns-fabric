@@ -18,6 +18,16 @@ from kea_fabric.settings import ApiSettings
 _log = logging.getLogger(__name__)
 
 
+def _sse_envelope(topic: str, payload: dict[str, object]) -> str:
+    return json.dumps(
+        {
+            "topic": topic,
+            "occurred_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "payload": payload,
+        }
+    )
+
+
 def _sse_close_after_data_events() -> int:
     """If > 0 (tests), end the stream after this many data events."""
     raw = os.environ.get("KEA_FABRIC_SSE_CLOSE_AFTER_DATA_EVENTS", "").strip()
@@ -41,12 +51,25 @@ async def fabric_sse_lines(request: Request) -> AsyncIterator[str]:
             await asyncio.sleep(interval)
             n = state.next_perf_tick()
             snap = perf_summary_for_tick(n)
-            payload = {
-                "topic": "fabric.perf.updated",
-                "occurred_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-                "payload": {**snap, "tick": n},
-            }
-            yield f"data: {json.dumps(payload)}\n\n"
+            perf_line = _sse_envelope("fabric.perf.updated", {**snap, "tick": n})
+            yield f"data: {perf_line}\n\n"
+            data_events += 1
+            if close_after and data_events >= close_after:
+                return
+            scan_line = _sse_envelope(
+                "fabric.discovery.scan.updated",
+                state.get_discovery_scan(),
+            )
+            yield f"data: {scan_line}\n\n"
+            data_events += 1
+            if close_after and data_events >= close_after:
+                return
+            revision = state.next_dhcp_clients_revision()
+            dhcp_line = _sse_envelope(
+                "fabric.dhcp.clients.updated",
+                {"revision": revision},
+            )
+            yield f"data: {dhcp_line}\n\n"
             data_events += 1
             if close_after and data_events >= close_after:
                 return
