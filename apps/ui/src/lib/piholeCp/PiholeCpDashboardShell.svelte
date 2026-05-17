@@ -143,27 +143,33 @@
   });
 </script>
 
-<PiholeCpShellHeader
-  nodeLabel={meta?.node ?? dashboard.node}
-  uiVersion={uiDisplayVersion}
-  editorOpen={$editorOpen}
-  {refreshing}
-  peerUiBaseUrl={meta?.peer_ui_base_url ?? null}
-  onOpenEditor={() => ls.openEditor()}
-  onCloseEditor={() => ls.closeEditorAndFlush()}
-  onResetBaseline={() => ls.resetToBaseline()}
-  onSaveLayout={() => ls.saveLayoutToFile()}
-  onRefresh={onRefresh}
-/>
+<div
+  class="sticky top-0 z-40 -mx-4 border-b border-slate-200/90 bg-slate-100/95 px-4 py-4 backdrop-blur-sm sm:-mx-6 sm:px-6 dark:border-gray-700/90 dark:bg-gray-900/95"
+  data-testid="pihole-cp-sticky-chrome"
+>
+  <PiholeCpShellHeader
+    nodeLabel={meta?.node ?? dashboard.node}
+    uiVersion={uiDisplayVersion}
+    editorOpen={$editorOpen}
+    {ls}
+    {refreshing}
+    peerUiBaseUrl={meta?.peer_ui_base_url ?? null}
+    onOpenEditor={() => ls.openEditor()}
+    onCloseEditor={() => ls.closeEditorAndFlush()}
+    onResetBaseline={() => ls.resetToBaseline()}
+    onSaveLayout={() => ls.saveLayoutToFile()}
+    onRefresh={onRefresh}
+  />
+</div>
 
 {#if $editorOpen}
-  <div class="mt-6" data-testid="pihole-cp-node-settings-panel">
-    <PiholeCpEnvSettings {baseUrl} alwaysOpen onApplied={onEnvApplied} />
+  <div class="mt-4" data-testid="pihole-cp-node-settings-panel">
+    <PiholeCpEnvSettings {baseUrl} onApplied={onEnvApplied} />
   </div>
 {/if}
 
-<!-- Inherited `--dashboard-gap` spaces tiles on `[data-dashboard-tile-grid]` and the layout editor (app.css). -->
-<div class="mt-6 [--dashboard-gap:5px]">
+<!-- Tile gap from `--dashboard-gap` on document root (DashboardControls / piholeCp-entry). -->
+<div class="mt-6">
   <DashboardPage
     {gateway}
     {plugins}
@@ -178,5 +184,6 @@
     {ls}
     {overlay}
     {onPerfTileGridHint}
+    hideEditorToolbar
   />
 </div>

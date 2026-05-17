@@ -1,0 +1,73 @@
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { dndState } from "@thisux/sveltednd";
+
+import {
+  clearEditorDragHover,
+  DND_CONTAINER_ATTR,
+  EDITOR_DROP_HOVER_CLASSES,
+  syncEditorDragHoverFromPointer,
+} from "./dashboardEditorDragHover";
+import { ROOT_CANVAS_CONTAINER } from "./dashboardSveltedndTypes";
+
+describe("dashboardEditorDragHover", () => {
+  let grid: HTMLDivElement;
+  let drop: HTMLDivElement;
+
+  beforeEach(() => {
+    grid = document.createElement("div");
+    grid.setAttribute("data-dashboard-editor", "grid-chrome");
+    drop = document.createElement("div");
+    drop.setAttribute(DND_CONTAINER_ATTR, ROOT_CANVAS_CONTAINER);
+    drop.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        right: 200,
+        bottom: 120,
+        width: 200,
+        height: 120,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    grid.appendChild(drop);
+    document.body.appendChild(grid);
+    dndState.isDragging = true;
+    dndState.draggedItem = { k: "pp", i: "demo" };
+  });
+
+  afterEach(() => {
+    clearEditorDragHover();
+    dndState.isDragging = false;
+    dndState.draggedItem = null;
+    dndState.targetContainer = null;
+    dndState.targetElement = null;
+    grid.remove();
+  });
+
+  it("applies drop-target classes and targetContainer under the pointer", () => {
+    const orig = document.elementFromPoint;
+    document.elementFromPoint = () => drop;
+    try {
+      syncEditorDragHoverFromPointer(40, 40, []);
+      expect(dndState.targetContainer).toBe(ROOT_CANVAS_CONTAINER);
+      expect(drop.classList.contains("svelte-dnd-drop-target")).toBe(true);
+      for (const cls of EDITOR_DROP_HOVER_CLASSES) {
+        expect(drop.classList.contains(cls)).toBe(true);
+      }
+    } finally {
+      document.elementFromPoint = orig;
+    }
+  });
+
+  it("clears hover state when the pointer leaves droppables", () => {
+    const orig = document.elementFromPoint;
+    document.elementFromPoint = () => drop;
+    syncEditorDragHoverFromPointer(40, 40, []);
+    document.elementFromPoint = () => document.body;
+    syncEditorDragHoverFromPointer(4, 4, []);
+    expect(dndState.targetContainer).toBeNull();
+    expect(drop.classList.contains("svelte-dnd-drop-target")).toBe(false);
+    document.elementFromPoint = orig;
+  });
+});

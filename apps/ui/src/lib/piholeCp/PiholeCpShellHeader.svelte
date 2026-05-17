@@ -1,19 +1,24 @@
 <script lang="ts">
   import Button from "flowbite-svelte/Button.svelte";
   import Modal from "flowbite-svelte/Modal.svelte";
+  import { get } from "svelte/store";
   import ArrowLeft from "lucide-svelte/icons/arrow-left";
   import Pencil from "lucide-svelte/icons/pencil";
+  import Redo2 from "lucide-svelte/icons/redo-2";
   import RefreshCw from "lucide-svelte/icons/refresh-cw";
   import Save from "lucide-svelte/icons/save";
   import Server from "lucide-svelte/icons/server";
+  import Undo2 from "lucide-svelte/icons/undo-2";
 
   import ThemeControls from "../theme/ThemeControls.svelte";
   import DashboardControls from "../dashboard/DashboardControls.svelte";
+  import type { LayoutStore } from "../dashboard/layoutStore";
 
   let {
     nodeLabel,
     uiVersion,
     editorOpen,
+    ls,
     refreshing = false,
     peerUiBaseUrl = null,
     onOpenEditor,
@@ -25,6 +30,7 @@
     nodeLabel: string;
     uiVersion: string;
     editorOpen: boolean;
+    ls: LayoutStore;
     refreshing?: boolean;
     peerUiBaseUrl?: string | null;
     onOpenEditor: () => void;
@@ -38,6 +44,16 @@
 
   const headerLabelBandSpacerClass =
     "mb-1 hidden h-[1.125rem] w-0 max-w-0 shrink-0 overflow-hidden sm:block";
+
+  const canUndo = $derived.by(() => {
+    get(ls.layout);
+    return ls.canUndo();
+  });
+
+  const canRedo = $derived.by(() => {
+    get(ls.layout);
+    return ls.canRedo();
+  });
 
   function confirmResetBaseline() {
     void onResetBaseline();
@@ -111,6 +127,30 @@
           class="flex flex-wrap items-end {editorOpen ? 'gap-3' : 'gap-1'}"
         >
           {#if editorOpen}
+            <Button
+              type="button"
+              color="alternative"
+              size="sm"
+              class="!p-2 shrink-0"
+              aria-label="Undo layout change"
+              data-testid="pihole-cp-layout-undo"
+              disabled={!canUndo}
+              onclick={() => ls.undo()}
+            >
+              <Undo2 class="h-5 w-5" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              color="alternative"
+              size="sm"
+              class="!p-2 shrink-0"
+              aria-label="Redo layout change"
+              data-testid="pihole-cp-layout-redo"
+              disabled={!canRedo}
+              onclick={() => ls.redo()}
+            >
+              <Redo2 class="h-5 w-5" aria-hidden="true" />
+            </Button>
             <Button
               type="button"
               color="danger"

@@ -11,6 +11,7 @@
     groupGridAreaStyle,
     groupGridColumnSpanStyle,
     groupOuterColSpan,
+    mergeRootLayoutGridsForEdit,
     packGroupChildrenRowWrapInOrder,
     reorderRootLayoutItemsPreservingSlotOrigins,
   } from "./gridPlacement";
@@ -20,9 +21,14 @@
   import TileEditChrome from "./TileEditChrome.svelte";
   import { buildRootLayoutFromDnd, type DashboardDndListItem } from "./groupDndFinalize";
   import DashboardEditRootGrid from "./DashboardEditRootGrid.svelte";
+  import {
+    clearEditorDragHover,
+    getLastEditorDragClient,
+    syncEditorDragHoverFromPointer,
+  } from "./interactions/dashboardEditorDragHover";
   import { applyDashboardDrop, applyDashboardInvalidDrop } from "./interactions/dashboardSveltedndApply";
   import type { DashboardDropContext } from "./interactions/dashboardSveltedndApply";
-  import type { DashboardDragPayload } from "./interactions/dashboardSveltedndTypes";
+  import { parseDragPayload, parseDropContainer, type DashboardDragPayload } from "./interactions/dashboardSveltedndTypes";
   import { editorGroupInPlay, editorTileInPlay } from "./interactions/editorSelection";
   import { dedupeById } from "./layoutTree";
   import { noWrapReadRowGroups } from "./readModeLayout";
@@ -52,6 +58,7 @@
     onAddTileToGroup,
     onLayoutStructureChange,
     onPerfTileGridHint,
+    onItemColSpanChange,
     activeEditorKind = null as "tile" | "group" | null,
     activeEditorId = null as string | null,
   }: {
@@ -70,6 +77,12 @@
     onAddTileToGroup?: (groupId: string, pluginId: string) => void;
     onLayoutStructureChange?: (next: DashboardLayout) => void;
     onPerfTileGridHint?: (tileId: string, hint: { colSpan: number; rowSpan: number }) => void;
+    onItemColSpanChange?: (
+      itemId: string,
+      colSpan: number,
+      phase: "preview" | "commit",
+      groupId?: string,
+    ) => void;
     /** Inspector / keyboard selection — drives `.editor-surface-in-play` on the matching tile or container. */
     activeEditorKind?: "tile" | "group" | null;
     activeEditorId?: string | null;
@@ -102,9 +115,13 @@
   }
 
   $effect(() => {
-    dndRoot = layout.items.map((it) => rootItemToDnd(it));
+    // Do not reset mirror lists mid-drag — sveltednd owns the in-flight item; resetting here
+    // makes tiles vanish or jump when layout props tick during edit.
+    if (dndState.isDragging) return;
+    const items = layout.items;
+    dndRoot = items.map((it) => rootItemToDnd(it));
     const next: Record<string, DndListItem[]> = {};
-    for (const it of layout.items) {
+    for (const it of items) {
       if (it.kind === "group") {
         next[it.id] = dedupeById(it.children).map((ch) => groupChildToDnd(ch));
         registerGroupDndTargets(it.children, next);
@@ -118,17 +135,20 @@
     return buildRootLayoutFromDnd(layout.items, dndRoot, dndByGroup);
   }
 
+  /** True while @thisux/sveltednd reports an active drag (palette or grid). */
+  const editorPointerDndActive = $derived(dndState.isDragging);
+
   const packedRoot = $derived(
-    reorderRootLayoutItemsPreservingSlotOrigins(layout.items, buildLayoutFromDnd()),
+    editLayout
+      ? mergeRootLayoutGridsForEdit(layout.items, buildLayoutFromDnd())
+      : reorderRootLayoutItemsPreservingSlotOrigins(layout.items, buildLayoutFromDnd()),
   );
   const rootPackedById = $derived(new Map(packedRoot.map((it) => [it.id, it])));
 
   /** Rely on `enabled` only: some API responses omit `ui_dashboard` and would hide the whole palette. */
   const palette = $derived(plugins.filter((p) => p.enabled));
-
-  /** True while @thisux/sveltednd reports an active drag (palette or grid). */
-  const editorPointerDndActive = $derived(dndState.isDragging);
   let dropCommittedForActiveDrag = $state(false);
+  let pointerClient = $state<{ x: number; y: number } | undefined>(undefined);
 
   $effect(() => {
     if (!dndState.isDragging) {
@@ -136,11 +156,53 @@
     }
   });
 
+  $effect(() => {
+    if (!editorPointerDndActive) {
+      pointerClient = undefined;
+      return;
+    }
+    const onMove = (e: PointerEvent) => {
+      pointerClient = { x: e.clientX, y: e.clientY };
+      syncEditorDragHoverFromPointer(e.clientX, e.clientY, dndRoot);
+    };
+    document.addEventListener("pointermove", onMove, { passive: true });
+    return () => document.removeEventListener("pointermove", onMove);
+  });
+
+  $effect(() => {
+    if (!editorPointerDndActive) {
+      clearEditorDragHover();
+      return;
+    }
+    const onDragOver = (e: DragEvent) => {
+      if (e.clientX === 0 && e.clientY === 0) return;
+      pointerClient = { x: e.clientX, y: e.clientY };
+      const overGrid =
+        document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-dashboard-editor="grid-chrome"]') !=
+        null;
+      if (overGrid) e.preventDefault();
+      syncEditorDragHoverFromPointer(e.clientX, e.clientY, dndRoot);
+      const drag = parseDragPayload(dndState.draggedItem);
+      if (e.dataTransfer && (drag?.k === "pp" || drag?.k === "pg")) {
+        e.dataTransfer.dropEffect = dndState.invalidDrop ? "none" : "copy";
+      }
+    };
+    const onDragEnd = () => clearEditorDragHover();
+    document.addEventListener("dragover", onDragOver);
+    document.addEventListener("dragend", onDragEnd, true);
+    return () => {
+      document.removeEventListener("dragover", onDragOver);
+      document.removeEventListener("dragend", onDragEnd, true);
+      clearEditorDragHover();
+    };
+  });
+
   function buildDropContext(): DashboardDropContext {
     return {
       dndRoot,
       dndByGroup,
       layoutItems: layout.items,
+      pointerClient,
       onLayoutStructureChange,
       onAddTile,
       onAddGroup,
@@ -150,7 +212,20 @@
   }
 
   function onLayoutDrop(state: DragDropState<DashboardDragPayload>) {
+    const last = getLastEditorDragClient();
+    if (last) {
+      pointerClient = last;
+      syncEditorDragHoverFromPointer(last.x, last.y, dndRoot);
+    }
+    applyDashboardInvalidDrop(state, dndRoot);
     if (state.invalidDrop) return;
+    if (!state.targetContainer || !parseDropContainer(state.targetContainer)) return;
+    if (last) {
+      const hit = document.elementFromPoint(last.x, last.y);
+      const overGrid = hit?.closest('[data-dashboard-editor="grid-chrome"]') != null;
+      const overPalette = hit?.closest('[data-dashboard-editor="palette"]') != null;
+      if (!overGrid && overPalette) return;
+    }
     if (dropCommittedForActiveDrag) return;
     dropCommittedForActiveDrag = true;
     const r = applyDashboardDrop(state, buildDropContext());
@@ -160,6 +235,12 @@
 
   function onDragOverLayout(state: DragDropState<DashboardDragPayload>) {
     applyDashboardInvalidDrop(state, dndRoot);
+  }
+
+  /** Drag ended without a committed drop — no layout mutation (cancel / release outside targets). */
+  function onDragEndLayout(_state: DragDropState<DashboardDragPayload>) {
+    dropCommittedForActiveDrag = false;
+    clearEditorDragHover();
   }
 
   /** Viewport width for an editor “strip” (Auto wrap off) — same math as `GroupReadNoWrap` widthPx. */
@@ -200,6 +281,7 @@
       chromeEditSm={CHROME_EDIT_SM}
       onLayoutDrop={onLayoutDrop}
       onDragOverLayout={onDragOverLayout}
+      onDragEndLayout={onDragEndLayout}
       editorTileInPlay={(id) => editorTileInPlay(editLayout, activeEditorKind, activeEditorId, id)}
       editorGroupInPlay={(id) => editorGroupInPlay(editLayout, activeEditorKind, activeEditorId, id)}
       onAddTileToGroup={onAddTileToGroup}
@@ -207,6 +289,7 @@
       onEditGroup={onEditGroup}
       {editLayout}
       {onEditTile}
+      {onItemColSpanChange}
       getSubDndList={(sub) => dedupeById(dndByGroup[sub.id] ?? sub.children.map((ch) => groupChildToDnd(ch)))}
     >
       {#snippet tileContent(tile)}

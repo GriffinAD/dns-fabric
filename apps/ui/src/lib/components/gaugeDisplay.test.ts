@@ -4,6 +4,7 @@ import {
   clampGaugePercent,
   gaugeDisplayTweenDuration,
   GAUGE_DISPLAY_TWEEN_MS,
+  prefersReducedMotion,
 } from "./gaugeDisplay";
 
 describe("gaugeDisplay", () => {
@@ -23,5 +24,16 @@ describe("gaugeDisplay", () => {
     expect(gaugeDisplayTweenDuration({ reducedMotion: false, instant: false })).toBe(
       GAUGE_DISPLAY_TWEEN_MS,
     );
+    expect(gaugeDisplayTweenDuration({ reducedMotion: false, instant: false, durationMs: 120 })).toBe(
+      120,
+    );
+  });
+
+  it("prefersReducedMotion is false when matchMedia is unavailable", () => {
+    const prev = globalThis.matchMedia;
+    // @ts-expect-error test shim
+    delete globalThis.matchMedia;
+    expect(prefersReducedMotion()).toBe(false);
+    globalThis.matchMedia = prev;
   });
 });

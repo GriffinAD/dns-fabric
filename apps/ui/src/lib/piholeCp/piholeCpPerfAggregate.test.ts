@@ -35,6 +35,47 @@ describe("averagePerfSamples", () => {
     expect(avg.disk_used_percent).toBeUndefined();
     expect(avg.disk_volumes).toBeUndefined();
   });
+
+  it("omits network_adapters when samples have no adapter lists", () => {
+    const avg = averagePerfSamples([base(10), base(20)])!;
+    expect(avg.network_adapters).toBeUndefined();
+  });
+
+  it("averages per-adapter network throughput", () => {
+    const withEth = (n: number): PerfSummaryResponse => ({
+      ...base(n),
+      network_adapters: [{ name: "eth0", in_mbps: n, out_mbps: n * 2 }],
+    });
+    const avg = averagePerfSamples([withEth(10), withEth(20)])!;
+    expect(avg.network_adapters).toEqual([{ name: "eth0", in_mbps: 15, out_mbps: 30 }]);
+  });
+
+  it("returns a single sample unchanged", () => {
+    const one = base(5);
+    expect(averagePerfSamples([one])).toEqual(one);
+  });
+
+  it("returns null for an empty sample list", () => {
+    expect(averagePerfSamples([])).toBeNull();
+  });
+
+  it("omits averaged core percent when samples lack core arrays", () => {
+    const noCores: PerfSummaryResponse = { ...base(10), cpu_core_percent: undefined };
+    expect(averagePerfSamples([noCores, { ...base(20), cpu_core_percent: undefined }])!.cpu_core_percent).toBeUndefined();
+  });
+
+  it("handles sparse core and memory fields", () => {
+    const sparse: PerfSummaryResponse = {
+      ...base(10),
+      cpu_core_percent: undefined,
+      memory_used_bytes: null,
+      memory_total_bytes: Number.NaN,
+    };
+    const avg = averagePerfSamples([sparse, { ...sparse, cpu_percent_total: 20 }])!;
+    expect(avg.cpu_core_percent).toBeUndefined();
+    expect(avg.memory_used_bytes).toBeNull();
+    expect(avg.memory_total_bytes).toBeNull();
+  });
 });
 
 describe("withDiskSnapshot", () => {

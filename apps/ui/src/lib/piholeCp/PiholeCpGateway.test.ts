@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("./piholeCpPostApplyWait", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("./piholeCpPostApplyWait")>();
+  return { ...mod, sleep: vi.fn(async () => undefined) };
+});
+
 import { dashboardResponseSchema } from "./dashboardZod";
 import {
   PiholeCpGateway,
@@ -7,8 +12,11 @@ import {
   joinControlPlaneUrl,
   waitForControlPlaneReady,
   waitForControlPlaneRestart,
+  waitForEnvPendingCleared,
   waitForHostEnvApplyComplete,
+  waitForPiholeCpDashboardCoherent,
 } from "./PiholeCpGateway";
+import type { DashboardResponse } from "./dashboardZod";
 
 describe("controlPlaneErrorMessage", () => {
   it("returns fallback for non-objects", () => {
@@ -26,6 +34,43 @@ describe("controlPlaneErrorMessage", () => {
       controlPlaneErrorMessage({ error: "forbidden_key", message: "not allowed" }, "fb"),
     ).toBe("forbidden_key: not allowed");
     expect(controlPlaneErrorMessage({ message: "only message" }, "fb")).toBe("only message");
+  });
+});
+
+describe("waitForEnvPendingCleared", () => {
+  it("uses default attempts when opts are omitted", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    vi.spyOn(gw, "getEnvConfig")
+      .mockResolvedValueOnce({ effective: {}, pending: { DNSCRYPT_PROXY_ENABLED: "1" } })
+      .mockResolvedValueOnce({ effective: {}, pending: null });
+    await waitForEnvPendingCleared(gw);
+    expect(gw.getEnvConfig).toHaveBeenCalledTimes(2);
+  });
+
+  it("resolves when pending is cleared", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    vi.spyOn(gw, "getEnvConfig")
+      .mockResolvedValueOnce({ effective: {}, pending: { DNSCRYPT_PROXY_ENABLED: "1" } })
+      .mockResolvedValueOnce({ effective: { DNSCRYPT_PROXY_ENABLED: "1" }, pending: null });
+    const env = await waitForEnvPendingCleared(gw, { attempts: 5, delayMs: 1 });
+    expect(env.pending).toBeNull();
+  });
+
+  it("reports slow apply progress and throws on timeout", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    const labels: string[] = [];
+    vi.spyOn(gw, "getEnvConfig").mockResolvedValue({
+      effective: {},
+      pending: { DNSCRYPT_PROXY_ENABLED: "1" },
+    });
+    await expect(
+      waitForEnvPendingCleared(gw, {
+        attempts: 7,
+        delayMs: 1,
+        onProgress: (label) => labels.push(label),
+      }),
+    ).rejects.toMatchObject({ path: "/v1/config/env" });
+    expect(labels).toContain("Still waiting for host apply…");
   });
 });
 
@@ -54,9 +99,183 @@ describe("waitForHostEnvApplyComplete", () => {
     });
     expect(env.pending).toBeNull();
   });
+
+  it("reports health and pending progress before pending clears", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    const labels: string[] = [];
+    let envCalls = 0;
+    vi.spyOn(gw, "getEnvConfig").mockImplementation(async () => {
+      envCalls += 1;
+      if (envCalls < 9) {
+        return { effective: {}, pending: { DNSCRYPT_PROXY_ENABLED: "1" } };
+      }
+      return { effective: { DNSCRYPT_PROXY_ENABLED: "1" }, pending: null };
+    });
+    let fetchCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        fetchCalls += 1;
+        if (fetchCalls === 1) return { ok: true, status: 200 };
+        if (fetchCalls <= 3) return { ok: false, status: 503 };
+        return { ok: true, status: 200 };
+      }),
+    );
+    await waitForHostEnvApplyComplete("http://127.0.0.1:8091", gw, {
+      maxMs: 5000,
+      pollMs: 1,
+      onProgress: (label) => labels.push(label),
+    });
+    expect(labels.some((l) => l.includes("Stack restarting"))).toBe(true);
+    expect(labels.some((l) => l.includes("Still applying"))).toBe(true);
+  });
+
+  it("tolerates getEnvConfig errors while the stack restarts", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    vi.spyOn(gw, "getEnvConfig")
+      .mockRejectedValueOnce(new Error("connection refused"))
+      .mockResolvedValueOnce({ effective: {}, pending: null });
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200 })));
+    const env = await waitForHostEnvApplyComplete("http://127.0.0.1:8091", gw, {
+      maxMs: 5000,
+      pollMs: 1,
+    });
+    expect(env.pending).toBeNull();
+  });
+
+  it("uses default maxMs when opts are omitted", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    vi.spyOn(gw, "getEnvConfig").mockResolvedValue({ effective: {}, pending: null });
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200 })));
+    await waitForHostEnvApplyComplete("http://127.0.0.1:8091", gw);
+    expect(gw.getEnvConfig).toHaveBeenCalled();
+  });
+
+  it("throws when pending never clears", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    vi.spyOn(gw, "getEnvConfig").mockResolvedValue({
+      effective: {},
+      pending: { DNSCRYPT_PROXY_ENABLED: "1" },
+    });
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200 })));
+    await expect(
+      waitForHostEnvApplyComplete("http://127.0.0.1:8091", gw, { maxMs: 30, pollMs: 5 }),
+    ).rejects.toMatchObject({ path: "/v1/config/env" });
+  });
+
+  it("treats health fetch failures as down", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    vi.spyOn(gw, "getEnvConfig")
+      .mockResolvedValueOnce({ effective: {}, pending: { DNSCRYPT_PROXY_ENABLED: "1" } })
+      .mockResolvedValueOnce({ effective: {}, pending: null });
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("network")));
+    const env = await waitForHostEnvApplyComplete("http://127.0.0.1:8091", gw, {
+      maxMs: 5000,
+      pollMs: 1,
+    });
+    expect(env.pending).toBeNull();
+  });
+});
+
+const coherentDash: DashboardResponse = {
+  node: "pi2",
+  version: "1",
+  widgets: [],
+  sections: { ha: { dhcp_mode: "none" } },
+};
+
+describe("waitForPiholeCpDashboardCoherent", () => {
+  it("uses default attempts when opts are omitted", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    vi.spyOn(gw, "getDashboard").mockResolvedValue(coherentDash);
+    vi.spyOn(gw, "getMeta").mockResolvedValue({
+      node: "pi2",
+      peer_ui_base_url: null,
+      kea_fabric_api_base_url: null,
+      dhcp_mode: "none",
+    });
+    await waitForPiholeCpDashboardCoherent(gw);
+    expect(gw.getDashboard).toHaveBeenCalled();
+  });
+
+  it("resolves when dashboard matches meta", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    vi.spyOn(gw, "getDashboard").mockResolvedValue(coherentDash);
+    vi.spyOn(gw, "getMeta").mockResolvedValue({
+      node: "pi2",
+      peer_ui_base_url: null,
+      kea_fabric_api_base_url: null,
+      dhcp_mode: "none",
+    });
+    const out = await waitForPiholeCpDashboardCoherent(gw, { attempts: 2, delayMs: 1 });
+    expect(out.dashboard.node).toBe("pi2");
+  });
+
+  it("retries after fetch errors and reports sync progress", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    const labels: string[] = [];
+    let dashCalls = 0;
+    vi.spyOn(gw, "getDashboard").mockImplementation(async () => {
+      dashCalls += 1;
+      if (dashCalls === 1) throw new Error("starting");
+      return coherentDash;
+    });
+    vi.spyOn(gw, "getMeta").mockResolvedValue({
+      node: "pi2",
+      peer_ui_base_url: null,
+      kea_fabric_api_base_url: null,
+      dhcp_mode: "none",
+    });
+    await waitForPiholeCpDashboardCoherent(gw, {
+      attempts: 8,
+      delayMs: 1,
+      onProgress: (label) => labels.push(label),
+    });
+    expect(labels).toContain("Syncing dashboard…");
+    expect(labels).toContain("Dashboard updated");
+  });
+
+  it("throws when dashboard never matches meta", async () => {
+    const gw = new PiholeCpGateway("http://127.0.0.1:8091");
+    const labels: string[] = [];
+    const incoherent = {
+      ...coherentDash,
+      widgets: [{ id: "w1", title: "DHCP", section: "kea_dhcp" }],
+    };
+    vi.spyOn(gw, "getDashboard").mockResolvedValue(incoherent);
+    vi.spyOn(gw, "getMeta").mockResolvedValue({
+      node: "pi2",
+      peer_ui_base_url: null,
+      kea_fabric_api_base_url: null,
+      dhcp_mode: "none",
+    });
+    await expect(
+      waitForPiholeCpDashboardCoherent(gw, {
+        attempts: 7,
+        delayMs: 1,
+        onProgress: (label) => labels.push(label),
+      }),
+    ).rejects.toMatchObject({ path: "/dashboard" });
+    expect(labels).toContain("Still syncing dashboard…");
+  });
 });
 
 describe("waitForControlPlaneRestart", () => {
+  it("uses default timing when opts are omitted", async () => {
+    let calls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        calls += 1;
+        if (calls <= 2) return { ok: true, status: 200 };
+        if (calls <= 4) return { ok: false, status: 503 };
+        return { ok: true, status: 200 };
+      }),
+    );
+    await waitForControlPlaneRestart("http://127.0.0.1:8091");
+    expect(calls).toBeGreaterThan(3);
+  });
+
   it("waits for health down then up", async () => {
     let calls = 0;
     vi.stubGlobal(
@@ -97,6 +316,19 @@ describe("waitForControlPlaneRestart", () => {
 });
 
 describe("waitForControlPlaneReady", () => {
+  it("uses default attempts and delay when opts are omitted", async () => {
+    let calls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        calls += 1;
+        return { ok: calls >= 2, status: 200 };
+      }),
+    );
+    await waitForControlPlaneReady("http://127.0.0.1:8091");
+    expect(calls).toBeGreaterThanOrEqual(2);
+  });
+
   it("resolves when /health returns ok", async () => {
     vi.stubGlobal(
       "fetch",
@@ -594,6 +826,24 @@ describe("PiholeCpGateway", () => {
     const gw = new PiholeCpGateway("");
     await expect(gw.patchEnvConfig({ DNSCRYPT_PROXY_ENABLED: "1" }, "secret")).rejects.toMatchObject({
       code: "parse_failed",
+    });
+  });
+
+  it("getMeta throws parse_failed when body is not JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => {
+          throw new Error("not json");
+        },
+      })),
+    );
+    const gw = new PiholeCpGateway("");
+    await expect(gw.getMeta()).rejects.toMatchObject({
+      code: "parse_failed",
+      message: expect.stringContaining("GET"),
     });
   });
 

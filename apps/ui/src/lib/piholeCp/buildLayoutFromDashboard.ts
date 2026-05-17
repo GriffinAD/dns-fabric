@@ -1,4 +1,4 @@
-import type { PluginEntry } from "../api/types";
+import type { PluginEntry, UiDashboardManifest } from "../api/types";
 import { DEFAULT_DASHBOARD_LAYOUT } from "../dashboard/defaultLayout";
 import { cloneLayoutJson, layoutWithGrid } from "../dashboard/gridPlacement";
 import { ensureLayoutV3 } from "../dashboard/migration";
@@ -62,6 +62,17 @@ export const PIHOLE_CP_LAYOUT_STORAGE_KEY = "pihole-cp-dashboard-layout-v4";
 
 export { PIHOLE_HA_SECTION_PLUGIN_ID };
 
+/** Pi-hole section tiles render as full panels; compact is not offered in tile settings. */
+export const PIHOLE_CP_SECTION_TILE_UI: UiDashboardManifest = {
+  allowed_host_controls: ["single-panel"],
+  default_size_hint: "medium",
+  min_size: null,
+  max_size: null,
+  compact_min_footprint: null,
+  supports_compact: false,
+  supports_full: true,
+};
+
 export function buildPiholeCpPluginPalette(
   dashboard: DashboardResponse,
   meta: PiholeCpMeta | null = null,
@@ -78,6 +89,7 @@ export function buildPiholeCpPluginPalette(
     id: pluginIdForPiholeDashboardSection(section),
     name: humanizePiholeCpSectionKey(section),
     enabled: true,
+    ui_dashboard: PIHOLE_CP_SECTION_TILE_UI,
   }));
 }
 

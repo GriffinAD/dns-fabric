@@ -1,3 +1,4 @@
+import "@thisux/sveltednd";
 import { vi } from "vitest";
 
 /** flowbite-svelte / motion use View Timeline APIs; jsdom omits them. */

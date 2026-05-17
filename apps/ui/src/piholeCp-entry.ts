@@ -1,15 +1,14 @@
-import {
-  FEATURE_FLAG_NAMES,
-  setFeatureFlag,
-} from "svelte-dnd-action";
 import { mount } from "svelte";
 
 import "./app.css";
+import "@thisux/sveltednd";
 
 import PiholeOperatorApp from "./lib/piholeCp/PiholeOperatorApp.svelte";
+import {
+  applyDocumentDashboardSettings,
+  loadDashboardSettings,
+} from "./lib/dashboard/dashboardSettings";
 import { applyDocumentTheme, getSystemPrefersDark, loadThemePreferences } from "./lib/theme/themeStorage";
-
-setFeatureFlag(FEATURE_FLAG_NAMES.USE_COMPUTED_STYLE_INSTEAD_OF_BOUNDING_RECT, true);
 
 const prefs = loadThemePreferences();
 applyDocumentTheme(
@@ -21,6 +20,7 @@ applyDocumentTheme(
   prefs.gaugeSegmentDivisions,
   prefs.gaugeSegmentGapPx,
 );
+applyDocumentDashboardSettings(loadDashboardSettings());
 
 const target = document.getElementById("pihole-cp-app");
 if (!target) throw new Error("missing #pihole-cp-app");

@@ -113,8 +113,11 @@ describe("PiholeOperatorApp", () => {
     await waitFor(() => {
       expect(screen.getByTestId("layout-edit-palette-v2")).toBeTruthy();
     });
-    expect(screen.getByTestId("dashboard-editor-toolbar")).toBeTruthy();
+    expect(screen.getByTestId("pihole-cp-sticky-chrome")).toBeTruthy();
+    expect(screen.getByTestId("pihole-cp-layout-undo")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-editor-toolbar")).toBeNull();
     expect(screen.getByTestId("pihole-cp-node-settings-panel")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /node settings/i })).toBeTruthy();
 
     fireEvent.click(screen.getByTestId("pihole-cp-layout-edit-toggle"));
     await tick();

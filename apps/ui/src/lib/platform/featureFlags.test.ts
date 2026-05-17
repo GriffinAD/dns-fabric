@@ -58,4 +58,9 @@ describe("featureFlags", () => {
     vi.stubEnv("VITE_UI_PALETTE_V2", "false");
     expect(getFeatureFlag("ui.palette.v2")).toBe(false);
   });
+
+  it("ignores unknown env string values", () => {
+    vi.stubEnv("VITE_UI_PALETTE_V2", "maybe");
+    expect(getFeatureFlag("ui.palette.v2")).toBe(true);
+  });
 });

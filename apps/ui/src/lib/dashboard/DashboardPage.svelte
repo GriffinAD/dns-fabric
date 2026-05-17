@@ -11,7 +11,11 @@
   import DashboardHost from "./DashboardHost.svelte";
   import GroupSettingsOverlay from "./GroupSettingsOverlay.svelte";
   import TileSettingsOverlay from "./TileSettingsOverlay.svelte";
-  import { groupOuterColSpan } from "./gridPlacement";
+  import {
+    groupOuterColSpan,
+    resizeGroupChildTileColSpan,
+    resizeRootLayoutItemColSpan,
+  } from "./gridPlacement";
   import type { LayoutStore } from "./layoutStore";
   import { collectAllGroupsInLayout, findTileInLayout, PARENT_ID_DASHBOARD } from "./layoutTree";
   import { clearStoredDashboardLayoutAndUnlock } from "./layoutStorage";
@@ -32,6 +36,7 @@
     ls,
     overlay,
     onPerfTileGridHint,
+    hideEditorToolbar = false,
   }: {
     gateway: DataGateway;
     plugins: PluginEntry[];
@@ -46,6 +51,8 @@
     ls: LayoutStore;
     overlay: OverlayActions;
     onPerfTileGridHint: (tileId: string, hint: { colSpan: number; rowSpan: number }) => void;
+    /** When true, undo/redo live in an external chrome (e.g. Pi-hole CP sticky header). */
+    hideEditorToolbar?: boolean;
   } = $props();
 
   const settingsParentId = $derived.by(() => {
@@ -72,6 +79,22 @@
   function onEditTile(tile: DashboardTile) {
     editorSelection.set({ kind: "tile", id: tile.id, label: tile.pluginId });
     overlay.openTileSettings(tile);
+  }
+
+  function onItemColSpanChange(
+    itemId: string,
+    colSpan: number,
+    phase: "preview" | "commit",
+    groupId?: string,
+  ) {
+    const items = get(ls.layout).items;
+    const nextItems = groupId
+      ? resizeGroupChildTileColSpan(items, groupId, itemId, colSpan)
+      : resizeRootLayoutItemColSpan(items, itemId, colSpan);
+    ls.applyStructure(
+      { version: 3, items: nextItems },
+      { preserveRootPlacementIfComplete: true, skipHistory: phase === "preview" },
+    );
   }
 
   function onEditGroup(g: DashboardGroup) {
@@ -178,7 +201,7 @@
     </p>
   {/if}
   <div class="flex flex-col gap-4">
-    {#if editLayout}
+    {#if editLayout && !hideEditorToolbar}
       <div class="shrink-0 self-start">
         <DashboardToolbar {ls} />
       </div>
@@ -200,6 +223,7 @@
         onEditTile={onEditTile}
         onEditGroup={onEditGroup}
         onPerfTileGridHint={onPerfTileGridHint}
+        onItemColSpanChange={onItemColSpanChange}
       />
     </div>
     {#if editLayout}

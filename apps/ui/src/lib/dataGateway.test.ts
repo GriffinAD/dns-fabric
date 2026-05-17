@@ -52,6 +52,21 @@ describe("DataGateway", () => {
     expect(fetch).toHaveBeenCalledWith("https://kea.example/api/v1/meta", { headers: {} });
   });
 
+  it("setKeaFabricApiBaseUrl falls back to VITE_KEA_FABRIC_API_BASE_URL when url is empty", async () => {
+    vi.stubEnv("VITE_KEA_FABRIC_API_BASE_URL", "https://kea-env.example/");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ api_version: "1.0.0", service: "kea-fabric" }),
+      }),
+    );
+    const gw = new DataGateway("");
+    gw.setKeaFabricApiBaseUrl("");
+    await gw.getMeta();
+    expect(fetch).toHaveBeenCalledWith("https://kea-env.example/api/v1/meta", { headers: {} });
+  });
+
   it("setKeaFabricApiBaseUrl switches request origin for subsequent calls", async () => {
     vi.stubEnv("VITE_API_BASE_URL", "https://ignored.example");
     vi.stubGlobal(

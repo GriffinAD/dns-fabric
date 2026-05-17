@@ -1,4 +1,5 @@
 import "./app.css";
+import "@thisux/sveltednd";
 import {
   applyDocumentDashboardSettings,
   loadDashboardSettings,

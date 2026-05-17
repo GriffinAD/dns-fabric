@@ -460,6 +460,13 @@ describe("buildLayoutFromDashboard", () => {
     expect(merged!.items.filter((it) => it.kind === "tile")).toHaveLength(2);
   });
 
+  it("buildPiholeCpPluginPalette lists full-only ui_dashboard for section tiles", () => {
+    const plugins = buildPiholeCpPluginPalette(dashboard, null);
+    const ha = plugins.find((p) => p.id === "pihole_ha.ha");
+    expect(ha?.ui_dashboard?.supports_full).toBe(true);
+    expect(ha?.ui_dashboard?.supports_compact).toBe(false);
+  });
+
   it("buildPiholeCpPluginPalette lists one enabled entry per dashboard section key", () => {
     const plugins = buildPiholeCpPluginPalette(dashboard, null);
     const ids = plugins.map((p) => p.id).sort();

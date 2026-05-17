@@ -45,6 +45,10 @@ export const EDITOR_PLUGIN_HOVER_VISIBLE = [
   "[@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100",
 ].join(" ");
 
+/** Drag grip on tiles inside a container — always visible in edit mode (no hover-only). */
+export const EDITOR_TILE_IN_GROUP_DRAG_VISIBLE =
+  "pointer-events-auto opacity-100 transition-opacity duration-150 ease-out";
+
 /**
  * Caption strip above the plugin body in edit mode (placement hint or container label).
  * Always visible (not {@link EDITOR_PLUGIN_HOVER_VISIBLE} — that hid the strip at opacity 0 until hover).

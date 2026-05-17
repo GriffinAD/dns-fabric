@@ -27,8 +27,20 @@ import {
   packTilesWithFixedAndFloating,
   placementForNewEmptyNestedGroup,
   placementsOverlap,
+  applyRootLayoutPointerDropPlacement,
+  gridPlacementForRootDndShadowSlot,
   reorderRootLayoutItemsPreservingSlotOrigins,
   reorderTilesPreservingSlotOrigins,
+  mergeRootLayoutGridsForEdit,
+  reflowRootLayoutRow,
+  reflowRootLayoutRowInListOrder,
+  relocateRootItemToRow,
+  rootEditGridColumnCount,
+  swapRootSingleRowTilePlacements,
+  ROOT_EDIT_ROW_END_DRAG_PAD_COLS,
+  resizeGroupChildTileColSpan,
+  resizeRootLayoutItemColSpan,
+  rootLayoutGridColumnCount,
   tileColSpan,
 } from "./gridPlacement";
 import type {
@@ -554,6 +566,25 @@ describe("reorderRootLayoutItemsPreservingSlotOrigins", () => {
     expect(out.length).toBe(2);
   });
 
+  it("in sameSequence clamps a tall tile when the previous slot had no complete grid", () => {
+    const prev: RootLayoutItem[] = [
+      { kind: "tile", id: "a", pluginId: "dhcp.pools", hostControl: "single-panel", displayMode: "full" },
+    ];
+    const reo: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "a",
+        pluginId: "dhcp.pools",
+        hostControl: "single-panel",
+        displayMode: "full",
+        grid: { col: 0, row: 0, colSpan: 6, rowSpan: 2 },
+      },
+    ];
+    const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, reo);
+    expect(out[0]!.grid!.colSpan).toBe(6);
+    expect(out[0]!.grid!.rowSpan).toBe(2);
+  });
+
   it("in sameSequence clamps a tile when the previous slot had no complete grid", () => {
     const prev: RootLayoutItem[] = [
       { kind: "tile", id: "a", pluginId: "dhcp.pools", hostControl: "single-panel", displayMode: "full" },
@@ -570,6 +601,45 @@ describe("reorderRootLayoutItemsPreservingSlotOrigins", () => {
     ];
     const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, reo);
     expect(out[0]!.grid!.colSpan).toBe(6);
+  });
+
+  it("in sameSequence keeps extended root group outer grid", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 18, row: 0, colSpan: 6, rowSpan: 1 },
+      children: [],
+    };
+    const out = reorderRootLayoutItemsPreservingSlotOrigins([g], [g]);
+    expect(out[0]?.kind).toBe("group");
+    if (out[0]?.kind === "group") {
+      expect(out[0].grid).toMatchObject({ col: 18, colSpan: 6, row: 0, rowSpan: 1 });
+    }
+  });
+
+  it("in sameSequence keeps reflowed cols when the root row extends past GRID_COLUMNS", () => {
+    const prev: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "a",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "compact",
+        grid: { col: 0, row: 0, colSpan: 18, rowSpan: 1 },
+      },
+      {
+        kind: "tile",
+        id: "b",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "compact",
+        grid: { col: 18, row: 0, colSpan: 4, rowSpan: 1 },
+      },
+    ];
+    const out = reorderRootLayoutItemsPreservingSlotOrigins(prev, [...prev]);
+    expect(out[1]!.grid).toMatchObject({ col: 18, row: 0, colSpan: 4, rowSpan: 1 });
   });
 
   it("in sameSequence uses previous effective spans when reordered tile has a non-root-complete grid", () => {
@@ -805,6 +875,78 @@ describe("layoutWithGrid", () => {
     expect(next.items[0]?.kind).toBe("tile");
     if (next.items[0]?.kind === "tile") {
       expect(next.items[0].grid?.colSpan).toBe(1);
+    }
+  });
+
+  it("preserveRootPlacementIfComplete keeps extended root group on one row", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "g",
+      showBorder: true,
+      innerWrap: false,
+      grid: { col: 15, row: 0, colSpan: 8, rowSpan: 1 },
+      children: [],
+    };
+    const next = layoutWithGrid({ version: 3, items: [g] }, { preserveRootPlacementIfComplete: true });
+    expect(next.items[0]?.kind).toBe("group");
+    if (next.items[0]?.kind === "group") {
+      expect(next.items[0].grid).toMatchObject({ col: 15, colSpan: 8, row: 0, rowSpan: 1 });
+    }
+  });
+
+  it("preserveRootPlacementIfComplete keeps root row extent past GRID_COLUMNS", () => {
+    const items: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "a",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "compact",
+        grid: { col: 0, row: 0, colSpan: 15, rowSpan: 1 },
+      },
+      {
+        kind: "tile",
+        id: "b",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "compact",
+        grid: { col: 15, row: 0, colSpan: 8, rowSpan: 1 },
+      },
+    ];
+    const next = layoutWithGrid({ version: 3, items }, { preserveRootPlacementIfComplete: true });
+    expect(next.items[0]?.kind).toBe("tile");
+    if (next.items[0]?.kind === "tile") {
+      expect(next.items[0].grid).toMatchObject({ col: 0, colSpan: 15, row: 0, rowSpan: 1 });
+    }
+    expect(next.items[1]?.kind).toBe("tile");
+    if (next.items[1]?.kind === "tile") {
+      expect(next.items[1].grid).toMatchObject({ col: 15, colSpan: 8, row: 0, rowSpan: 1 });
+    }
+  });
+
+  it("preserveRootPlacementIfComplete falls back when extended row is not preservable", () => {
+    const items: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "tall",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "compact",
+        grid: { col: 0, row: 0, colSpan: 15, rowSpan: 2 },
+      },
+      {
+        kind: "tile",
+        id: "b",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "compact",
+        grid: { col: 15, row: 0, colSpan: 8, rowSpan: 1 },
+      },
+    ];
+    const next = layoutWithGrid({ version: 3, items }, { preserveRootPlacementIfComplete: true });
+    expect(next.items[1]?.kind).toBe("tile");
+    if (next.items[1]?.kind === "tile") {
+      expect(next.items[1].grid!.col).not.toBe(15);
     }
   });
 
@@ -1958,5 +2100,445 @@ describe("grid placement edge cases", () => {
         rowSpan: 1,
       });
     });
+  });
+});
+
+describe("gridPlacementForRootDndShadowSlot", () => {
+  const tile = (
+    id: string,
+    col: number,
+    colSpan: number,
+    row = 0,
+  ): RootLayoutItem => ({
+    kind: "tile",
+    id,
+    pluginId: "perf.cpu",
+    hostControl: "single-panel",
+    displayMode: "compact",
+    grid: { col, row, colSpan, rowSpan: 1 },
+  });
+
+  it("places the shadow to the right of an anchor tile on the same row", () => {
+    const prev = [tile("a", 0, 7, 0), tile("b", 0, 10, 1)];
+    expect(gridPlacementForRootDndShadowSlot(prev, "b", 1, "a")).toEqual({
+      col: 7,
+      row: 0,
+      colSpan: 10,
+      rowSpan: 1,
+    });
+  });
+
+  it("places the shadow before the layout index when not in a right strip", () => {
+    const prev = [tile("a", 0, 4, 0), tile("b", 0, 4, 1)];
+    expect(gridPlacementForRootDndShadowSlot(prev, "b", 0, null)).toEqual({
+      col: 0,
+      row: 0,
+      colSpan: 4,
+      rowSpan: 1,
+    });
+  });
+
+  it("places the shadow on row 0 when it is the only root item", () => {
+    const prev = [tile("b", 0, 6, 0)];
+    expect(gridPlacementForRootDndShadowSlot(prev, "b", 0, null)).toEqual({
+      col: 0,
+      row: 0,
+      colSpan: 6,
+      rowSpan: 1,
+    });
+  });
+
+  it("appends the shadow on the next row when insert is past the last tile", () => {
+    const prev = [tile("a", 0, 4, 0), tile("b", 0, 4, 1)];
+    expect(gridPlacementForRootDndShadowSlot(prev, "b", undefined, null)).toEqual({
+      col: 0,
+      row: 1,
+      colSpan: 4,
+      rowSpan: 1,
+    });
+  });
+});
+
+describe("applyRootLayoutPointerDropPlacement", () => {
+  const tile = (
+    id: string,
+    col: number,
+    colSpan: number,
+    row = 0,
+  ): RootLayoutItem => ({
+    kind: "tile",
+    id,
+    pluginId: "perf.cpu",
+    hostControl: "single-panel",
+    displayMode: "compact",
+    grid: { col, row, colSpan, rowSpan: 1 },
+  });
+
+  it("places the dragged tile on the anchor row to the right instead of preserving row slots", () => {
+    const prev: RootLayoutItem[] = [tile("a", 0, 7, 0), tile("b", 0, 10, 1)];
+    const reordered: RootLayoutItem[] = [prev[0]!, prev[1]!];
+    const out = applyRootLayoutPointerDropPlacement(prev, reordered, "b", "a");
+    expect(out.find((it) => it.id === "b")!.grid).toMatchObject({ row: 0, col: 7, colSpan: 10 });
+    expect(out.find((it) => it.id === "a")!.grid).toMatchObject({ row: 0, col: 0, colSpan: 7 });
+  });
+
+  it("reflows the anchor row when a sibling already sits to the right", () => {
+    const prev: RootLayoutItem[] = [
+      tile("a", 0, 4, 0),
+      tile("c", 4, 4, 0),
+      tile("b", 0, 4, 1),
+    ];
+    const reordered: RootLayoutItem[] = [prev[0]!, prev[2]!, prev[1]!];
+    const out = applyRootLayoutPointerDropPlacement(prev, reordered, "b", "a");
+    expect(out.find((it) => it.id === "b")!.grid).toMatchObject({ row: 0, col: 4, colSpan: 4 });
+    expect(out.find((it) => it.id === "c")!.grid).toMatchObject({ row: 0, col: 8, colSpan: 4 });
+  });
+
+  it("falls back to slot preservation when the anchor spans multiple rows", () => {
+    const anchor: RootLayoutItem = {
+      kind: "tile",
+      id: "a",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 2 },
+    };
+    const prev: RootLayoutItem[] = [anchor, tile("b", 0, 4, 1)];
+    const out = applyRootLayoutPointerDropPlacement(prev, [...prev], "b", "a");
+    expect(out.find((it) => it.id === "b")!.grid!.row).toBe(1);
+  });
+
+  it("falls back to slot preservation when the dragged tile spans multiple rows", () => {
+    const tall: RootLayoutItem = {
+      kind: "tile",
+      id: "a",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 2 },
+    };
+    const prev: RootLayoutItem[] = [tall, tile("b", 0, 4, 1)];
+    const out = applyRootLayoutPointerDropPlacement(prev, [tall, prev[1]!], "a", "b");
+    expect(out.find((it) => it.id === "a")!.grid!.rowSpan).toBe(2);
+    expect(out.find((it) => it.id === "b")!.grid!.row).toBe(1);
+  });
+
+  it("falls back when the dragged id is absent from the reordered list", () => {
+    const prev: RootLayoutItem[] = [tile("a", 0, 4), tile("b", 0, 4, 1)];
+    const out = applyRootLayoutPointerDropPlacement(prev, [prev[0]!], "b", "a");
+    expect(out).toHaveLength(1);
+    expect(out[0]!.id).toBe("a");
+  });
+});
+
+describe("resizeRootLayoutItemColSpan", () => {
+  const tile = (
+    id: string,
+    col: number,
+    colSpan: number,
+    row = 0,
+  ): RootLayoutItem => ({
+    kind: "tile",
+    id,
+    pluginId: "perf.cpu",
+    hostControl: "single-panel",
+    displayMode: "compact",
+    grid: { col, row, colSpan, rowSpan: 1 },
+  });
+
+  it("returns items unchanged when the target has rowSpan greater than one", () => {
+    const tall: RootLayoutItem = {
+      kind: "tile",
+      id: "a",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: 0, row: 0, colSpan: 4, rowSpan: 2 },
+    };
+    const items: RootLayoutItem[] = [tall];
+    expect(resizeRootLayoutItemColSpan(items, "a", 8)).toBe(items);
+  });
+
+  it("widens a tile and shifts siblings on the same row left without gaps", () => {
+    const items: RootLayoutItem[] = [
+      tile("a", 0, 4),
+      tile("b", 4, 4),
+      tile("c", 8, 4),
+    ];
+    const next = resizeRootLayoutItemColSpan(items, "a", 6);
+    const a = next.find((it) => it.id === "a")!;
+    const b = next.find((it) => it.id === "b")!;
+    const c = next.find((it) => it.id === "c")!;
+    expect(a.grid!.colSpan).toBe(6);
+    expect(a.grid!.col).toBe(0);
+    expect(b.grid!.col).toBe(6);
+    expect(b.grid!.colSpan).toBe(4);
+    expect(c.grid!.col).toBe(10);
+  });
+
+  it("narrows a tile so siblings move left", () => {
+    const items: RootLayoutItem[] = [
+      tile("a", 0, 8),
+      tile("b", 8, 4),
+    ];
+    const next = resizeRootLayoutItemColSpan(items, "a", 4);
+    expect(next.find((it) => it.id === "a")!.grid!.colSpan).toBe(4);
+    expect(next.find((it) => it.id === "b")!.grid!.col).toBe(4);
+  });
+
+  it("widens a root group and reflows siblings on the same row", () => {
+    const items: RootLayoutItem[] = [
+      {
+        kind: "group",
+        id: "g",
+        showBorder: true,
+        innerWrap: false,
+        grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+        children: [],
+      },
+      tile("a", 6, 4),
+    ];
+    const next = resizeRootLayoutItemColSpan(items, "g", 10);
+    expect(next.find((it) => it.id === "g")!.grid).toMatchObject({ col: 0, colSpan: 10 });
+    expect(next.find((it) => it.id === "a")!.grid!.col).toBe(10);
+  });
+
+  it("reflowRootLayoutRow packs a gapped row", () => {
+    const items: RootLayoutItem[] = [tile("a", 0, 2), tile("b", 4, 2)];
+    const next = reflowRootLayoutRow(items, 0);
+    expect(next.find((it) => it.id === "b")!.grid!.col).toBe(2);
+  });
+
+  it("relocateRootItemToRow moves one tile onto another row", () => {
+    const items: RootLayoutItem[] = [tile("a", 0, 4, 0), tile("b", 0, 4, 1)];
+    const next = relocateRootItemToRow(items, "b", 0);
+    expect(next.find((it) => it.id === "b")!.grid).toMatchObject({ row: 0, col: 0, colSpan: 4 });
+  });
+
+  it("swapRootSingleRowTilePlacements exchanges grid slots", () => {
+    const items: RootLayoutItem[] = [tile("a", 0, 4, 0), tile("b", 8, 4, 1)];
+    const next = swapRootSingleRowTilePlacements(items, "a", "b");
+    expect(next.find((it) => it.id === "a")!.grid).toMatchObject({ row: 1, col: 8 });
+    expect(next.find((it) => it.id === "b")!.grid).toMatchObject({ row: 0, col: 0 });
+  });
+
+  it("reflowRootLayoutRowInListOrder packs left-to-right in list order", () => {
+    const items: RootLayoutItem[] = [
+      tile("a", 8, 4),
+      tile("b", 0, 4),
+      tile("c", 12, 4),
+    ];
+    const next = reflowRootLayoutRowInListOrder(items, 0);
+    expect(next.find((it) => it.id === "a")!.grid!.col).toBe(0);
+    expect(next.find((it) => it.id === "b")!.grid!.col).toBe(4);
+    expect(next.find((it) => it.id === "c")!.grid!.col).toBe(8);
+  });
+
+  it("treats non-finite col origins as zero when reflowing", () => {
+    const badCol: RootLayoutItem = {
+      kind: "tile",
+      id: "a",
+      pluginId: "perf.cpu",
+      hostControl: "single-panel",
+      displayMode: "compact",
+      grid: { col: Number.NaN, row: 0, colSpan: 4, rowSpan: 1 },
+    };
+    const next = reflowRootLayoutRow([badCol, tile("b", 4, 4)], 0);
+    expect(next.find((it) => it.id === "a")!.grid!.col).toBe(0);
+  });
+
+  it("keeps overflow tiles on the same row past GRID_COLUMNS", () => {
+    const items: RootLayoutItem[] = [tile("a", 0, 15), tile("b", 15, 8)];
+    const next = reflowRootLayoutRow(items, 0);
+    expect(next.find((it) => it.id === "a")!.grid).toMatchObject({ col: 0, row: 0, colSpan: 15 });
+    expect(next.find((it) => it.id === "b")!.grid).toMatchObject({ col: 15, row: 0, colSpan: 8 });
+    expect(rootLayoutGridColumnCount(next)).toBe(23);
+  });
+
+  it("does not move tiles on other rows when reflowing row 0", () => {
+    const items: RootLayoutItem[] = [
+      tile("a", 0, 11, 0),
+      tile("b", 11, 10, 0),
+      tile("c", 0, 10, 1),
+    ];
+    const next = reflowRootLayoutRow(items, 0);
+    expect(next.find((it) => it.id === "b")!.grid).toMatchObject({ col: 11, row: 0, colSpan: 10 });
+    expect(next.find((it) => it.id === "c")!.grid).toMatchObject({ col: 0, row: 1, colSpan: 10 });
+  });
+
+  it("reflows root groups using group outer colSpan", () => {
+    const items: RootLayoutItem[] = [
+      tile("a", 0, 11, 0),
+      {
+        kind: "group",
+        id: "g",
+        showBorder: true,
+        innerWrap: false,
+        grid: { col: 11, row: 0, colSpan: 10, rowSpan: 1 },
+        children: [],
+      },
+    ];
+    const next = reflowRootLayoutRow(items, 0);
+    expect(next.find((it) => it.id === "g")!.grid).toMatchObject({ col: 11, row: 0, colSpan: 10 });
+    expect((next.find((it) => it.id === "g") as DashboardGroup).kind).toBe("group");
+  });
+});
+
+describe("mergeRootLayoutGridsForEdit", () => {
+  const tile = (id: string, col: number, colSpan: number): RootLayoutItem => ({
+    kind: "tile",
+    id,
+    pluginId: "perf.cpu",
+    hostControl: "single-panel",
+    displayMode: "compact",
+    grid: { col, row: 0, colSpan, rowSpan: 1 },
+  });
+
+  it("keeps persisted grids while adopting DnD list order (no slot swap)", () => {
+    const prev = [tile("a", 0, 4), tile("b", 8, 4)];
+    const ordered = [tile("b", 0, 4), tile("a", 8, 4)];
+    const out = mergeRootLayoutGridsForEdit(prev, ordered);
+    expect(out.map((it) => it.id)).toEqual(["b", "a"]);
+    expect(out.find((it) => it.id === "b")!.grid!.col).toBe(8);
+    expect(out.find((it) => it.id === "a")!.grid!.col).toBe(0);
+  });
+
+  it("returns ordered item unchanged when kinds differ", () => {
+    const prev: RootLayoutItem[] = [
+      {
+        kind: "group",
+        id: "g",
+        showBorder: true,
+        children: [],
+        grid: { col: 0, row: 0, colSpan: 20, rowSpan: 1 },
+      },
+    ];
+    const ordered: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "g",
+        pluginId: "p",
+        hostControl: "single-panel",
+        displayMode: "full",
+      },
+    ];
+    expect(mergeRootLayoutGridsForEdit(prev, ordered)[0]).toBe(ordered[0]);
+  });
+});
+
+describe("rootEditGridColumnCount", () => {
+  const tile = (id: string, col: number, colSpan: number): RootLayoutItem => ({
+    kind: "tile",
+    id,
+    pluginId: "perf.cpu",
+    hostControl: "single-panel",
+    displayMode: "compact",
+    grid: { col, row: 0, colSpan, rowSpan: 1 },
+  });
+
+  it("adds drag padding past the packed extent", () => {
+    const items = [tile("a", 0, 15), tile("b", 15, 8)];
+    expect(rootEditGridColumnCount(items)).toBe(23);
+    expect(rootEditGridColumnCount(items, { dragging: true })).toBe(
+      23 + ROOT_EDIT_ROW_END_DRAG_PAD_COLS,
+    );
+  });
+});
+
+describe("rootLayoutGridColumnCount", () => {
+  it("returns at least GRID_COLUMNS and the packed row extent", () => {
+    const items: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "a",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "compact",
+        grid: { col: 0, row: 0, colSpan: 15, rowSpan: 1 },
+      },
+      {
+        kind: "tile",
+        id: "b",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "compact",
+        grid: { col: 15, row: 0, colSpan: 8, rowSpan: 1 },
+      },
+    ];
+    expect(rootLayoutGridColumnCount(items)).toBe(23);
+    expect(rootLayoutGridColumnCount([])).toBe(GRID_COLUMNS);
+  });
+
+  it("ignores multi-row-span items when computing extent", () => {
+    const items: RootLayoutItem[] = [
+      {
+        kind: "tile",
+        id: "tall",
+        pluginId: "perf.cpu",
+        hostControl: "single-panel",
+        displayMode: "compact",
+        grid: { col: 50, row: 0, colSpan: 4, rowSpan: 2 },
+      },
+    ];
+    expect(rootLayoutGridColumnCount(items)).toBe(GRID_COLUMNS);
+  });
+});
+
+describe("resizeGroupChildTileColSpan", () => {
+  const wrapGroup = (
+    id: string,
+    innerWrap: boolean,
+    children: DashboardTile[],
+  ): RootLayoutItem => ({
+    kind: "group",
+    id,
+    showBorder: true,
+    innerWrap,
+    grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+    children,
+  });
+
+  it("returns items unchanged when the group is missing", () => {
+    const items: RootLayoutItem[] = [wrapTile("t1", 2)];
+    expect(resizeGroupChildTileColSpan(items, "missing", "t1", 4)).toBe(items);
+  });
+
+  it("re-packs inner-wrap group children after a colSpan change", () => {
+    const items: RootLayoutItem[] = [
+      wrapGroup("g", true, [wrapTile("a", 2), wrapTile("b", 2)]),
+    ];
+    const next = resizeGroupChildTileColSpan(items, "g", "a", 4);
+    const group = next.find((it) => it.id === "g") as DashboardGroup;
+    const a = group.children.find((c) => c.id === "a") as DashboardTile;
+    const b = group.children.find((c) => c.id === "b") as DashboardTile;
+    expect(a.grid!.colSpan).toBe(4);
+    expect(a.grid!.col).toBe(0);
+    expect(b.grid!.col).toBe(4);
+  });
+
+  it("re-packs nowrap strip children after a colSpan change", () => {
+    const items: RootLayoutItem[] = [
+      wrapGroup("g", false, [wrapTile("a", 3), wrapTile("b", 2)]),
+    ];
+    const next = resizeGroupChildTileColSpan(items, "g", "a", 5);
+    const group = next.find((it) => it.id === "g") as DashboardGroup;
+    const a = group.children.find((c) => c.id === "a") as DashboardTile;
+    const b = group.children.find((c) => c.id === "b") as DashboardTile;
+    expect(a.grid!.colSpan).toBe(5);
+    expect(b.grid!.col).toBe(5);
+  });
+
+  it("inner-wrap resize uses strip packing (same row, no wrap)", () => {
+    const items: RootLayoutItem[] = [
+      wrapGroup("g", true, [
+        { ...wrapTile("a", 4), grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 } },
+        { ...wrapTile("b", 4), grid: { col: 4, row: 0, colSpan: 4, rowSpan: 1 } },
+      ]),
+    ];
+    const next = resizeGroupChildTileColSpan(items, "g", "a", 5);
+    const group = next.find((it) => it.id === "g") as DashboardGroup;
+    const b = group.children.find((c) => c.id === "b") as DashboardTile;
+    expect(b.grid!.row).toBe(0);
+    expect(b.grid!.col).toBe(5);
   });
 });

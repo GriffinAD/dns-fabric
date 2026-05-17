@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { draggable } from "@thisux/sveltednd";
+  import { draggable, dndState } from "@thisux/sveltednd";
   import { get } from "svelte/store";
   import { onDestroy } from "svelte";
   import GripVertical from "lucide-svelte/icons/grip-vertical";
@@ -9,8 +9,11 @@
   import PluginTileMount from "../dashboard/PluginTileMount.svelte";
   import type { DashboardTile } from "../dashboard/types";
   import {
+    PALETTE_ADD_GROUP_CONTAINER,
     paletteAddGroupPayload,
+    palettePluginContainer,
     palettePluginPayload,
+    parseDragPayload,
   } from "../dashboard/interactions/dashboardSveltedndTypes";
   import { tileColSpanForPlugin } from "../plugins/pluginGridPolicy";
   import { buildPaletteCatalog } from "./paletteCatalog";
@@ -34,15 +37,18 @@
   } from "./paletteStorage";
   import type { PaletteItem } from "./types";
 
-  const PALETTE_DND_CONTAINER = "palette";
   const PALETTE_CHIP_DRAG = '[data-testid="palette-chip-drag"]';
   const PALETTE_ADD_GROUP_DRAG = '[data-testid="palette-add-group-drag"]';
   const SHOW_RECENTS = false;
-  const paletteDragAttrs = { draggingClass: "opacity-0" };
+  const paletteDragAttrs = {
+    draggingClass: "opacity-55 ring-2 ring-primary-500/35 shadow-sm",
+  };
   let dragImageTile = $state<DashboardTile | null>(null);
   let dragGhostEl = $state<HTMLDivElement | null>(null);
   let lastPointer = $state<{ x: number; y: number } | null>(null);
   let transparentDragImage: HTMLImageElement | null = null;
+  /** Suppress chip click fired after a drag that did not drop on the grid. */
+  let suppressChipClickAfterDrag = $state(false);
 
   let {
     plugins = [] as PluginEntry[],
@@ -72,13 +78,58 @@
     dragImageTile = buildDragImageTile(pluginId);
   }
 
+  /** After sveltednd sets effectAllowed=move, force copy semantics for palette → grid adds. */
+  function onPaletteDragStartCapture(e: DragEvent): void {
+    if (!e.dataTransfer) return;
+    e.dataTransfer.effectAllowed = "copy";
+  }
+
   function onPluginDragStart(e: DragEvent, pluginId: string): void {
     if (!e.dataTransfer || !gateway) return;
-    e.dataTransfer.effectAllowed = "copy";
+    onPaletteDragStartCapture(e);
   }
 
   function clearDragImage(): void {
     dragImageTile = null;
+    if (dragGhostEl) {
+      dragGhostEl.style.transform = "translate(-10000px, -10000px)";
+    }
+  }
+
+  function palettePluginDragCallbacks(pluginId: string) {
+    return {
+      onDragStart: () => {
+        suppressChipClickAfterDrag = false;
+        rememberPointerFromDnd();
+        preparePluginDragImage(pluginId);
+        const p = lastPointer;
+        if (p) positionDragGhost(p.x, p.y);
+      },
+      onDragEnd: () => {
+        suppressChipClickAfterDrag = true;
+        clearDragImage();
+      },
+    };
+  }
+
+  function paletteAddGroupDragCallbacks() {
+    return {
+      onDragStart: () => {
+        suppressChipClickAfterDrag = false;
+      },
+      onDragEnd: () => {
+        suppressChipClickAfterDrag = true;
+        clearDragImage();
+      },
+    };
+  }
+
+  function rememberPointerFromDnd(): void {
+    if (typeof window === "undefined") return;
+    const ev = window.event;
+    if (ev instanceof PointerEvent || ev instanceof MouseEvent) {
+      lastPointer = { x: ev.clientX, y: ev.clientY };
+    }
   }
 
   function rememberPointer(e: PointerEvent): void {
@@ -159,6 +210,10 @@
   }
 
   function onChipClick(item: PaletteItem) {
+    if (suppressChipClickAfterDrag) {
+      suppressChipClickAfterDrag = false;
+      return;
+    }
     if (item.kind === "core" && item.id === "core:add-group") {
       onAddGroup?.();
       return;
@@ -281,7 +336,16 @@
       applyRenderedDragImage(e);
       requestAnimationFrame(() => positionDragGhost(x, y));
     };
-    const onDocDragStartCapture = (e: DragEvent) => applyForPalettePlugin(e);
+    const onDocDragStartCapture = (e: DragEvent) => {
+      applyForPalettePlugin(e);
+      if (!(e.target instanceof Element) || !e.target.closest('[data-dashboard-editor="palette"]')) return;
+      queueMicrotask(() => {
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = "copy";
+          e.dataTransfer.dropEffect = "copy";
+        }
+      });
+    };
     const onDocDragStartBubble = (e: DragEvent) => applyForPalettePlugin(e);
     const onDocDrag = (e: DragEvent) => {
       if (!dragImageTile) return;
@@ -322,6 +386,31 @@
       return () => body.removeAttribute("data-palette-drag-active");
     }
     body.removeAttribute("data-palette-drag-active");
+  });
+
+  /** Sync floating preview with sveltednd palette drags; tear down only after drag ends (not on pointerdown). */
+  let palettePreviewDragActive = false;
+  $effect(() => {
+    const dragging = dndState.isDragging;
+    const drag = dragging ? parseDragPayload(dndState.draggedItem) : null;
+    if (dragging && drag?.k === "pp" && gateway) {
+      palettePreviewDragActive = true;
+      preparePluginDragImage(drag.i);
+      return;
+    }
+    if (!dragging && palettePreviewDragActive) {
+      palettePreviewDragActive = false;
+      clearDragImage();
+    }
+  });
+
+  $effect(() => {
+    if (!dragImageTile) return;
+    const onMove = (e: PointerEvent) => {
+      positionDragGhost(e.clientX, e.clientY);
+    };
+    document.addEventListener("pointermove", onMove, { passive: true });
+    return () => document.removeEventListener("pointermove", onMove);
   });
 
   onDestroy(() => {
@@ -445,9 +534,10 @@
             data-palette-drag-plugin-id={item.id}
             use:draggable={{
               dragData: palettePluginPayload(item.id),
-              container: PALETTE_DND_CONTAINER,
+              container: palettePluginContainer(item.id),
               handle: PALETTE_CHIP_DRAG,
               attributes: paletteDragAttrs,
+              callbacks: palettePluginDragCallbacks(item.id),
             }}
           >
             <button
@@ -495,11 +585,13 @@
         >
           <div
             class="inline-flex min-w-0 flex-1 select-none items-center gap-1 rounded-md border border-gray-400/60 bg-gray-300/95 px-1 py-1 text-xs font-medium text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:shadow-none"
+            ondragstartcapture={onPaletteDragStartCapture}
             use:draggable={{
               dragData: paletteAddGroupPayload(),
-              container: PALETTE_DND_CONTAINER,
+              container: PALETTE_ADD_GROUP_CONTAINER,
               handle: PALETTE_ADD_GROUP_DRAG,
               attributes: paletteDragAttrs,
+              callbacks: paletteAddGroupDragCallbacks(),
             }}
           >
             <button
@@ -543,11 +635,13 @@
           <div
             class="inline-flex min-w-0 flex-1 select-none items-center gap-1 rounded-md border border-gray-400/60 bg-gray-300/95 px-1 py-1 text-xs font-medium text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:shadow-none"
             data-palette-drag-plugin-id={item.id}
+            ondragstartcapture={onPaletteDragStartCapture}
             use:draggable={{
               dragData: palettePluginPayload(item.id),
-              container: PALETTE_DND_CONTAINER,
+              container: palettePluginContainer(item.id),
               handle: PALETTE_CHIP_DRAG,
               attributes: paletteDragAttrs,
+              callbacks: palettePluginDragCallbacks(item.id),
             }}
           >
             <button

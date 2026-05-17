@@ -150,7 +150,7 @@ test("editor pointer drag toggles chrome DnD active flag during reorder", async 
   /* First item is often a container: hover near its top-left padding so inner plugins do not
    * suppress container chrome (see `app.css` :has(.editor-plugin-surface:hover)). */
   await firstTile.hover({ position: { x: 14, y: 14 } });
-  const handle = firstTile.getByTestId("editor-tile-drag-handle");
+  const handle = firstTile.locator('[data-editor-container-chrome][data-testid="editor-container-drag-handle"]');
   const box = await handle.boundingBox();
   expect(box).toBeTruthy();
   await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);

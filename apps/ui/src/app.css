@@ -128,37 +128,230 @@ html[data-color-preset="gray"] {
   }
 
   /*
+   * Edit layout resting elevation: root grid children (tiles + containers) cast a shell shadow;
+   * anything inside a shadowed container stays flat (no stacked drop shadows).
+   */
+  [data-dashboard-editor="grid-chrome"] [data-dashboard-editor="drop-zone"] > [data-dashboard-editor="tile-row"],
+  [data-testid="editor-grid-chrome"] [data-testid="editor-drop-zone"] > [data-dashboard-editor="tile-row"],
+  [data-testid="editor-grid-chrome"] [data-testid="editor-drop-zone"] > [data-testid="editor-tile"] {
+    box-shadow: var(--editor-layout-resting-shadow);
+  }
+
+  [data-dashboard-editor="grid-chrome"] .editor-root-container-shell .editor-plugin-hover-highlight,
+  [data-dashboard-editor="grid-chrome"] .editor-root-container-shell [data-dashboard-editor="tile-row"],
+  [data-testid="editor-grid-chrome"] .editor-root-container-shell .editor-plugin-hover-highlight,
+  [data-testid="editor-grid-chrome"] .editor-root-container-shell [data-dashboard-editor="tile-row"],
+  [data-testid="editor-grid-chrome"] .editor-root-container-shell [data-testid="editor-tile"],
+  [data-dashboard-editor="grid-chrome"] .editor-root-container-shell .editor-nested-container-shell,
+  [data-testid="editor-grid-chrome"] .editor-root-container-shell .editor-nested-container-shell,
+  [data-dashboard-editor="grid-chrome"] .editor-nested-container-shell .editor-plugin-hover-highlight,
+  [data-dashboard-editor="grid-chrome"] .editor-nested-container-shell [data-dashboard-editor="tile-row"],
+  [data-testid="editor-grid-chrome"] .editor-nested-container-shell .editor-plugin-hover-highlight,
+  [data-testid="editor-grid-chrome"] .editor-nested-container-shell [data-dashboard-editor="tile-row"],
+  [data-testid="editor-grid-chrome"] .editor-nested-container-shell [data-testid="editor-tile"] {
+    box-shadow: none !important;
+    --tw-shadow: 0 0 #0000 !important;
+  }
+
+  /*
    * svelte-dnd shadow placeholder: the library sets `visibility: hidden` on the in-list slot.
    * Show a dashed slot preview so drop position is obvious while reordering (editor chrome only).
    */
   [data-dashboard-editor="grid-chrome"] [data-is-dnd-shadow-item-internal="true"],
   [data-testid="editor-grid-chrome"] [data-is-dnd-shadow-item-internal="true"] {
     visibility: visible !important;
-    opacity: 0.42;
-    outline: 2px dashed var(--color-primary-500);
+    opacity: 0.32;
+    outline: 1px dashed color-mix(in srgb, var(--color-primary-500) 35%, transparent);
     outline-offset: 2px;
     border-radius: 0.375rem;
-    background: color-mix(in srgb, var(--color-primary-200) 55%, transparent);
+    background: color-mix(in srgb, var(--color-primary-500) 10%, transparent);
     box-sizing: border-box;
   }
 
   /* While a pointer drag is in flight, emphasize the in-list slot (large containers otherwise read as “no target”). */
   [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] [data-is-dnd-shadow-item-internal="true"],
   [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] [data-is-dnd-shadow-item-internal="true"] {
-    opacity: 0.58;
-    outline-width: 3px;
-    outline-offset: 3px;
+    opacity: 0.4;
+    outline-width: 1px;
+    outline-offset: 2px;
   }
 
   .dark [data-dashboard-editor="grid-chrome"] [data-is-dnd-shadow-item-internal="true"],
   .dark [data-testid="editor-grid-chrome"] [data-is-dnd-shadow-item-internal="true"] {
-    background: color-mix(in srgb, var(--color-primary-900) 45%, transparent);
-    outline-color: var(--color-primary-400);
+    background: color-mix(in srgb, var(--color-primary-400) 12%, transparent);
+    outline-color: color-mix(in srgb, var(--color-primary-400) 40%, transparent);
   }
 
   :root:not(.dark) [data-dashboard-editor="grid-chrome"] [data-is-dnd-shadow-item-internal="true"],
   :root:not(.dark) [data-testid="editor-grid-chrome"] [data-is-dnd-shadow-item-internal="true"] {
-    outline-color: rgb(30 64 175) !important;
+    outline-color: color-mix(in srgb, var(--color-primary-600) 35%, transparent) !important;
+  }
+
+  /* Soften tile / hit-layer outline from dndDropAttrs (still uses Tailwind utility classes). */
+  [data-dashboard-editor="grid-chrome"] .outline.outline-dashed.outline-primary-500,
+  [data-testid="editor-grid-chrome"] .outline.outline-dashed.outline-primary-500 {
+    outline-width: 1px !important;
+    outline-color: color-mix(in srgb, var(--color-primary-500) 38%, transparent) !important;
+    outline-offset: 2px !important;
+  }
+
+  .dark [data-dashboard-editor="grid-chrome"] .outline.outline-dashed.outline-primary-500,
+  .dark [data-testid="editor-grid-chrome"] .outline.outline-dashed.outline-primary-500 {
+    outline-color: color-mix(in srgb, var(--color-primary-400) 35%, transparent) !important;
+  }
+
+  /* @thisux/sveltednd default green drop outline — mute inside editor only. */
+  [data-dashboard-editor="grid-chrome"] .svelte-dnd-drop-target,
+  [data-testid="editor-grid-chrome"] .svelte-dnd-drop-target {
+    outline: 1px dashed color-mix(in srgb, var(--color-primary-500) 35%, transparent) !important;
+  }
+
+  .dark [data-dashboard-editor="grid-chrome"] .svelte-dnd-drop-target,
+  .dark [data-testid="editor-grid-chrome"] .svelte-dnd-drop-target {
+    outline-color: color-mix(in srgb, var(--color-primary-400) 32%, transparent) !important;
+  }
+
+  [data-dashboard-editor="grid-chrome"] .drop-before::before,
+  [data-dashboard-editor="grid-chrome"] .drop-after::after,
+  [data-testid="editor-grid-chrome"] .drop-before::before,
+  [data-testid="editor-grid-chrome"] .drop-after::after {
+    height: 1px;
+    background-color: color-mix(in srgb, var(--color-primary-500) 50%, transparent);
+  }
+
+  [data-dashboard-editor="grid-chrome"] .drop-left::before,
+  [data-dashboard-editor="grid-chrome"] .drop-right::after,
+  [data-testid="editor-grid-chrome"] .drop-left::before,
+  [data-testid="editor-grid-chrome"] .drop-right::after {
+    width: 1px;
+    background-color: color-mix(in srgb, var(--color-primary-500) 50%, transparent);
+  }
+
+  .dark [data-dashboard-editor="grid-chrome"] .drop-before::before,
+  .dark [data-dashboard-editor="grid-chrome"] .drop-after::after,
+  .dark [data-dashboard-editor="grid-chrome"] .drop-left::before,
+  .dark [data-dashboard-editor="grid-chrome"] .drop-right::after,
+  .dark [data-testid="editor-grid-chrome"] .drop-before::before,
+  .dark [data-testid="editor-grid-chrome"] .drop-after::after,
+  .dark [data-testid="editor-grid-chrome"] .drop-left::before,
+  .dark [data-testid="editor-grid-chrome"] .drop-right::after {
+    background-color: color-mix(in srgb, var(--color-primary-400) 45%, transparent);
+  }
+
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .ring-primary-500\/35,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .ring-primary-500\/35 {
+    --tw-ring-color: color-mix(in srgb, var(--color-primary-500) 22%, transparent);
+  }
+
+  /* Let droppable hit layers receive drags over live tile chrome (palette + reorder). */
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] [data-dashboard-editor="tile-row"] > :not(.editor-root-tile-dnd-hit):not([data-editor-container-chrome]):not([data-testid="editor-tile-drag-handle"]):not([data-testid="editor-container-drag-handle"]):not([data-testid="editor-nested-group-drag-handle"]),
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] [data-dashboard-editor="tile-row"] > :not(.editor-root-tile-dnd-hit):not([data-editor-container-chrome]):not([data-testid="editor-tile-drag-handle"]):not([data-testid="editor-container-drag-handle"]):not([data-testid="editor-nested-group-drag-handle"]) {
+    pointer-events: none;
+  }
+
+  /* Drop hit layer: pass pointer through when idle; active only via component classes. */
+  .editor-root-tile-dnd-hit {
+    pointer-events: none;
+  }
+
+  .editor-root-tile-hit-active,
+  .editor-group-root-hit-active {
+    pointer-events: auto;
+  }
+
+  /* Palette / grid drags: ensure drop hit layers receive pointer events over tile chrome. */
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-tile-dnd-hit.editor-root-tile-hit-active,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-tile-dnd-hit.editor-root-tile-hit-active,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] [data-editor-group-surface-drop],
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] [data-editor-group-surface-drop] {
+    pointer-events: auto;
+  }
+
+  [data-dashboard-editor="grid-chrome"][data-editor-invalid-drop="true"] .svelte-dnd-drop-target,
+  [data-testid="editor-grid-chrome"][data-editor-invalid-drop="true"] .svelte-dnd-drop-target {
+    outline-color: color-mix(in srgb, var(--color-red-500) 55%, transparent) !important;
+    background: color-mix(in srgb, var(--color-red-500) 8%, transparent);
+  }
+
+  /* Blank grid / row-end / gap drop targets — visible while dragging (subtle fill). */
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-group-canvas-drop,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-group-canvas-drop,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-group-gap-drop,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-group-gap-drop,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-group-append-drop,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-group-append-drop,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] [data-editor-group-surface-drop],
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] [data-editor-group-surface-drop] {
+    outline: 1px dashed color-mix(in srgb, var(--color-primary-500) 28%, transparent);
+    outline-offset: 2px;
+    background: color-mix(in srgb, var(--color-primary-500) 8%, transparent);
+  }
+
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop.svelte-dnd-drop-target,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop.svelte-dnd-drop-target,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop.svelte-dnd-drop-target,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop.svelte-dnd-drop-target,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop.svelte-dnd-drop-target,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop.svelte-dnd-drop-target,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop.svelte-dnd-drop-target,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop.svelte-dnd-drop-target,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop.outline,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop.outline,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop.outline,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop.outline,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop.outline,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop.outline,
+  [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop.outline,
+  [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop.outline {
+    outline-width: 1px;
+    background: color-mix(in srgb, var(--color-primary-500) 14%, transparent);
+  }
+
+  .dark [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop,
+  .dark [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop,
+  .dark [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop,
+  .dark [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop,
+  .dark [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop,
+  .dark [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop,
+  .dark [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop,
+  .dark [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop {
+    outline-color: color-mix(in srgb, var(--color-primary-400) 26%, transparent);
+    background: color-mix(in srgb, var(--color-primary-400) 10%, transparent);
+  }
+
+  .dark [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop.svelte-dnd-drop-target,
+  .dark [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop.svelte-dnd-drop-target,
+  .dark [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop.svelte-dnd-drop-target,
+  .dark [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop.svelte-dnd-drop-target,
+  .dark [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop.svelte-dnd-drop-target,
+  .dark [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop.svelte-dnd-drop-target,
+  .dark [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop.svelte-dnd-drop-target,
+  .dark [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop.svelte-dnd-drop-target,
+  .dark [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop.outline,
+  .dark [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-canvas-drop.outline,
+  .dark [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop.outline,
+  .dark [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-row-end-drop.outline,
+  .dark [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop.outline,
+  .dark [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-gap-drop.outline,
+  .dark [data-dashboard-editor="grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop.outline,
+  .dark [data-testid="editor-grid-chrome"][data-editor-pointer-dnd="true"] .editor-root-append-drop.outline {
+    background: color-mix(in srgb, var(--color-primary-400) 16%, transparent);
   }
 
   /* Read-only grid: do not `min-w-0` the shell (same shrink bug), but do not copy every
@@ -326,6 +519,8 @@ html[data-color-preset="gray"] {
 [data-dashboard-editor="grid-chrome"],
 [data-testid="editor-grid-chrome"] {
   container-type: inline-size;
+  --editor-layout-resting-shadow:
+    -2px 5px 14px -3px rgb(15 23 42 / 0.07), 0 1px 1px 0 rgb(15 23 42 / 0.04);
   --editor-layout-hover-line: color-mix(in srgb, var(--color-emerald-500) 40%, transparent);
   --editor-layout-hover-glow: 0 0 16px color-mix(in srgb, var(--color-emerald-500) 40%, transparent);
   --editor-layout-container-hover-line: color-mix(in srgb, var(--color-blue-500) 40%, transparent);
@@ -334,6 +529,7 @@ html[data-color-preset="gray"] {
 
 .dark [data-dashboard-editor="grid-chrome"],
 .dark [data-testid="editor-grid-chrome"] {
+  --editor-layout-resting-shadow: -2px 6px 20px -4px rgb(0 0 0 / 0.45);
   --editor-layout-hover-line: color-mix(in srgb, var(--color-emerald-400) 40%, transparent);
   --editor-layout-hover-glow: 0 0 16px color-mix(in srgb, var(--color-emerald-400) 40%, transparent);
   --editor-layout-container-hover-line: color-mix(in srgb, var(--color-blue-400) 40%, transparent);

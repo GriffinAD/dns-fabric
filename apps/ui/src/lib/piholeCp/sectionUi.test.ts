@@ -24,6 +24,7 @@ describe("sectionUi", () => {
   it("boolish", () => {
     expect(boolish(true)).toBe(true);
     expect(boolish(false)).toBe(false);
+    expect(boolish("true")).toBe(false);
   });
 
   it("str", () => {
@@ -36,6 +37,7 @@ describe("sectionUi", () => {
     expect(isDeployedContainerRow({ name: "x", status: "not_found" })).toBe(false);
     expect(isDeployedContainerRow({ name: "x", status: "NOT_FOUND" })).toBe(false);
     expect(isDeployedContainerRow({ name: "x", status: "running" })).toBe(true);
+    expect(isDeployedContainerRow({ name: "x", status: 1 })).toBe(true);
     expect(isDeployedContainerRow(null)).toBe(false);
   });
 
@@ -53,6 +55,7 @@ describe("sectionUi", () => {
     expect(containerLifecycleLabel({ running: true })).toBe("running");
     expect(containerLifecycleLabel({ running: false })).toBe("stopped");
     expect(containerLifecycleLabel({})).toBe("unknown");
+    expect(containerLifecycleLabel(null)).toBe("unknown");
   });
 
   it("containerHealthSuffix omits healthy", () => {
@@ -93,5 +96,9 @@ describe("sectionUi", () => {
 
   it("containerUptimeLabel returns null without timing fields", () => {
     expect(containerUptimeLabel({ status: "running" }, Date.now())).toBeNull();
+    expect(containerUptimeLabel(null, Date.now())).toBeNull();
+    expect(
+      containerUptimeLabel({ status: "running", started_at: "not-a-date" }, Date.now()),
+    ).toBeNull();
   });
 });

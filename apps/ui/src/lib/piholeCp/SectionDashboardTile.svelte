@@ -145,16 +145,6 @@
         LAN hint: <span class="font-mono">{str(p.lan_identity_hint)}</span>
       </p>
     {/if}
-    {#if asRecord(p.vrrp)}
-      {@const v = asRecord(p.vrrp)!}
-      <div class="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
-        <p class="font-medium">VRRP</p>
-        <p class="mt-1">{boolish(v.available) ? "Available" : "Not available in container"}</p>
-        {#if typeof v.detail === "string"}
-          <p class="mt-1 text-amber-900/90 dark:text-amber-200/90">{v.detail}</p>
-        {/if}
-      </div>
-    {/if}
   {:else if section === "docker" && p}
     <div class="mb-2 flex items-center gap-2">
       <span

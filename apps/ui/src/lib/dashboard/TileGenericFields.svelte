@@ -15,7 +15,7 @@
   } = $props();
 
   const displayModeOptions = $derived(
-    [showCompact ? ("compact" as const) : null, showFull ? ("full" as const) : null].filter(
+    [showFull ? ("full" as const) : null, showCompact ? ("compact" as const) : null].filter(
       (x): x is DisplayMode => x != null,
     ),
   );
