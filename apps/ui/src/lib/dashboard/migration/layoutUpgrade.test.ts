@@ -5,6 +5,8 @@ import {
   ensureLayoutV3,
   layoutGraphHasDuplicateIds,
   layoutNestedGroupDepthExceeded,
+  tabGroupWrapperId,
+  wrapLegacyTabControlTile,
 } from "./layoutUpgrade";
 import type { DashboardLayout, DashboardLayoutV3, RootLayoutItem } from "../types";
 
@@ -208,6 +210,136 @@ describe("layoutUpgrade v3", () => {
       expect(inner && "kind" in inner && inner.kind === "group").toBe(true);
       if (inner && "kind" in inner && inner.kind === "group") {
         expect(inner.children.length).toBe(1);
+      }
+    }
+  });
+
+  it("wrapLegacyTabControlTile produces tab group with single-panel child", () => {
+    const wrapped = wrapLegacyTabControlTile({
+      kind: "tile",
+      id: "legacy-tab",
+      pluginId: "perf.cpu",
+      hostControl: "tab-control",
+      displayMode: "full",
+      grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+    });
+    expect(wrapped).toMatchObject({
+      kind: "group",
+      id: tabGroupWrapperId("legacy-tab"),
+      hostControl: "tab-control",
+      hostState: { activeChildId: "legacy-tab" },
+      grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+      children: [
+        {
+          id: "legacy-tab",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          tabLabel: "perf.cpu",
+          displayMode: "full",
+          grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+        },
+      ],
+    });
+  });
+
+  it("ensureLayoutV3 wraps legacy root tile tab-control into tab group", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "tile",
+          id: "legacy-tab",
+          pluginId: "perf.cpu",
+          hostControl: "tab-control",
+          displayMode: "full",
+          grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+        },
+      ],
+    });
+    expect(out.items).toHaveLength(1);
+    const g = out.items[0];
+    expect(g?.kind).toBe("group");
+    if (g?.kind === "group") {
+      expect(g.id).toBe(tabGroupWrapperId("legacy-tab"));
+      expect(g.hostControl).toBe("tab-control");
+      expect(g.hostState?.activeChildId).toBe("legacy-tab");
+      expect(g.children[0]).toMatchObject({
+        id: "legacy-tab",
+        hostControl: "single-panel",
+        pluginId: "perf.cpu",
+      });
+    }
+  });
+
+  it("ensureLayoutV3 migrates legacy tab-control inside nested group children", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "outer",
+          showBorder: true,
+          children: [
+            {
+              kind: "group",
+              id: "inner",
+              showBorder: true,
+              children: [
+                {
+                  id: "deep-tab",
+                  pluginId: "perf.cpu",
+                  hostControl: "tab-control",
+                  displayMode: "full",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const outer = out.items[0];
+    expect(outer?.kind).toBe("group");
+    if (outer?.kind === "group") {
+      const inner = outer.children[0];
+      expect(inner && "kind" in inner && inner.kind === "group").toBe(true);
+      if (inner && "kind" in inner && inner.kind === "group") {
+        const tabWrap = inner.children[0];
+        expect(tabWrap && "kind" in tabWrap && tabWrap.kind === "group").toBe(true);
+        if (tabWrap && "kind" in tabWrap && tabWrap.kind === "group") {
+          expect(tabWrap.hostControl).toBe("tab-control");
+          expect(tabWrap.children[0]).toMatchObject({ id: "deep-tab", hostControl: "single-panel" });
+        }
+      }
+    }
+  });
+
+  it("ensureLayoutV3 wraps legacy tab-control tile inside a group", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "outer",
+          showBorder: true,
+          children: [
+            {
+              id: "inner-tab",
+              pluginId: "dhcp.pools",
+              hostControl: "tab-control",
+              displayMode: "compact",
+            },
+          ],
+        },
+      ],
+    });
+    const outer = out.items[0];
+    expect(outer?.kind).toBe("group");
+    if (outer?.kind === "group") {
+      const child = outer.children[0];
+      expect(child && "kind" in child && child.kind === "group").toBe(true);
+      if (child && "kind" in child && child.kind === "group") {
+        expect(child.hostControl).toBe("tab-control");
+        expect(child.children[0]).toMatchObject({ id: "inner-tab", hostControl: "single-panel" });
       }
     }
   });

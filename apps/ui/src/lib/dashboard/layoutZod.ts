@@ -19,9 +19,20 @@ import type {
   RootLayoutItem,
   RootTileItem,
 } from "./types";
-import { MAX_DASHBOARD_GROUP_DEPTH, isDashboardGroupNode } from "./types";
+import {
+  MAX_DASHBOARD_GROUP_DEPTH,
+  MAX_TAB_GROUP_CHILDREN,
+  isDashboardGroupNode,
+} from "./types";
 
 const hostControlEnum = z.enum(["single-panel", "tab-control", "vertical-stack", "split-grid"]);
+const groupHostControlEnum = z.enum(["panel", "tab-control", "vertical-stack", "split-grid"]);
+const groupHostStateSchema = z
+  .object({
+    activeChildId: z.string().min(1).optional(),
+  })
+  .strict();
+const tabLabelSchema = z.string().min(1).max(64);
 
 export const dashboardGridPlacementSchema = z
   .object({
@@ -56,9 +67,56 @@ const dashboardTileJsonSchema = z
     kind: z.literal("tile").optional(),
     grid: dashboardGridPlacementSchema.nullish(),
     options: z.unknown().optional(),
+    tabLabel: tabLabelSchema.optional(),
   })
   .strict()
   .superRefine(refineTileOptions);
+
+type GroupJsonForTabRefine = {
+  hostControl?: z.infer<typeof groupHostControlEnum>;
+  innerWrap?: boolean;
+  hostState?: z.infer<typeof groupHostStateSchema>;
+  children: Array<{ id: string; kind?: string }>;
+};
+
+function refineTabControlGroup(g: GroupJsonForTabRefine, ctx: z.RefinementCtx): void {
+  if (g.hostControl !== "tab-control") return;
+  if (g.innerWrap === true) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["innerWrap"],
+      message: "tab-control groups cannot use innerWrap",
+    });
+  }
+  const n = g.children.length;
+  if (n < 1 || n > MAX_TAB_GROUP_CHILDREN) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["children"],
+      message: `tab-control group must have 1–${MAX_TAB_GROUP_CHILDREN} children`,
+    });
+  }
+  const childIds = new Set<string>();
+  g.children.forEach((c, i) => {
+    const id = c.id;
+    if (childIds.has(id)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["children", i, "id"],
+        message: "duplicate tab child id",
+      });
+    }
+    childIds.add(id);
+  });
+  const active = g.hostState?.activeChildId;
+  if (active != null && !childIds.has(active)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["hostState", "activeChildId"],
+      message: "activeChildId must reference a child id",
+    });
+  }
+}
 
 const rootTileJsonSchema = dashboardTileJsonSchema.superRefine((t, ctx) => {
   if (t.grid != null && !isCompleteGridPlacement(t.grid)) {
@@ -72,11 +130,15 @@ const groupJsonSchema = z
     id: z.string().min(1),
     showBorder: z.boolean().optional(),
     innerWrap: z.boolean().optional(),
+    hostControl: groupHostControlEnum.optional(),
+    hostState: groupHostStateSchema.optional(),
     grid: dashboardGridPlacementSchema.nullish(),
+    tabLabel: tabLabelSchema.optional(),
     children: z.array(dashboardTileJsonSchema),
   })
   .strict()
   .superRefine((g, ctx) => {
+    refineTabControlGroup(g, ctx);
     if (g.grid != null && !isCompleteGridPlacement(g.grid)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["grid"], message: "invalid group grid placement" });
     }
@@ -101,11 +163,15 @@ const groupJsonSchemaV3: z.ZodTypeAny = z.lazy(() =>
       id: z.string().min(1),
       showBorder: z.boolean().optional(),
       innerWrap: z.boolean().optional(),
+      hostControl: groupHostControlEnum.optional(),
+      hostState: groupHostStateSchema.optional(),
       grid: dashboardGridPlacementSchema.nullish(),
+      tabLabel: tabLabelSchema.optional(),
       children: z.array(z.union([dashboardTileJsonSchema, groupJsonSchemaV3])),
     })
     .strict()
     .superRefine((g, ctx) => {
+      refineTabControlGroup(g, ctx);
       if (g.grid != null && !isCompleteGridPlacement(g.grid)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["grid"], message: "invalid group grid placement" });
       }
@@ -200,6 +266,9 @@ function normalizeGroupFromParsedV3(g: {
   id: string;
   showBorder?: boolean;
   innerWrap?: boolean;
+  hostControl?: DashboardGroup["hostControl"];
+  hostState?: DashboardGroup["hostState"];
+  tabLabel?: string;
   grid?: unknown;
   children: unknown[];
 }): DashboardGroup {
@@ -208,6 +277,9 @@ function normalizeGroupFromParsedV3(g: {
     id: g.id,
     showBorder: g.showBorder !== false,
     innerWrap: g.innerWrap,
+    hostControl: g.hostControl,
+    hostState: g.hostState,
+    tabLabel: g.tabLabel,
     grid: g.grid as DashboardGroup["grid"],
     children: g.children.map((c) => {
       if (c && typeof c === "object" && "kind" in c && (c as { kind?: string }).kind === "group") {

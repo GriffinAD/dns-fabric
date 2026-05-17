@@ -15,7 +15,96 @@ import type {
   RootLayoutItem,
   RootTileItem,
 } from "../types";
-import { isDashboardGroupNode, isLayoutV2, isLayoutV3, MAX_DASHBOARD_GROUP_DEPTH } from "../types";
+import {
+  isDashboardGroupNode,
+  isLayoutV2,
+  isLayoutV3,
+  MAX_DASHBOARD_GROUP_DEPTH,
+} from "../types";
+
+/** Wrapper group id for legacy tile-level `hostControl: "tab-control"` (ADR-0054). */
+export function tabGroupWrapperId(tileId: string): string {
+  return `tab-group-${tileId}`;
+}
+
+/**
+ * Legacy tile-level `hostControl: "tab-control"` (ADR-0049 placeholder era) becomes a tab
+ * container group: same root `grid`, one `single-panel` child, `hostState.activeChildId` = child id.
+ */
+export function wrapLegacyTabControlTile(tile: DashboardTile): DashboardGroup {
+  const { hostControl: _hc, ...rest } = tile;
+  const child: DashboardTile = {
+    ...rest,
+    hostControl: "single-panel",
+    tabLabel: tile.tabLabel ?? tile.pluginId,
+  };
+  return {
+    kind: "group",
+    id: tabGroupWrapperId(tile.id),
+    showBorder: true,
+    hostControl: "tab-control",
+    hostState: { activeChildId: tile.id },
+    grid: tile.grid,
+    children: [child],
+  };
+}
+
+function migrateLegacyTabControlInChildren(children: GroupChild[]): GroupChild[] {
+  let changed = false;
+  const next = children.map((c) => {
+    if (isDashboardGroupNode(c)) {
+      const migratedChildren = migrateLegacyTabControlInChildren(c.children);
+      if (migratedChildren !== c.children) {
+        changed = true;
+        return { ...c, children: migratedChildren };
+      }
+      return c;
+    }
+    if (c.hostControl === "tab-control") {
+      changed = true;
+      return wrapLegacyTabControlTile(c);
+    }
+    return c;
+  });
+  return changed ? next : children;
+}
+
+/** Upgrade any remaining tile-level `tab-control` nodes to group tab containers. */
+export function migrateLegacyTabControlItems(items: RootLayoutItem[]): RootLayoutItem[] {
+  let changed = false;
+  const next = items.map((it) => {
+    if (it.kind === "group") {
+      const children = migrateLegacyTabControlInChildren(it.children);
+      if (children !== it.children) {
+        changed = true;
+        return { ...it, children };
+      }
+      return it;
+    }
+    if (it.hostControl === "tab-control") {
+      changed = true;
+      return wrapLegacyTabControlTile(it);
+    }
+    return it;
+  });
+  return changed ? next : items;
+}
+
+function finalizeLayoutV3(layout: DashboardLayoutV3): DashboardLayoutV3 {
+  let items = layout.items;
+  let changed = false;
+  if (layoutGraphHasDuplicateIds(items)) {
+    items = dedupeLayoutV3ItemIds({ version: 3, items }).items;
+    changed = true;
+  }
+  const migrated = migrateLegacyTabControlItems(items);
+  if (migrated !== items) {
+    items = migrated;
+    changed = true;
+  }
+  if (!changed) return layout;
+  return { version: 3, items };
+}
 
 function deepCloneItems(items: RootLayoutItem[]): RootLayoutItem[] {
   return JSON.parse(JSON.stringify(items)) as RootLayoutItem[];
@@ -180,11 +269,9 @@ export function migrateV2ToV3(layout: DashboardLayoutV2): DashboardLayoutV3 {
 
 export function ensureLayoutV3(layout: DashboardLayout): DashboardLayoutV3 {
   if (isLayoutV3(layout)) {
-    if (!layoutGraphHasDuplicateIds(layout.items)) return layout;
-    return dedupeLayoutV3ItemIds(layout);
+    return finalizeLayoutV3(layout);
   }
   const v2 = ensureLayoutV2(layout);
   const v3 = migrateV2ToV3(v2);
-  if (!layoutGraphHasDuplicateIds(v3.items)) return v3;
-  return dedupeLayoutV3ItemIds(v3);
+  return finalizeLayoutV3(v3);
 }
