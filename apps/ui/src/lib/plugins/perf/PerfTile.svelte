@@ -1,22 +1,27 @@
 <script lang="ts">
   import Card from "flowbite-svelte/Card.svelte";
-  import { getContext, onMount } from "svelte";
 
   import type { PerfSummaryResponse } from "../../api/types";
   import MetricList from "../../components/metrics/MetricList.svelte";
   import SemicircleGauge from "../../components/gauge/SemicircleGauge.svelte";
   import { clampGridColSpan, tileColSpanForPlugin } from "../core/builtinMeta";
-  import { FABRIC_EVENT_BUS, perfUpdatedFullSummary, type FabricEventBus } from "../../dashboard/eventBus";
+  import { perfUpdatedFullSummary, type FabricEventBus } from "../../dashboard/eventBus";
   import { DataGateway } from "../../gateway/dataGateway";
   import type { DashboardTile } from "../../dashboard/types";
+  import { usePluginBusSubscription } from "../pluginDataBus";
 
-  let { gateway, tile }: { gateway: DataGateway; tile: DashboardTile } = $props();
-
-  const fabricBus = getContext<FabricEventBus | undefined>(FABRIC_EVENT_BUS);
+  let {
+    gateway,
+    bus,
+    tile,
+  }: {
+    gateway: DataGateway;
+    bus: FabricEventBus;
+    tile: DashboardTile;
+  } = $props();
 
   let summary = $state<PerfSummaryResponse | null>(null);
   let err = $state<string | null>(null);
-  let liveSummary = $state<PerfSummaryResponse | null>(null);
 
   const opts = $derived(tile.options);
   const cpuTotal = $derived(opts?.cpu_total === true);
@@ -25,23 +30,26 @@
   const percentOnly = $derived(opts?.display_style === "percent_only");
   const gaugeGradientMode = $derived(opts?.gauge_gradient_mode ?? "smooth");
 
-  onMount(() => {
-    void gateway
-      .getPerfSummary()
-      .then((r) => {
-        summary = r;
-      })
-      .catch((e: unknown) => {
+  usePluginBusSubscription(
+    bus,
+    "fabric.perf.updated",
+    perfUpdatedFullSummary,
+    async () => {
+      try {
+        const r = await gateway.getPerfSummary();
+        err = null;
+        return r;
+      } catch (e: unknown) {
         err = e instanceof Error ? e.message : String(e);
-      });
+        throw e;
+      }
+    },
+    (snap) => {
+      summary = snap;
+    },
+  );
 
-    if (!fabricBus) return;
-    return fabricBus.subscribe("fabric.perf.updated", perfUpdatedFullSummary, (snap) => {
-      liveSummary = snap;
-    });
-  });
-
-  const effective = $derived(liveSummary ?? summary);
+  const effective = $derived(summary);
 
   const cpuDisplay = $derived(effective?.cpu_percent_total ?? 0);
 

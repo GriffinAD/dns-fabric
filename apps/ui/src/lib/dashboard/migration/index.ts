@@ -6,6 +6,9 @@ export {
   layoutGraphHasDuplicateIds,
   layoutMaxNestedGroupDepth,
   layoutNestedGroupDepthExceeded,
+  migrateLegacyTabControlItems,
   migrateV1ToV2,
   migrateV2ToV3,
+  tabGroupWrapperId,
+  wrapLegacyTabControlTile,
 } from "./layoutUpgrade";

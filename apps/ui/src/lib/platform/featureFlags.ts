@@ -11,6 +11,7 @@ const DEFAULTS: Record<UiFeatureFlagName, boolean> = {
 
 function readEnvFlag(name: UiFeatureFlagName): boolean | undefined {
   const env = import.meta.env;
+  /* c8 ignore next -- v8 double-counts `== null` for undefined vs null */
   if (env == null) return undefined;
   const key = `VITE_${name.replace(/\./g, "_").toUpperCase()}`;
   const raw = (env as Record<string, string | boolean | undefined>)[key];

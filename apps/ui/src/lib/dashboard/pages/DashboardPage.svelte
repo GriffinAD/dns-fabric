@@ -5,6 +5,8 @@
 
   import type { PluginEntry } from "../../api/types";
   import type { DataGateway } from "../../gateway/dataGateway";
+  import { requireFabricEventBusContext } from "../fabricBusKernel";
+  import type { FabricEventBus } from "../eventBus";
   import DashboardToolbar from "../editor/DashboardToolbar.svelte";
   import InspectorPanel from "../editor/InspectorPanel.svelte";
   import { editorSelection } from "../editor/editorState";
@@ -54,6 +56,8 @@
     /** When true, undo/redo live in an external chrome (e.g. Pi-hole CP sticky header). */
     hideEditorToolbar?: boolean;
   } = $props();
+
+  const fabricBus: FabricEventBus = requireFabricEventBusContext();
 
   const settingsParentId = $derived.by(() => {
     if (!settingsTile) return PARENT_ID_DASHBOARD;
@@ -210,13 +214,18 @@
       <DashboardHost
         {layout}
         {gateway}
+        bus={fabricBus}
         {plugins}
         {editLayout}
         activeEditorKind={$editorSelection?.kind ?? null}
         activeEditorId={$editorSelection?.id ?? null}
         onAddTile={ls.addRootTile}
         onAddGroup={ls.addGroup}
+        onAddTabGroup={ls.addTabGroup}
+        onAddStackGroup={ls.addStackGroup}
         onAddGroupToGroup={ls.addGroupToParent}
+        onAddTabGroupToGroup={ls.addTabGroupToParent}
+        onAddStackGroupToGroup={ls.addStackGroupToParent}
         onAddTileToGroup={ls.addTileToGroup}
         onLayoutStructureChange={(next) =>
           ls.applyStructure(next, { preserveRootPlacementIfComplete: true })}

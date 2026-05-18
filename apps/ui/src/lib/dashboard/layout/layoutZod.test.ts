@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_DASHBOARD_GROUP_DEPTH } from "../types";
+import { E2E_TAB_GROUP_V3_LAYOUT } from "../../../../tests/e2e/fixtures/editorGridFixture";
+import { isLayoutV3, MAX_DASHBOARD_GROUP_DEPTH } from "../types";
 import { parseDashboardLayoutZod } from "./layoutZod";
 
 describe("parseDashboardLayoutZod", () => {
@@ -187,6 +188,271 @@ describe("parseDashboardLayoutZod", () => {
                     grid: { col: 0, row: 0, colSpan: 4, rowSpan: 1 },
                   },
                 ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("accepts e2e tab-control fixture layout", () => {
+    const parsed = parseDashboardLayoutZod(E2E_TAB_GROUP_V3_LAYOUT);
+    expect(parsed).not.toBeNull();
+    expect(isLayoutV3(parsed!)).toBe(true);
+    if (isLayoutV3(parsed!)) {
+      expect(parsed.items[0]).toMatchObject({ id: "tabs-e2e", hostControl: "tab-control" });
+    }
+  });
+
+  it("accepts tab-control group with tile and nested group children", () => {
+    const parsed = parseDashboardLayoutZod({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "tabs-root",
+          showBorder: true,
+          hostControl: "tab-control",
+          hostState: { activeChildId: "tab-cpu" },
+          grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 },
+          children: [
+            {
+              id: "tab-cpu",
+              tabLabel: "CPU",
+              pluginId: "perf.cpu",
+              hostControl: "single-panel",
+              displayMode: "full",
+              grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+            },
+            {
+              kind: "group",
+              id: "tab-nested",
+              tabLabel: "DHCP",
+              showBorder: true,
+              hostControl: "tab-control",
+              hostState: { activeChildId: "pools" },
+              children: [
+                {
+                  id: "pools",
+                  tabLabel: "Pools",
+                  pluginId: "dhcp.pools",
+                  hostControl: "single-panel",
+                  displayMode: "compact",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(parsed).not.toBeNull();
+  });
+
+  it("rejects tab-control group with duplicate child ids", () => {
+    expect(
+      parseDashboardLayoutZod({
+        version: 3,
+        items: [
+          {
+            kind: "group",
+            id: "tabs",
+            hostControl: "tab-control",
+            children: [
+              {
+                id: "dup",
+                pluginId: "perf.cpu",
+                hostControl: "single-panel",
+                displayMode: "full",
+              },
+              {
+                id: "dup",
+                pluginId: "perf.ram",
+                hostControl: "single-panel",
+                displayMode: "full",
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects tab-control group when activeChildId is not a child", () => {
+    expect(
+      parseDashboardLayoutZod({
+        version: 3,
+        items: [
+          {
+            kind: "group",
+            id: "tabs",
+            hostControl: "tab-control",
+            hostState: { activeChildId: "missing" },
+            children: [
+              {
+                id: "a",
+                pluginId: "perf.cpu",
+                hostControl: "single-panel",
+                displayMode: "full",
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects tab-control group with no children", () => {
+    expect(
+      parseDashboardLayoutZod({
+        version: 3,
+        items: [
+          {
+            kind: "group",
+            id: "tabs",
+            hostControl: "tab-control",
+            children: [],
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("accepts vertical-stack group with collapsedChildIds", () => {
+    const parsed = parseDashboardLayoutZod({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "stack-root",
+          showBorder: true,
+          hostControl: "vertical-stack",
+          hostState: { collapsedChildIds: ["s1"] },
+          grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 },
+          children: [
+            {
+              id: "s1",
+              tabLabel: "One",
+              pluginId: "perf.cpu",
+              hostControl: "single-panel",
+              displayMode: "full",
+            },
+          ],
+        },
+      ],
+    });
+    expect(parsed).not.toBeNull();
+  });
+
+  it("rejects vertical-stack group with innerWrap true", () => {
+    expect(
+      parseDashboardLayoutZod({
+        version: 3,
+        items: [
+          {
+            kind: "group",
+            id: "stack",
+            hostControl: "vertical-stack",
+            innerWrap: true,
+            children: [
+              {
+                id: "a",
+                pluginId: "perf.cpu",
+                hostControl: "single-panel",
+                displayMode: "full",
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects vertical-stack group with no children", () => {
+    expect(
+      parseDashboardLayoutZod({
+        version: 3,
+        items: [
+          {
+            kind: "group",
+            id: "stack",
+            hostControl: "vertical-stack",
+            children: [],
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects vertical-stack group with duplicate section ids", () => {
+    expect(
+      parseDashboardLayoutZod({
+        version: 3,
+        items: [
+          {
+            kind: "group",
+            id: "stack",
+            hostControl: "vertical-stack",
+            children: [
+              {
+                id: "dup",
+                pluginId: "perf.cpu",
+                hostControl: "single-panel",
+                displayMode: "full",
+              },
+              {
+                id: "dup",
+                pluginId: "perf.ram",
+                hostControl: "single-panel",
+                displayMode: "full",
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects vertical-stack with stale collapsedChildIds", () => {
+    expect(
+      parseDashboardLayoutZod({
+        version: 3,
+        items: [
+          {
+            kind: "group",
+            id: "stack",
+            hostControl: "vertical-stack",
+            hostState: { collapsedChildIds: ["missing"] },
+            children: [
+              {
+                id: "a",
+                pluginId: "perf.cpu",
+                hostControl: "single-panel",
+                displayMode: "full",
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects tab-control group with innerWrap true", () => {
+    expect(
+      parseDashboardLayoutZod({
+        version: 3,
+        items: [
+          {
+            kind: "group",
+            id: "tabs",
+            innerWrap: true,
+            hostControl: "tab-control",
+            children: [
+              {
+                id: "a",
+                pluginId: "perf.cpu",
+                hostControl: "single-panel",
+                displayMode: "full",
               },
             ],
           },

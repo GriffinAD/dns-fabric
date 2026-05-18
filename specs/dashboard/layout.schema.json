@@ -20,6 +20,34 @@
         }
       }
     },
+    "groupHostControl": {
+      "type": "string",
+      "enum": ["panel", "tab-control", "vertical-stack", "split-grid"],
+      "description": "Container chrome on DashboardGroup (ADR-0054). Omitted means panel."
+    },
+    "groupHostState": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Tab container state (ADR-0054).",
+      "properties": {
+        "activeChildId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Active tab child id; defaults to first child when omitted."
+        },
+        "collapsedChildIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Collapsed section ids for vertical-stack groups."
+        }
+      }
+    },
+    "tabLabel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Tab strip label when parent group has hostControl tab-control."
+    },
     "tileOptions": {
       "type": "object",
       "additionalProperties": false,
@@ -59,7 +87,8 @@
           "description": "v2 root tiles should set kind to 'tile' (optional in some clients)."
         },
         "grid": { "$ref": "#/$defs/gridPlacement" },
-        "options": { "$ref": "#/$defs/tileOptions" }
+        "options": { "$ref": "#/$defs/tileOptions" },
+        "tabLabel": { "$ref": "#/$defs/tabLabel" }
       }
     },
     "dashboardGroup": {
@@ -76,9 +105,12 @@
         },
         "innerWrap": {
           "type": "boolean",
-          "description": "When true, child tiles flow in array order and wrap to a new row when a row is full, with col/row repacked on save. When false or omitted, children use a G-column grid from stored placement (no reflow)."
+          "description": "When true, child tiles flow in array order and wrap to a new row when a row is full, with col/row repacked on save. When false or omitted, children use a G-column grid from stored placement (no reflow). Must not be true when hostControl is tab-control."
         },
+        "hostControl": { "$ref": "#/$defs/groupHostControl" },
+        "hostState": { "$ref": "#/$defs/groupHostState" },
         "grid": { "$ref": "#/$defs/gridPlacement" },
+        "tabLabel": { "$ref": "#/$defs/tabLabel" },
         "children": {
           "type": "array",
           "items": { "$ref": "#/$defs/dashboardTile" }
@@ -101,7 +133,10 @@
         "id": { "type": "string", "minLength": 1 },
         "showBorder": { "type": "boolean" },
         "innerWrap": { "type": "boolean" },
+        "hostControl": { "$ref": "#/$defs/groupHostControl" },
+        "hostState": { "$ref": "#/$defs/groupHostState" },
         "grid": { "$ref": "#/$defs/gridPlacement" },
+        "tabLabel": { "$ref": "#/$defs/tabLabel" },
         "children": {
           "type": "array",
           "items": { "$ref": "#/$defs/groupChildV3" }

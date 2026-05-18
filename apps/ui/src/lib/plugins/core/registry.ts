@@ -1,6 +1,7 @@
 import type { Component } from "svelte";
 
 import type { DataGateway } from "../../gateway/dataGateway";
+import type { FabricEventBus } from "../../dashboard/eventBus";
 import type { DashboardTile } from "../../dashboard/types";
 import { applyPerfCompactAsPercentOnly } from "./tileDisplay";
 import DhcpClientsTile from "../dhcp/DhcpClientsTile.svelte";
@@ -20,6 +21,7 @@ export type PluginRegistration = {
 
 export type TileHostContext = {
   gateway: DataGateway;
+  bus: FabricEventBus;
   tile: DashboardTile;
   editLayout: boolean;
   onEditTile?: (t: DashboardTile) => void;
@@ -92,21 +94,21 @@ function gridHint(
 function dhcpPools(ctx: TileHostContext): ResolvedPluginMount {
   return {
     component: DhcpPoolsTile as Component<Record<string, unknown>>,
-    props: { gateway: ctx.gateway, tile: ctx.tile },
+    props: { gateway: ctx.gateway, bus: ctx.bus, tile: ctx.tile },
   };
 }
 
 function dhcpClients(ctx: TileHostContext): ResolvedPluginMount {
   return {
     component: DhcpClientsTile as Component<Record<string, unknown>>,
-    props: { gateway: ctx.gateway, tile: ctx.tile },
+    props: { gateway: ctx.gateway, bus: ctx.bus, tile: ctx.tile },
   };
 }
 
 function dhcpReservations(ctx: TileHostContext): ResolvedPluginMount {
   return {
     component: DhcpReservationsTile as Component<Record<string, unknown>>,
-    props: { gateway: ctx.gateway, tile: ctx.tile },
+    props: { gateway: ctx.gateway, bus: ctx.bus, tile: ctx.tile },
   };
 }
 
@@ -115,6 +117,7 @@ function discovery(ctx: TileHostContext): ResolvedPluginMount {
     component: DiscoveryTile as Component<Record<string, unknown>>,
     props: {
       gateway: ctx.gateway,
+      bus: ctx.bus,
       tile: ctx.tile,
       onOpenSettings:
         ctx.editLayout && ctx.onEditTile ? () => ctx.onEditTile?.(ctx.tile) : undefined,
@@ -125,21 +128,33 @@ function discovery(ctx: TileHostContext): ResolvedPluginMount {
 function perfSummary(ctx: TileHostContext): ResolvedPluginMount {
   return {
     component: PerfTile as Component<Record<string, unknown>>,
-    props: { gateway: ctx.gateway, tile: ctx.tile },
+    props: { gateway: ctx.gateway, bus: ctx.bus, tile: ctx.tile },
   };
 }
 
 function perfCpu(ctx: TileHostContext): ResolvedPluginMount {
   return {
     component: PerfMetricTile as Component<Record<string, unknown>>,
-    props: { gateway: ctx.gateway, tile: ctx.tile, metric: "cpu", onGridHint: gridHint(ctx) },
+    props: {
+      gateway: ctx.gateway,
+      bus: ctx.bus,
+      tile: ctx.tile,
+      metric: "cpu",
+      onGridHint: gridHint(ctx),
+    },
   };
 }
 
 function perfRam(ctx: TileHostContext): ResolvedPluginMount {
   return {
     component: PerfMetricTile as Component<Record<string, unknown>>,
-    props: { gateway: ctx.gateway, tile: ctx.tile, metric: "ram", onGridHint: gridHint(ctx) },
+    props: {
+      gateway: ctx.gateway,
+      bus: ctx.bus,
+      tile: ctx.tile,
+      metric: "ram",
+      onGridHint: gridHint(ctx),
+    },
   };
 }
 
@@ -148,6 +163,7 @@ function perfNw(ctx: TileHostContext): ResolvedPluginMount {
     component: PerfMetricTile as Component<Record<string, unknown>>,
     props: {
       gateway: ctx.gateway,
+      bus: ctx.bus,
       tile: ctx.tile,
       metric: "network",
       onGridHint: gridHint(ctx),
@@ -158,7 +174,13 @@ function perfNw(ctx: TileHostContext): ResolvedPluginMount {
 function perfDisk(ctx: TileHostContext): ResolvedPluginMount {
   return {
     component: PerfMetricTile as Component<Record<string, unknown>>,
-    props: { gateway: ctx.gateway, tile: ctx.tile, metric: "disk", onGridHint: gridHint(ctx) },
+    props: {
+      gateway: ctx.gateway,
+      bus: ctx.bus,
+      tile: ctx.tile,
+      metric: "disk",
+      onGridHint: gridHint(ctx),
+    },
   };
 }
 

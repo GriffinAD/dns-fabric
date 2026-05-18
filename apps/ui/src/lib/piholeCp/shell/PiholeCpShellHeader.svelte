@@ -3,6 +3,7 @@
   import Modal from "flowbite-svelte/Modal.svelte";
   import { get } from "svelte/store";
   import ArrowLeft from "lucide-svelte/icons/arrow-left";
+  import Cog from "lucide-svelte/icons/cog";
   import Pencil from "lucide-svelte/icons/pencil";
   import Redo2 from "lucide-svelte/icons/redo-2";
   import RefreshCw from "lucide-svelte/icons/refresh-cw";
@@ -10,9 +11,17 @@
   import Server from "lucide-svelte/icons/server";
   import Undo2 from "lucide-svelte/icons/undo-2";
 
+  import { getContext } from "svelte";
+
   import ThemeControls from "../../theme/ThemeControls.svelte";
-  import DashboardControls from "../../dashboard/pages/DashboardControls.svelte";
+  import EditorSettingsModal from "../../dashboard/EditorSettingsModal.svelte";
+  import FabricBusConnectionBadge from "../../dashboard/FabricBusConnectionBadge.svelte";
+  import LayoutMenuSelect from "../../dashboard/LayoutMenuSelect.svelte";
+  import { FABRIC_EVENT_BUS, type FabricEventBus } from "../../dashboard/eventBus";
+  import { importDashboardLayoutFromJson } from "../../dashboard/layoutImport";
   import type { LayoutStore } from "../../dashboard/layout/layoutStore";
+  import { downloadDashboardLayoutFile } from "../../dashboard/layout/layoutStorage";
+  import type { DashboardLayout } from "../../dashboard/types";
 
   let {
     nodeLabel,
@@ -40,7 +49,13 @@
     onRefresh: () => void;
   } = $props();
 
+  const bus = getContext<FabricEventBus>(FABRIC_EVENT_BUS);
+
   let resetConfirmOpen = $state(false);
+  let importConfirmOpen = $state(false);
+  let editorSettingsOpen = $state(false);
+  let pendingImportLayout = $state<DashboardLayout | null>(null);
+  let layoutFileInput = $state<HTMLInputElement | undefined>(undefined);
 
   const headerLabelBandSpacerClass =
     "mb-1 hidden h-[1.125rem] w-0 max-w-0 shrink-0 overflow-hidden sm:block";
@@ -60,8 +75,49 @@
     resetConfirmOpen = false;
   }
 
+  function exportLayout() {
+    downloadDashboardLayoutFile(get(ls.layout));
+  }
+
+  function openLayoutFilePicker() {
+    layoutFileInput?.click();
+  }
+
+  async function onLayoutFileSelected(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    const text = await file.text();
+    const result = importDashboardLayoutFromJson(text);
+    if (!result.ok) {
+      ls.loadError.set(result.message);
+      return;
+    }
+    pendingImportLayout = result.layout;
+    importConfirmOpen = true;
+  }
+
+  function confirmImportLayout() {
+    if (pendingImportLayout) {
+      ls.importLayout(pendingImportLayout);
+      pendingImportLayout = null;
+    }
+    importConfirmOpen = false;
+  }
+
+  function cancelImportLayout() {
+    pendingImportLayout = null;
+    importConfirmOpen = false;
+  }
+
   $effect(() => {
-    if (!editorOpen) resetConfirmOpen = false;
+    if (!editorOpen) {
+      resetConfirmOpen = false;
+      importConfirmOpen = false;
+      editorSettingsOpen = false;
+      pendingImportLayout = null;
+    }
   });
 </script>
 
@@ -74,22 +130,48 @@
       <Server class="h-8 w-8 shrink-0" aria-hidden="true" />
       Pi-hole HA control plane
     </h1>
-    <p class="text-slate-600 dark:text-gray-400">
-      Node <span class="font-mono text-sm">{nodeLabel}</span>
-      · Operator shell (<span class="font-mono text-sm" data-testid="pihole-cp-ui-version">{uiVersion}</span>)
+    <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-600 dark:text-gray-400">
+      <span>
+        Node <span class="font-mono text-sm">{nodeLabel}</span>
+        · Operator shell (<span class="font-mono text-sm" data-testid="pihole-cp-ui-version">{uiVersion}</span>)
+      </span>
+      <FabricBusConnectionBadge {bus} />
     </p>
   </div>
   <div
     class="flex w-full min-w-0 flex-col items-stretch gap-3 sm:max-w-none sm:flex-1 sm:items-end"
     data-testid="pihole-cp-header-actions"
   >
-    <div class="flex w-full flex-wrap items-end justify-end gap-3">
-      <div class="flex items-center gap-1" data-testid="pihole-cp-theme-controls">
-        <ThemeControls showAccent={editorOpen} showGaugeSegmentToggle={editorOpen} />
+    <div class="flex w-full flex-wrap items-end justify-end gap-2">
+      <div class="flex items-end gap-2" data-testid="pihole-cp-theme-controls">
+        <ThemeControls showAccent={false} toolbarRow={editorOpen} />
+        {#if editorOpen}
+          <div class="flex flex-col items-end">
+            <span class={headerLabelBandSpacerClass} aria-hidden="true"></span>
+            <Button
+              type="button"
+              color="alternative"
+              size="sm"
+              class="!p-2 shrink-0"
+              aria-label="Display settings"
+              data-testid="editor-display-settings-open"
+              onclick={() => (editorSettingsOpen = true)}
+            >
+              <Cog class="h-5 w-5" aria-hidden="true" />
+            </Button>
+          </div>
+          <LayoutMenuSelect onExport={exportLayout} onImport={openLayoutFilePicker} />
+          <input
+            bind:this={layoutFileInput}
+            type="file"
+            accept="application/json,.json"
+            class="hidden"
+            aria-hidden="true"
+            tabindex={-1}
+            onchange={onLayoutFileSelected}
+          />
+        {/if}
       </div>
-      {#if editorOpen}
-        <DashboardControls />
-      {/if}
       {#if peerUiBaseUrl}
         <div class="flex flex-col items-end">
           <span class={headerLabelBandSpacerClass} aria-hidden="true"></span>
@@ -124,7 +206,7 @@
         <div
           role="toolbar"
           aria-label="Dashboard mode"
-          class="flex flex-wrap items-end {editorOpen ? 'gap-3' : 'gap-1'}"
+          class="flex flex-wrap items-end gap-1"
         >
           {#if editorOpen}
             <Button
@@ -204,6 +286,8 @@
   </div>
 </header>
 
+<EditorSettingsModal bind:open={editorSettingsOpen} />
+
 <Modal bind:open={resetConfirmOpen} title="Reset dashboard layout?" size="md" class="z-[100]">
   {#snippet children()}
     <p class="text-base leading-relaxed text-gray-600 dark:text-gray-400">
@@ -214,6 +298,21 @@
     <div class="flex w-full flex-wrap justify-end gap-2">
       <Button type="button" color="alternative" onclick={() => (resetConfirmOpen = false)}>Cancel</Button>
       <Button type="button" color="danger" onclick={confirmResetBaseline}>Yes</Button>
+    </div>
+  {/snippet}
+</Modal>
+
+<Modal bind:open={importConfirmOpen} title="Replace entire dashboard layout?" size="md" class="z-[100]">
+  {#snippet children()}
+    <p class="text-base leading-relaxed text-gray-600 dark:text-gray-400">
+      Importing a layout file replaces the current dashboard. This cannot be undone except with Undo in the layout
+      editor.
+    </p>
+  {/snippet}
+  {#snippet footer()}
+    <div class="flex w-full flex-wrap justify-end gap-2">
+      <Button type="button" color="alternative" onclick={cancelImportLayout}>Cancel</Button>
+      <Button type="button" color="brand" onclick={confirmImportLayout}>Replace layout</Button>
     </div>
   {/snippet}
 </Modal>

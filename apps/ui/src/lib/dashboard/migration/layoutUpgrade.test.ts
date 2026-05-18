@@ -5,8 +5,11 @@ import {
   ensureLayoutV3,
   layoutGraphHasDuplicateIds,
   layoutNestedGroupDepthExceeded,
+  tabGroupWrapperId,
+  wrapLegacyTabControlTile,
 } from "./layoutUpgrade";
 import type { DashboardLayout, DashboardLayoutV3, RootLayoutItem } from "../types";
+import { isDashboardGroupNode } from "../types";
 
 describe("layoutUpgrade v3", () => {
   it("ensureLayoutV3 dedupes duplicate root tile ids", () => {
@@ -208,6 +211,387 @@ describe("layoutUpgrade v3", () => {
       expect(inner && "kind" in inner && inner.kind === "group").toBe(true);
       if (inner && "kind" in inner && inner.kind === "group") {
         expect(inner.children.length).toBe(1);
+      }
+    }
+  });
+
+  it("ensureLayoutV3 normalizes tile tabs on nested tab-control groups", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "outer",
+          showBorder: true,
+          children: [
+            {
+              kind: "group",
+              id: "tabs",
+              showBorder: true,
+              hostControl: "tab-control",
+              hostState: { activeChildId: "t1" },
+              children: [
+                {
+                  id: "t1",
+                  tabLabel: "CPU",
+                  pluginId: "perf.cpu",
+                  hostControl: "single-panel",
+                  displayMode: "full",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const outer = out.items[0];
+    expect(outer?.kind).toBe("group");
+    if (outer?.kind === "group") {
+      const tabs = outer.children[0];
+      expect(tabs).toMatchObject({
+        kind: "group",
+        hostControl: "tab-control",
+        children: [
+          {
+            kind: "group",
+            id: "t1",
+            children: [{ id: "t1", pluginId: "perf.cpu" }],
+          },
+        ],
+      });
+    }
+  });
+
+  it("ensureLayoutV3 normalizes nested tab-control inside a container group", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "outer",
+          showBorder: true,
+          children: [
+            {
+              kind: "group",
+              id: "tabs",
+              showBorder: true,
+              hostControl: "tab-control",
+              hostState: { activeChildId: "pane1" },
+              children: [
+                {
+                  kind: "group",
+                  id: "pane1",
+                  showBorder: true,
+                  tabLabel: "Tab 1",
+                  grid: { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const outer = out.items[0];
+    expect(outer?.kind).toBe("group");
+    if (outer?.kind === "group") {
+      const tabs = outer.children[0];
+      expect(tabs).toMatchObject({ kind: "group", hostControl: "tab-control" });
+      if (isDashboardGroupNode(tabs)) {
+        const pane = tabs.children[0];
+        expect(isDashboardGroupNode(pane) && pane.grid).toBeUndefined();
+      }
+    }
+  });
+
+  it("ensureLayoutV3 wraps tile children of nested vertical-stack groups in pane groups", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "outer",
+          showBorder: true,
+          children: [
+            {
+              kind: "group",
+              id: "stack",
+              showBorder: true,
+              hostControl: "vertical-stack",
+              children: [
+                {
+                  id: "tile-1",
+                  tabLabel: "CPU",
+                  pluginId: "perf.cpu",
+                  hostControl: "single-panel",
+                  displayMode: "full",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const outer = out.items[0];
+    expect(outer?.kind).toBe("group");
+    if (outer?.kind === "group") {
+      const stack = outer.children[0];
+      expect(stack).toMatchObject({ kind: "group", hostControl: "vertical-stack" });
+      if (isDashboardGroupNode(stack)) {
+        const pane = stack.children[0];
+        expect(pane).toMatchObject({ kind: "group", tabLabel: "CPU" });
+      }
+    }
+  });
+
+  it("ensureLayoutV3 strips vestigial strip grid from stack section children", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "stack",
+          showBorder: true,
+          hostControl: "vertical-stack",
+          children: [
+            {
+              kind: "group",
+              id: "pane1",
+              showBorder: true,
+              tabLabel: "Section 1",
+              children: [],
+            },
+            {
+              kind: "group",
+              id: "pane2",
+              showBorder: true,
+              tabLabel: "Section 2",
+              grid: { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+              children: [],
+            },
+          ],
+        },
+      ],
+    });
+    const stack = out.items[0];
+    expect(stack?.kind).toBe("group");
+    if (isDashboardGroupNode(stack)) {
+      const pane2 = stack.children[1];
+      expect(isDashboardGroupNode(pane2) && pane2.grid).toBeUndefined();
+    }
+  });
+
+  it("ensureLayoutV3 strips vestigial strip grid from tab pane children", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "tabs",
+          showBorder: true,
+          hostControl: "tab-control",
+          hostState: { activeChildId: "pane1" },
+          children: [
+            {
+              kind: "group",
+              id: "pane1",
+              showBorder: true,
+              tabLabel: "Tab 1",
+              children: [],
+            },
+            {
+              kind: "group",
+              id: "pane2",
+              showBorder: true,
+              tabLabel: "Tab 2",
+              grid: { col: 1, row: 0, colSpan: 1, rowSpan: 1 },
+              children: [],
+            },
+          ],
+        },
+      ],
+    });
+    const tabs = out.items[0];
+    expect(tabs?.kind).toBe("group");
+    if (isDashboardGroupNode(tabs)) {
+      expect(tabs.children[1]).toMatchObject({ kind: "group", id: "pane2", tabLabel: "Tab 2" });
+      const pane2 = tabs.children[1];
+      expect(isDashboardGroupNode(pane2) && pane2.grid).toBeUndefined();
+    }
+  });
+
+  it("ensureLayoutV3 wraps tile children of tab-control groups in pane groups", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "tabs",
+          showBorder: true,
+          hostControl: "tab-control",
+          hostState: { activeChildId: "t1" },
+          children: [
+            {
+              id: "t1",
+              tabLabel: "CPU",
+              pluginId: "perf.cpu",
+              hostControl: "single-panel",
+              displayMode: "full",
+            },
+          ],
+        },
+      ],
+    });
+    const tabs = out.items[0];
+    expect(tabs?.kind).toBe("group");
+    if (tabs?.kind === "group") {
+      expect(tabs.children[0]).toMatchObject({
+        kind: "group",
+        id: "t1",
+        tabLabel: "CPU",
+        children: [{ id: "t1", pluginId: "perf.cpu", hostControl: "single-panel" }],
+      });
+    }
+  });
+
+  it("wrapLegacyTabControlTile produces tab group with single-panel child", () => {
+    const wrapped = wrapLegacyTabControlTile({
+      id: "legacy-tab",
+      pluginId: "perf.cpu",
+      hostControl: "tab-control",
+      displayMode: "full",
+      grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+    });
+    expect(wrapped).toMatchObject({
+      kind: "group",
+      id: tabGroupWrapperId("legacy-tab"),
+      hostControl: "tab-control",
+      hostState: { activeChildId: "legacy-tab" },
+      grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+    });
+    const pane = wrapped.children[0];
+    expect(pane).toMatchObject({
+      kind: "group",
+      id: "legacy-tab",
+      tabLabel: "perf.cpu",
+      children: [
+        {
+          id: "legacy-tab",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "full",
+          grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+        },
+      ],
+    });
+  });
+
+  it("ensureLayoutV3 wraps legacy root tile tab-control into tab group", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "tile",
+          id: "legacy-tab",
+          pluginId: "perf.cpu",
+          hostControl: "tab-control",
+          displayMode: "full",
+          grid: { col: 0, row: 0, colSpan: 8, rowSpan: 1 },
+        },
+      ],
+    });
+    expect(out.items).toHaveLength(1);
+    const g = out.items[0];
+    expect(g?.kind).toBe("group");
+    if (g?.kind === "group") {
+      expect(g.id).toBe(tabGroupWrapperId("legacy-tab"));
+      expect(g.hostControl).toBe("tab-control");
+      expect(g.hostState?.activeChildId).toBe("legacy-tab");
+      expect(g.children[0]).toMatchObject({
+        kind: "group",
+        id: "legacy-tab",
+        children: [{ id: "legacy-tab", hostControl: "single-panel", pluginId: "perf.cpu" }],
+      });
+    }
+  });
+
+  it("ensureLayoutV3 migrates legacy tab-control inside nested group children", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "outer",
+          showBorder: true,
+          children: [
+            {
+              kind: "group",
+              id: "inner",
+              showBorder: true,
+              children: [
+                {
+                  id: "deep-tab",
+                  pluginId: "perf.cpu",
+                  hostControl: "tab-control",
+                  displayMode: "full",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const outer = out.items[0];
+    expect(outer?.kind).toBe("group");
+    if (outer?.kind === "group") {
+      const inner = outer.children[0];
+      expect(inner && "kind" in inner && inner.kind === "group").toBe(true);
+      if (inner && "kind" in inner && inner.kind === "group") {
+        const tabWrap = inner.children[0];
+        expect(tabWrap && "kind" in tabWrap && tabWrap.kind === "group").toBe(true);
+        if (tabWrap && "kind" in tabWrap && tabWrap.kind === "group") {
+          expect(tabWrap.hostControl).toBe("tab-control");
+          expect(tabWrap.children[0]).toMatchObject({
+            kind: "group",
+            id: "deep-tab",
+            children: [{ id: "deep-tab", hostControl: "single-panel" }],
+          });
+        }
+      }
+    }
+  });
+
+  it("ensureLayoutV3 wraps legacy tab-control tile inside a group", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "outer",
+          showBorder: true,
+          children: [
+            {
+              id: "inner-tab",
+              pluginId: "dhcp.pools",
+              hostControl: "tab-control",
+              displayMode: "compact",
+            },
+          ],
+        },
+      ],
+    });
+    const outer = out.items[0];
+    expect(outer?.kind).toBe("group");
+    if (outer?.kind === "group") {
+      const child = outer.children[0];
+      expect(child && "kind" in child && child.kind === "group").toBe(true);
+      if (child && "kind" in child && child.kind === "group") {
+        expect(child.hostControl).toBe("tab-control");
+        expect(child.children[0]).toMatchObject({
+          kind: "group",
+          id: "inner-tab",
+          children: [{ id: "inner-tab", hostControl: "single-panel" }],
+        });
       }
     }
   });

@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { attachOperatorShellLifecycle } from "./appMount";
 import type { DashboardDataBootstrapHandlers } from "../dashboard/bootstrap/dashboardBootstrap";
-import { createFabricEventBus, type FabricEventBus } from "../dashboard/bus/eventBus";
+import { attachFabricBusKernel } from "../dashboard/fabricBusKernel";
+import type { FabricEventBus } from "../dashboard/eventBus";
 import { createLayoutStore } from "../dashboard/layout/layoutStore";
 import { DataGateway } from "../gateway/dataGateway";
 import * as themeStorage from "../theme/themeStorage";
@@ -38,7 +39,9 @@ describe("attachOperatorShellLifecycle", () => {
     vi.spyOn(window, "matchMedia").mockReturnValue(mm as unknown as MediaQueryList);
 
     const gateway = new DataGateway("");
-    const bus = createFabricEventBus(gateway);
+    vi.spyOn(gateway, "subscribeFabricEvents").mockReturnValue(() => {});
+    const fabricBusKernel = attachFabricBusKernel({ gateway });
+    const bus = fabricBusKernel.bus;
     const ls = createLayoutStore({ gateway });
     const syncRoute = vi.fn();
     const flushSpy = vi.spyOn(ls, "flush").mockResolvedValue(undefined);
@@ -74,7 +77,7 @@ describe("attachOperatorShellLifecycle", () => {
     const teardown = attachOperatorShellLifecycle({
       syncRouteFromHash: syncRoute,
       gateway,
-      fabricEventBus: bus,
+      fabricBusKernel,
       layoutStore: ls,
       setPlugins,
     });
@@ -99,6 +102,7 @@ describe("attachOperatorShellLifecycle", () => {
     teardown();
 
     expect(stopBootstrap).toHaveBeenCalledOnce();
+    expect(fabricBusKernel.bus).toBeDefined();
     expect(removeSpy.mock.calls.some((c) => c[0] === "hashchange")).toBe(true);
     expect(removeSpy.mock.calls.some((c) => c[0] === "beforeunload")).toBe(true);
     expect(mm.removeEventListener).toHaveBeenCalled();

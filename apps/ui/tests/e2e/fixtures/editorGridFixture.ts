@@ -7,6 +7,30 @@ import type { DashboardLayout, DashboardLayoutV3 } from "../../../src/lib/dashbo
  * to pack (8+4+4+4) and a full-width DHCP pools row, so localStorage is never ambiguous vs dev.
  */
 /** v3 nested groups for read-mode / placement e2e (GET layout stubbed 404; hydrate from localStorage). */
+/** Root tab-control group for palette-on-tab-strip e2e (H3). */
+export const E2E_TAB_GROUP_V3_LAYOUT: DashboardLayoutV3 = {
+  version: 3,
+  items: [
+    {
+      kind: "group",
+      id: "tabs-e2e",
+      showBorder: true,
+      hostControl: "tab-control",
+      hostState: { activeChildId: "tab-cpu" },
+      grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 },
+      children: [
+        {
+          kind: "group",
+          id: "tab-cpu",
+          showBorder: true,
+          tabLabel: "CPU",
+          children: [],
+        },
+      ],
+    },
+  ],
+};
+
 export const E2E_NESTED_V3_LAYOUT: DashboardLayoutV3 = {
   version: 3,
   items: [
@@ -134,6 +158,18 @@ export const E2E_EDITOR_LAYOUT_WITH_THROWING: DashboardLayout = {
 export async function seedEditorLayoutInLocalStorageBeforeNavigation(page: Page): Promise<void> {
   const key = "kea-fabric-dashboard-layout";
   const value = JSON.stringify(E2E_EDITOR_GRID_LAYOUT);
+  await page.addInitScript(
+    (args: { key: string; value: string }) => {
+      localStorage.setItem(args.key, args.value);
+    },
+    { key, value },
+  );
+}
+
+/** v3 tab-control group layout for tab-strip palette drop e2e. */
+export async function seedTabGroupLayoutInLocalStorageBeforeNavigation(page: Page): Promise<void> {
+  const key = "kea-fabric-dashboard-layout";
+  const value = JSON.stringify(E2E_TAB_GROUP_V3_LAYOUT);
   await page.addInitScript(
     (args: { key: string; value: string }) => {
       localStorage.setItem(args.key, args.value);

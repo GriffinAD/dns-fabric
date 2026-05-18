@@ -1,7 +1,7 @@
 import type { PluginEntry } from "../api/types";
 import type { DataGateway } from "../gateway/dataGateway";
 import { mountDashboardGatewaySideEffects } from "../dashboard/bootstrap/dashboardBootstrap";
-import type { FabricEventBus } from "../dashboard/bus/eventBus";
+import type { FabricBusKernel } from "../dashboard/fabricBusKernel";
 import { createLayoutStore } from "../dashboard/layout/layoutStore";
 import { loadThemePreferences, resyncDocumentThemeFromStorage } from "../theme/themeStorage";
 
@@ -10,7 +10,7 @@ type LayoutStore = ReturnType<typeof createLayoutStore>;
 export type OperatorShellMountInput = {
   syncRouteFromHash: () => void;
   gateway: DataGateway;
-  fabricEventBus: FabricEventBus;
+  fabricBusKernel: FabricBusKernel;
   layoutStore: LayoutStore;
   setPlugins: (items: PluginEntry[]) => void;
 };
@@ -35,7 +35,7 @@ export function attachOperatorShellLifecycle(deps: OperatorShellMountInput): () 
   };
   mq.addEventListener("change", onColorScheme);
 
-  const stopData = mountDashboardGatewaySideEffects(deps.gateway, deps.fabricEventBus, {
+  const stopData = mountDashboardGatewaySideEffects(deps.gateway, deps.fabricBusKernel.bus, {
     onPluginsLoaded: deps.setPlugins,
     onPluginListError: (message) => deps.layoutStore.loadError.set(message),
     onServerLayoutApplied: (nextLayout) => deps.layoutStore.acceptServerLayout(nextLayout),
@@ -47,5 +47,6 @@ export function attachOperatorShellLifecycle(deps: OperatorShellMountInput): () 
     window.removeEventListener("beforeunload", onBeforeUnload);
     mq.removeEventListener("change", onColorScheme);
     stopData();
+    deps.fabricBusKernel.dispose();
   };
 }

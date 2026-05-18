@@ -12,6 +12,8 @@ import {
   swapRootItemGridPlacements,
   swapRootSingleRowTilePlacements,
 } from "../grid/gridPlacement";
+import { resolveHostPaletteChildDrop } from "../groups/hostGroupPaneDrop";
+import { findGroupByIdInItems } from "../layout/layoutTree";
 import type { DashboardLayout, RootLayoutItem } from "../types";
 
 import {
@@ -37,7 +39,14 @@ export type DashboardDropContext = {
   onAddTile?: (pluginId: string, insertBeforeIndex?: number) => void;
   onAddGroup?: (insertBeforeIndex?: number) => void;
   onAddTileToGroup?: (groupId: string, pluginId: string) => void;
+  /** Palette drop onto a `hostControl: tab-control` strip (append tab via `addTabChild`). */
+  onAddTabToGroup?: (groupId: string, pluginId: string) => void;
+  onAddStackToGroup?: (groupId: string, pluginId: string) => void;
+  onAddTabGroup?: (insertBeforeIndex?: number) => void;
+  onAddStackGroup?: (insertBeforeIndex?: number) => void;
   onAddGroupToGroup?: (parentGroupId: string) => void;
+  onAddTabGroupToGroup?: (parentGroupId: string) => void;
+  onAddStackGroupToGroup?: (parentGroupId: string) => void;
 };
 
 const ROOT_TILE_CENTER_BAND_RATIO = 0.3;
@@ -284,12 +293,24 @@ function rootInsertIndex(dndRoot: DashboardDndListItem[], slot: ParsedDropSlot, 
   return dropPosition === "before" ? idx : idx + 1;
 }
 
-type RootSurfaceSlotWithId = Extract<
+type RootSurfaceSlot = Extract<
   ParsedDropSlot,
-  { kind: "root" } | { kind: "rootRowEnd" } | { kind: "rootGapAfter" }
+  { kind: "root" | "rootRowEnd" | "rootGapAfter" | "rootEmpty" | "rootCanvas" | "rootAppend" }
+>;
+type GroupSurfaceSlot = Extract<
+  ParsedDropSlot,
+  {
+    kind:
+      | "groupChild"
+      | "groupEmpty"
+      | "groupCanvas"
+      | "groupGapAfter"
+      | "groupAppend"
+      | "groupTabs";
+  }
 >;
 
-function isRootSurfaceSlot(slot: ParsedDropSlot): boolean {
+function isRootSurfaceSlot(slot: ParsedDropSlot): slot is RootSurfaceSlot {
   return (
     slot.kind === "root" ||
     slot.kind === "rootRowEnd" ||
@@ -299,19 +320,6 @@ function isRootSurfaceSlot(slot: ParsedDropSlot): boolean {
     slot.kind === "rootAppend"
   );
 }
-
-function isRootSurfaceSlotWithId(slot: ParsedDropSlot): slot is RootSurfaceSlotWithId {
-  return slot.kind === "root" || slot.kind === "rootRowEnd" || slot.kind === "rootGapAfter";
-}
-
-type GroupSurfaceSlot = Extract<
-  ParsedDropSlot,
-  | { kind: "groupChild" }
-  | { kind: "groupEmpty" }
-  | { kind: "groupCanvas" }
-  | { kind: "groupGapAfter" }
-  | { kind: "groupAppend" }
->;
 
 function isGroupSurfaceSlot(slot: ParsedDropSlot): slot is GroupSurfaceSlot {
   return (
@@ -325,6 +333,25 @@ function isGroupSurfaceSlot(slot: ParsedDropSlot): slot is GroupSurfaceSlot {
 
 function isGroupEndSlot(slot: ParsedDropSlot): boolean {
   return slot.kind === "groupEmpty" || slot.kind === "groupCanvas" || slot.kind === "groupAppend";
+}
+
+function isTabGroupSurfaceSlot(slot: ParsedDropSlot): slot is GroupSurfaceSlot {
+  return (
+    slot.kind === "groupChild" ||
+    slot.kind === "groupEmpty" ||
+    slot.kind === "groupCanvas" ||
+    slot.kind === "groupGapAfter" ||
+    slot.kind === "groupAppend" ||
+    slot.kind === "groupTabs"
+  );
+}
+
+function isTabControlGroupInLayout(items: RootLayoutItem[], groupId: string): boolean {
+  return findGroupByIdInItems(items, groupId)?.hostControl === "tab-control";
+}
+
+function isVerticalStackGroupInLayout(items: RootLayoutItem[], groupId: string): boolean {
+  return findGroupByIdInItems(items, groupId)?.hostControl === "vertical-stack";
 }
 
 /** Reorder within one group list using canvas-style bands on a child tile. */
@@ -385,14 +412,122 @@ export function applyDashboardDrop(
     ctx.onAddGroup?.(rootInsertIndex(ctx.dndRoot, slot, rootPos));
     return {};
   }
-
-  // Palette → group
-  if (drag.k === "pp" && isGroupSurfaceSlot(slot)) {
-    ctx.onAddTileToGroup?.(slot.groupId, drag.i);
+  if (drag.k === "pgt" && isRootSurfaceSlot(slot)) {
+    ctx.onAddTabGroup?.(rootInsertIndex(ctx.dndRoot, slot, rootPos));
     return {};
+  }
+  if (drag.k === "pgs" && isRootSurfaceSlot(slot)) {
+    ctx.onAddStackGroup?.(rootInsertIndex(ctx.dndRoot, slot, rootPos));
+    return {};
+  }
+
+  // Palette → group (tab/stack strips may fill an empty pane or append a slot)
+  if (drag.k === "pp" && isTabGroupSurfaceSlot(slot)) {
+    if (
+      isTabControlGroupInLayout(ctx.layoutItems, slot.groupId) &&
+      slot.kind === "groupChild"
+    ) {
+      const action = resolveHostPaletteChildDrop(ctx.layoutItems, slot.groupId, slot.childId);
+      if (action === "fill-pane") {
+        ctx.onAddTileToGroup?.(slot.childId, drag.i);
+      } else {
+        ctx.onAddTabToGroup?.(slot.groupId, drag.i);
+      }
+    } else if (isTabControlGroupInLayout(ctx.layoutItems, slot.groupId)) {
+      ctx.onAddTabToGroup?.(slot.groupId, drag.i);
+    } else if (
+      isVerticalStackGroupInLayout(ctx.layoutItems, slot.groupId) &&
+      slot.kind === "groupChild"
+    ) {
+      const action = resolveHostPaletteChildDrop(ctx.layoutItems, slot.groupId, slot.childId);
+      if (action === "fill-pane") {
+        ctx.onAddTileToGroup?.(slot.childId, drag.i);
+      } else {
+        ctx.onAddStackToGroup?.(slot.groupId, drag.i);
+      }
+    } else if (isVerticalStackGroupInLayout(ctx.layoutItems, slot.groupId)) {
+      ctx.onAddStackToGroup?.(slot.groupId, drag.i);
+    } else if (isGroupSurfaceSlot(slot)) {
+      ctx.onAddTileToGroup?.(slot.groupId, drag.i);
+    }
+    return {};
+  }
+  if (drag.k === "pg" && isTabGroupSurfaceSlot(slot)) {
+    if (
+      isTabControlGroupInLayout(ctx.layoutItems, slot.groupId) &&
+      slot.kind === "groupChild"
+    ) {
+      const action = resolveHostPaletteChildDrop(ctx.layoutItems, slot.groupId, slot.childId);
+      if (action === "fill-pane") {
+        ctx.onAddGroupToGroup?.(slot.childId);
+        return {};
+      }
+    }
+    if (
+      isVerticalStackGroupInLayout(ctx.layoutItems, slot.groupId) &&
+      slot.kind === "groupChild"
+    ) {
+      const action = resolveHostPaletteChildDrop(ctx.layoutItems, slot.groupId, slot.childId);
+      if (action === "fill-pane") {
+        ctx.onAddGroupToGroup?.(slot.childId);
+        return {};
+      }
+    }
   }
   if (drag.k === "pg" && isGroupSurfaceSlot(slot)) {
     ctx.onAddGroupToGroup?.(slot.groupId);
+    return {};
+  }
+  if (drag.k === "pgt" && isTabGroupSurfaceSlot(slot)) {
+    if (
+      isTabControlGroupInLayout(ctx.layoutItems, slot.groupId) &&
+      slot.kind === "groupChild"
+    ) {
+      const action = resolveHostPaletteChildDrop(ctx.layoutItems, slot.groupId, slot.childId);
+      if (action === "fill-pane") {
+        ctx.onAddTabGroupToGroup?.(slot.childId);
+        return {};
+      }
+    }
+    if (
+      isVerticalStackGroupInLayout(ctx.layoutItems, slot.groupId) &&
+      slot.kind === "groupChild"
+    ) {
+      const action = resolveHostPaletteChildDrop(ctx.layoutItems, slot.groupId, slot.childId);
+      if (action === "fill-pane") {
+        ctx.onAddTabGroupToGroup?.(slot.childId);
+        return {};
+      }
+    }
+  }
+  if (drag.k === "pgt" && isGroupSurfaceSlot(slot)) {
+    ctx.onAddTabGroupToGroup?.(slot.groupId);
+    return {};
+  }
+  if (drag.k === "pgs" && isTabGroupSurfaceSlot(slot)) {
+    if (
+      isTabControlGroupInLayout(ctx.layoutItems, slot.groupId) &&
+      slot.kind === "groupChild"
+    ) {
+      const action = resolveHostPaletteChildDrop(ctx.layoutItems, slot.groupId, slot.childId);
+      if (action === "fill-pane") {
+        ctx.onAddStackGroupToGroup?.(slot.childId);
+        return {};
+      }
+    }
+    if (
+      isVerticalStackGroupInLayout(ctx.layoutItems, slot.groupId) &&
+      slot.kind === "groupChild"
+    ) {
+      const action = resolveHostPaletteChildDrop(ctx.layoutItems, slot.groupId, slot.childId);
+      if (action === "fill-pane") {
+        ctx.onAddStackGroupToGroup?.(slot.childId);
+        return {};
+      }
+    }
+  }
+  if (drag.k === "pgs" && isGroupSurfaceSlot(slot)) {
+    ctx.onAddStackGroupToGroup?.(slot.groupId);
     return {};
   }
 
@@ -419,7 +554,7 @@ export function applyDashboardDrop(
       const anchorId =
         slot.kind === "rootEmpty" || slot.kind === "rootCanvas" || slot.kind === "rootAppend"
           ? (ctx.dndRoot[ctx.dndRoot.length - 1]?.id ?? drag.i)
-          : isRootSurfaceSlotWithId(slot)
+          : slot.kind === "root" || slot.kind === "rootRowEnd" || slot.kind === "rootGapAfter"
             ? slot.id
             : /* v8 ignore next */ drag.i;
       const tileBand =
@@ -463,7 +598,7 @@ export function applyDashboardDrop(
           tileBand && tileBand !== "center" ? tileBand : pos;
         nextG = insertRelativeTo(gList, removed, slot.childId, listPos);
       } else {
-        /* v8 ignore next 2 */
+        /* c8 ignore next 2 -- exhaustive isGroupSurfaceSlot arms handled above */
         nextG = gList;
       }
       const nextBy = { ...ctx.dndByGroup, [gid]: nextG };
@@ -492,9 +627,7 @@ export function applyDashboardDrop(
       const anchorId =
         slot.kind === "rootEmpty" || slot.kind === "rootCanvas" || slot.kind === "rootAppend"
           ? (ctx.dndRoot[ctx.dndRoot.length - 1]?.id ?? removed.id)
-          : isRootSurfaceSlotWithId(slot)
-            ? slot.id
-            : /* v8 ignore next */ removed.id;
+          : slot.id;
       const tileBand =
         slot.kind === "root"
           ? resolveRootTileDropBand(state.targetElement, rootPos, ctx.pointerClient)
@@ -540,7 +673,7 @@ export function applyDashboardDrop(
             ctx.pointerClient,
           );
         } else {
-          /* v8 ignore next 2 */
+          /* c8 ignore next 2 -- exhaustive same-group group-surface arms handled above */
           return {};
         }
         const nextBy = { ...ctx.dndByGroup, [fromG]: dedupeById(nextTo) };
@@ -561,7 +694,7 @@ export function applyDashboardDrop(
           tileBand && tileBand !== "center" ? tileBand : pos;
         nextTarget = insertRelativeTo(toList, removed, slot.childId, listPos);
       } else {
-        /* v8 ignore next 2 */
+        /* c8 ignore next 2 -- exhaustive cross-group group-surface arms handled above */
         nextTarget = toList;
       }
       const nextBy = {
@@ -584,7 +717,7 @@ export function applyDashboardInvalidDrop(
 ): void {
   const drag = parseDragPayload(state.draggedItem) ?? (state.draggedItem as DashboardDragPayload);
   state.invalidDrop = false;
-  const isPaletteDrag = drag?.k === "pp" || drag?.k === "pg";
+  const isPaletteDrag = drag?.k === "pp" || drag?.k === "pg" || drag?.k === "pgt" || drag?.k === "pgs";
   const canvasContainers = new Set([ROOT_EMPTY_CONTAINER, ROOT_CANVAS_CONTAINER, ROOT_APPEND_CONTAINER]);
   if (
     !isPaletteDrag &&

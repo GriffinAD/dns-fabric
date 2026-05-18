@@ -109,10 +109,15 @@ describe("PiholeOperatorApp", () => {
     expect(screen.getByTestId("pihole-cp-theme-controls")).toBeTruthy();
     expect(screen.getByTestId("theme-appearance-toggle")).toBeTruthy();
 
+    expect(screen.queryByLabelText("Layout")).toBeNull();
+    expect(screen.queryByTestId("editor-display-settings-open")).toBeNull();
+
     fireEvent.click(screen.getByTestId("pihole-cp-layout-edit-toggle"));
     await waitFor(() => {
       expect(screen.getByTestId("layout-edit-palette-v2")).toBeTruthy();
     });
+    expect(screen.getByLabelText("Layout")).toBeTruthy();
+    expect(screen.getByTestId("editor-display-settings-open")).toBeTruthy();
     expect(screen.getByTestId("pihole-cp-sticky-chrome")).toBeTruthy();
     expect(screen.getByTestId("pihole-cp-layout-undo")).toBeTruthy();
     expect(screen.queryByTestId("dashboard-editor-toolbar")).toBeNull();
@@ -124,6 +129,8 @@ describe("PiholeOperatorApp", () => {
     await waitFor(() => {
       expect(screen.queryByTestId("layout-edit-palette-v2")).toBeNull();
       expect(screen.queryByTestId("pihole-cp-node-settings-panel")).toBeNull();
+      expect(screen.queryByLabelText("Layout")).toBeNull();
+      expect(screen.queryByTestId("editor-display-settings-open")).toBeNull();
     });
   });
 

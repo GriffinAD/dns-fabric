@@ -8,6 +8,7 @@ from kea_fabric.api.stub_mock_tables import MOCK_DISCOVERY_RECORD_COUNT
 
 _discovery_paused: bool = False
 _perf_tick: int = 0
+_dhcp_clients_revision: int = 0
 
 
 def get_perf_tick() -> int:
@@ -36,8 +37,16 @@ def next_perf_tick() -> int:
     return _perf_tick
 
 
+def next_dhcp_clients_revision() -> int:
+    """Monotonic revision for ``fabric.dhcp.clients.updated`` SSE payloads."""
+    global _dhcp_clients_revision
+    _dhcp_clients_revision += 1
+    return _dhcp_clients_revision
+
+
 def reset_stub_state() -> None:
     """Clear mutable stub state (tests)."""
-    global _discovery_paused, _perf_tick
+    global _discovery_paused, _dhcp_clients_revision, _perf_tick
     _discovery_paused = False
     _perf_tick = 0
+    _dhcp_clients_revision = 0

@@ -15,6 +15,7 @@ import {
   saveDashboardLayout,
   setLocalPersistBlockedStateForTest,
 } from "./layoutStorage";
+import { E2E_TAB_GROUP_V3_LAYOUT } from "../../../../tests/e2e/fixtures/editorGridFixture";
 import { initialDashboardLayout, mergeMissingDefaultPlugins } from "../persistence";
 import type { DashboardLayout, DashboardLayoutV1, DashboardLayoutV2, DashboardLayoutV3, DashboardTile } from "../types";
 import { isLayoutV2, isLayoutV3 } from "../types";
@@ -496,6 +497,12 @@ describe("localStorage persistence", () => {
     const merged = mergeMissingDefaultPlugins(full);
     expect(merged).toBe(full);
     expect(countAllTilesV2(merged)).toBe(countAllTilesV2(DEFAULT_DASHBOARD_LAYOUT));
+  });
+
+  it("initialDashboardLayout keeps tab-control root from e2e tab fixture", () => {
+    store["kea-fabric-dashboard-layout"] = JSON.stringify(E2E_TAB_GROUP_V3_LAYOUT);
+    const init = initialDashboardLayout();
+    expect(init.items.some((i) => i.kind === "group" && i.id === "tabs-e2e")).toBe(true);
   });
 
   it("initialDashboardLayout merges in missing plugins when storage has partial layout", () => {

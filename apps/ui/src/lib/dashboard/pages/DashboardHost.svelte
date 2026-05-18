@@ -4,6 +4,7 @@
 
   import type { PluginEntry } from "../../api/types";
   import { DataGateway } from "../../gateway/dataGateway";
+  import type { FabricEventBus } from "../eventBus";
   import PluginPalette from "../../palette/PluginPalette.svelte";
   import {
     gridAreaStyle,
@@ -15,22 +16,34 @@
     packGroupChildrenRowWrapInOrder,
     reorderRootLayoutItemsPreservingSlotOrigins,
   } from "../grid/gridPlacement";
+  import TabGroupHost from "../groups/TabGroupHost.svelte";
+  import VerticalStackGroupHost from "../groups/VerticalStackGroupHost.svelte";
+  import { addStackChild } from "../groups/verticalStackGroupOps";
+  import { addTabChild } from "../groups/tabGroupOps";
   import DashboardReadNestedHost from "./DashboardReadNestedHost.svelte";
   import GroupReadNoWrap from "../tiles/GroupReadNoWrap.svelte";
   import PluginTileMount from "../tiles/PluginTileMount.svelte";
+  import DashboardTileShell from "../DashboardTileShell.svelte";
   import TileEditChrome from "../tiles/TileEditChrome.svelte";
   import { buildRootLayoutFromDnd, type DashboardDndListItem } from "../grid/groupDndFinalize";
   import DashboardEditRootGrid from "./DashboardEditRootGrid.svelte";
   import {
     clearEditorDragHover,
+    DND_CONTAINER_ATTR,
     getLastEditorDragClient,
     syncEditorDragHoverFromPointer,
   } from "../interactions/dashboardEditorDragHover";
+  import { attachEditorPointerTracking } from "../interactions/editorPointerTracking";
   import { applyDashboardDrop, applyDashboardInvalidDrop } from "../interactions/dashboardSveltedndApply";
   import type { DashboardDropContext } from "../interactions/dashboardSveltedndApply";
   import { parseDragPayload, parseDropContainer, type DashboardDragPayload } from "../interactions/dashboardSveltedndTypes";
   import { editorGroupInPlay, editorTileInPlay } from "../interactions/editorSelection";
-  import { dedupeById } from "../layout/layoutTree";
+  import {
+    DASHBOARD_GROUP_PANEL_SHELL,
+    DASHBOARD_HOST_CONTROL_GROUP_SHELL,
+    DASHBOARD_TAB_CONTROL_GROUP_SHELL,
+  } from "../interactions/editorChrome";
+  import { dedupeById, findGroupByIdInItems, mapLayoutReplaceGroupById } from "../layout/layoutTree";
   import { noWrapReadRowGroups } from "../layout/readModeLayout";
   import { stripScrollportObserve } from "../layout/stripWidth";
   import type {
@@ -48,13 +61,18 @@
   let {
     layout,
     gateway,
+    bus,
     onEditTile,
     onEditGroup,
     editLayout = false,
     plugins = [] as PluginEntry[],
     onAddTile,
     onAddGroup,
+    onAddTabGroup,
+    onAddStackGroup,
     onAddGroupToGroup,
+    onAddTabGroupToGroup,
+    onAddStackGroupToGroup,
     onAddTileToGroup,
     onLayoutStructureChange,
     onPerfTileGridHint,
@@ -64,6 +82,7 @@
   }: {
     layout: DashboardLayoutV3;
     gateway: DataGateway;
+    bus: FabricEventBus;
     onEditTile?: (tile: DashboardTile) => void;
     onEditGroup?: (g: DashboardGroup) => void;
     editLayout?: boolean;
@@ -71,8 +90,12 @@
     onAddTile?: (pluginId: string, insertBeforeIndex?: number) => void;
     /** Add a new empty container on the root grid at index, or append when index is omitted. */
     onAddGroup?: (insertBeforeIndex?: number) => void;
+    onAddTabGroup?: (insertBeforeIndex?: number) => void;
+    onAddStackGroup?: (insertBeforeIndex?: number) => void;
     /** Add a new empty nested container inside an existing group (nowrap / nested-capable parents only). */
     onAddGroupToGroup?: (parentGroupId: string) => void;
+    onAddTabGroupToGroup?: (parentGroupId: string) => void;
+    onAddStackGroupToGroup?: (parentGroupId: string) => void;
     /** Drop a plugin from the palette onto a container in edit mode. */
     onAddTileToGroup?: (groupId: string, pluginId: string) => void;
     onLayoutStructureChange?: (next: DashboardLayout) => void;
@@ -161,41 +184,53 @@
       pointerClient = undefined;
       return;
     }
-    const onMove = (e: PointerEvent) => {
-      pointerClient = { x: e.clientX, y: e.clientY };
-      syncEditorDragHoverFromPointer(e.clientX, e.clientY, dndRoot);
-    };
-    document.addEventListener("pointermove", onMove, { passive: true });
-    return () => document.removeEventListener("pointermove", onMove);
+    return attachEditorPointerTracking(
+      true,
+      {
+        onPointer: (pt) => {
+          pointerClient = pt;
+        },
+        onDragOver: (e) => {
+          const drag = parseDragPayload(dndState.draggedItem);
+          if (e.dataTransfer && (drag?.k === "pp" || drag?.k === "pg" || drag?.k === "pgt" || drag?.k === "pgs")) {
+            e.dataTransfer.dropEffect = dndState.invalidDrop ? "none" : "copy";
+          }
+        },
+        onDragEnd: () => clearEditorDragHover(),
+      },
+      { getDndRoot: () => dndRoot },
+    );
   });
 
-  $effect(() => {
-    if (!editorPointerDndActive) {
-      clearEditorDragHover();
-      return;
+  function onAddTabToGroup(groupId: string, pluginId: string) {
+    const group = findGroupByIdInItems(layout.items, groupId);
+    if (!group || group.hostControl !== "tab-control") return;
+    const tabLabel = plugins.find((p) => p.id === pluginId)?.name ?? pluginId;
+    try {
+      const next = addTabChild(group, { pluginId, tabLabel });
+      onLayoutStructureChange?.({
+        version: 3,
+        items: mapLayoutReplaceGroupById(layout.items, groupId, next),
+      });
+    } catch {
+      /* max tabs */
     }
-    const onDragOver = (e: DragEvent) => {
-      if (e.clientX === 0 && e.clientY === 0) return;
-      pointerClient = { x: e.clientX, y: e.clientY };
-      const overGrid =
-        document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-dashboard-editor="grid-chrome"]') !=
-        null;
-      if (overGrid) e.preventDefault();
-      syncEditorDragHoverFromPointer(e.clientX, e.clientY, dndRoot);
-      const drag = parseDragPayload(dndState.draggedItem);
-      if (e.dataTransfer && (drag?.k === "pp" || drag?.k === "pg")) {
-        e.dataTransfer.dropEffect = dndState.invalidDrop ? "none" : "copy";
-      }
-    };
-    const onDragEnd = () => clearEditorDragHover();
-    document.addEventListener("dragover", onDragOver);
-    document.addEventListener("dragend", onDragEnd, true);
-    return () => {
-      document.removeEventListener("dragover", onDragOver);
-      document.removeEventListener("dragend", onDragEnd, true);
-      clearEditorDragHover();
-    };
-  });
+  }
+
+  function onAddStackToGroup(groupId: string, pluginId: string) {
+    const group = findGroupByIdInItems(layout.items, groupId);
+    if (!group || group.hostControl !== "vertical-stack") return;
+    const sectionLabel = plugins.find((p) => p.id === pluginId)?.name ?? pluginId;
+    try {
+      const next = addStackChild(group, { pluginId, sectionLabel });
+      onLayoutStructureChange?.({
+        version: 3,
+        items: mapLayoutReplaceGroupById(layout.items, groupId, next),
+      });
+    } catch {
+      /* max sections */
+    }
+  }
 
   function buildDropContext(): DashboardDropContext {
     return {
@@ -206,8 +241,14 @@
       onLayoutStructureChange,
       onAddTile,
       onAddGroup,
+      onAddTabGroup,
+      onAddStackGroup,
       onAddTileToGroup,
+      onAddTabToGroup,
+      onAddStackToGroup,
       onAddGroupToGroup,
+      onAddTabGroupToGroup,
+      onAddStackGroupToGroup,
     };
   }
 
@@ -224,7 +265,9 @@
       const hit = document.elementFromPoint(last.x, last.y);
       const overGrid = hit?.closest('[data-dashboard-editor="grid-chrome"]') != null;
       const overPalette = hit?.closest('[data-dashboard-editor="palette"]') != null;
-      if (!overGrid && overPalette) return;
+      const overDropTarget = hit?.closest(`[${DND_CONTAINER_ATTR}]`) != null;
+      // Floating palette can sit above the grid; still accept drops on tab/stack targets.
+      if (!overGrid && overPalette && !overDropTarget) return;
     }
     if (dropCommittedForActiveDrag) return;
     dropCommittedForActiveDrag = true;
@@ -251,11 +294,19 @@
     });
   }
 
+  function onTabGroupChange(next: DashboardGroup) {
+    onLayoutStructureChange?.({
+      version: 3,
+      items: mapLayoutReplaceGroupById(layout.items, next.id, next),
+    });
+  }
+
 </script>
 
 {#snippet renderTile(tile: DashboardTile)}
   <PluginTileMount
     {gateway}
+    {bus}
     {tile}
     {plugins}
     {editLayout}
@@ -265,8 +316,8 @@
 {/snippet}
 
 <div class="flex flex-col gap-4" data-testid="dashboard-host">
-  {#if editLayout && (palette.length > 0 || onAddGroup)}
-    <PluginPalette {plugins} {onAddTile} {onAddGroup} {gateway} />
+  {#if editLayout && (palette.length > 0 || onAddGroup || onAddTabGroup || onAddStackGroup)}
+    <PluginPalette {plugins} {onAddTile} {onAddGroup} {onAddTabGroup} {onAddStackGroup} {gateway} {bus} />
   {/if}
 
   {#if editLayout}
@@ -287,6 +338,8 @@
       onAddTileToGroup={onAddTileToGroup}
       onAddGroupToGroup={onAddGroupToGroup}
       onEditGroup={onEditGroup}
+      onTabGroupChange={onTabGroupChange}
+      {plugins}
       {editLayout}
       {onEditTile}
       {onItemColSpanChange}
@@ -306,13 +359,44 @@
         {#if it.kind === "group"}
           <div
             class="box-border min-h-0 w-full !max-w-full min-w-0 flex-1 self-stretch {it.showBorder !== false
-              ? 'overflow-hidden rounded-lg border border-slate-200/70 bg-transparent py-1.5 shadow-[-2px_5px_14px_-3px_rgba(15,23,42,0.07),0_1px_1px_0_rgba(15,23,42,0.04)] dark:border-gray-500/30 dark:shadow-[-2px_6px_20px_-4px_rgba(0,0,0,0.45)]'
+              ? it.hostControl === 'tab-control'
+                ? DASHBOARD_TAB_CONTROL_GROUP_SHELL
+                : it.hostControl === 'vertical-stack'
+                  ? DASHBOARD_HOST_CONTROL_GROUP_SHELL
+                  : DASHBOARD_GROUP_PANEL_SHELL
               : ''}"
             data-dashboard-group={it.id}
+            data-host-control={it.hostControl}
             style={it.grid ? gridAreaStyle(it.grid) : ""}
             aria-label="Group {it.id}"
           >
-            {#if it.innerWrap === true}
+            {#if it.hostControl === "tab-control"}
+              <TabGroupHost
+                group={it}
+                {editLayout}
+                onGroupChange={onTabGroupChange}
+                {plugins}
+                {onEditTile}
+                onEditGroup={onEditGroup}
+              >
+                {#snippet tileContent(t)}
+                  {@render renderTile(t)}
+                {/snippet}
+              </TabGroupHost>
+            {:else if it.hostControl === "vertical-stack"}
+              <VerticalStackGroupHost
+                group={it}
+                {editLayout}
+                onGroupChange={onTabGroupChange}
+                {plugins}
+                {onEditTile}
+                onEditGroup={onEditGroup}
+              >
+                {#snippet tileContent(t)}
+                  {@render renderTile(t)}
+                {/snippet}
+              </VerticalStackGroupHost>
+            {:else if it.innerWrap === true}
               {@const Gr = groupOuterColSpan(it)}
               {@const tilesOnly = dedupeById(it.children).filter(
                 (c): c is DashboardTile => !isDashboardGroupNode(c),
@@ -351,6 +435,8 @@
                   outerCols={Gr}
                   {editLayout}
                   {onEditTile}
+                  onGroupChange={onTabGroupChange}
+                  {plugins}
                 >
                   {#snippet tileContent(t)}
                     {@render renderTile(t)}
@@ -373,20 +459,10 @@
             {/if}
           </div>
         {:else}
-          <div
-            class="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col place-self-stretch"
-            data-tile-id={it.id}
-            style={it.grid ? gridAreaStyle(it.grid) : gridColumnSpanStyle(it)}
-          >
-            <TileEditChrome
-              tile={it}
-              onEdit={onEditTile}
-              showEditButton={editLayout}
-            >
-              {#snippet children()}
-                {@render renderTile(it)}
-              {/snippet}
-            </TileEditChrome>
+          <div style={it.grid ? gridAreaStyle(it.grid) : gridColumnSpanStyle(it)}>
+            <DashboardTileShell tile={it} elevated {editLayout} {onEditTile}>
+              {@render renderTile(it)}
+            </DashboardTileShell>
           </div>
         {/if}
       {/each}

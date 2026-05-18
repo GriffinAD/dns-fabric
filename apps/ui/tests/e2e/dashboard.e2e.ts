@@ -1,6 +1,15 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 
 import { seedEditorLayoutInLocalStorageBeforeNavigation } from "./fixtures/editorGridFixture";
+import { simulateSveltedndDrop } from "./fixtures/sveltedndDrop";
+
+async function readRootEditorTileIds(zone: Locator): Promise<string[]> {
+  return zone.evaluate((el) =>
+    Array.from(el.querySelectorAll(':scope > [data-testid="editor-tile"]'))
+      .map((e) => e.getAttribute("data-tile-id"))
+      .filter((id): id is string => id != null),
+  );
+}
 
 test.beforeEach(async ({ page }) => {
   /* Let `initialDashboardLayout()` use the seeded localStorage. Otherwise GET /layout returns
@@ -76,7 +85,7 @@ test("layout editor root grid enforces minimum row gap for between-row DnD hit t
     return parseFloat(window.getComputedStyle(el).rowGap);
   });
   /* At least 0.75rem so the dragged ghost’s centre can sit between full-width root rows when
-   * `--dashboard-gap` is 0 (svelte-dnd-action uses centre-based index resolution). */
+   * `--dashboard-gap` is 0 (@thisux/sveltednd uses centre-based index resolution). */
   expect(rowGapPx).toBeGreaterThanOrEqual(11);
 });
 
@@ -117,6 +126,49 @@ test("tile settings parent: move tile from container to dashboard root", async (
   expect(stored.items.some((i) => i.kind === "tile" && i.id === "tile-perf-ram")).toBe(true);
   const groupStatus = stored.items.find((i) => i.kind === "group" && i.id === "group-status");
   expect(groupStatus?.children?.some((c) => c.id === "tile-perf-ram")).toBe(false);
+});
+
+test("palette drag adds tile to editor grid", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Edit layout" }).click();
+  const palette = page.getByTestId("layout-edit-palette").or(page.getByTestId("layout-edit-palette-v2"));
+  await expect(palette).toBeVisible();
+  const zone = page.getByTestId("editor-drop-zone");
+  const reservationsHeadings = zone.getByRole("heading", { name: "Static reservations" });
+  const countBefore = await reservationsHeadings.count();
+  await simulateSveltedndDrop(
+    page,
+    '.inline-flex[data-palette-drag-plugin-id="dhcp.reservations"]',
+    '[data-palette-drag-plugin-id="dhcp.reservations"] [data-testid="palette-chip-drag"]',
+    '[data-dnd-container="r:__append__"]',
+    { k: "pp", i: "dhcp.reservations" },
+  );
+  await expect(reservationsHeadings).toHaveCount(countBefore + 1, { timeout: 8000 });
+});
+
+test("root tile reorder updates editor DOM order", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Edit layout" }).click();
+  const zone = page.getByTestId("editor-drop-zone");
+  const rootTiles = zone.locator('> [data-testid="editor-tile"]');
+  const idsBefore = await readRootEditorTileIds(zone);
+  expect(idsBefore.length).toBeGreaterThanOrEqual(2);
+  expect(idsBefore[0]).toBe("group-status");
+  expect(idsBefore[1]).toBe("tile-pools");
+  await simulateSveltedndDrop(
+    page,
+    '[data-testid="editor-drop-zone"] > [data-testid="editor-tile"][data-tile-id="group-status"]',
+    '[data-testid="editor-drop-zone"] > [data-testid="editor-tile"][data-tile-id="group-status"] [data-testid="editor-container-drag-handle"]',
+    '[data-dnd-container="r:tile-pools"][data-editor-root-surface-drop="true"]',
+    { k: "cr", i: "group-status" },
+    "after",
+  );
+  await expect
+    .poll(async () => readRootEditorTileIds(zone), { timeout: 8000 })
+    .not.toEqual(idsBefore);
+  const idsAfter = await readRootEditorTileIds(zone);
+  expect(idsAfter[0]).toBe("tile-pools");
+  expect(idsAfter[1]).toBe("group-status");
 });
 
 test("layout editor lists tiles in layout order (DnD targets)", async ({ page }) => {
@@ -323,4 +375,14 @@ test("edit layout: root grid tracks and ruler align", async ({
     Math.abs(err.trackVarPx - err.trackFromFr),
     "var(--d-track) and 20fr track must match (ruler vs engine)",
   ).toBeLessThanOrEqual(1.25);
+});
+
+test("export layout downloads JSON", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Edit layout" }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByTestId("layout-file-menu").getByRole("combobox").selectOption("export"),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/Dashboard_Layout_.*\.json/);
 });

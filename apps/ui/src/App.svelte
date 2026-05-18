@@ -8,7 +8,8 @@
   import { attachOperatorShellLifecycle } from "./lib/app/appMount";
   import { DataGateway } from "./lib/gateway/dataGateway";
   import DashboardPage from "./lib/dashboard/pages/DashboardPage.svelte";
-  import { createFabricEventBus, FABRIC_EVENT_BUS } from "./lib/dashboard/bus/eventBus";
+  import { attachFabricBusKernel } from "./lib/dashboard/fabricBusKernel";
+  import { FABRIC_EVENT_BUS } from "./lib/dashboard/eventBus";
   import { handlePerfTileGridHint as applyPerfTileGridHint } from "./lib/dashboard/grid/gridHints";
   import ShellHeader from "./lib/dashboard/pages/ShellHeader.svelte";
   import type { DashboardGroup, DashboardTile } from "./lib/dashboard/types";
@@ -21,8 +22,8 @@
   let adminSubpath = $state("");
 
   const gateway = new DataGateway();
-  const fabricEventBus = createFabricEventBus(gateway);
-  setContext(FABRIC_EVENT_BUS, fabricEventBus);
+  const fabricBusKernel = attachFabricBusKernel({ gateway });
+  setContext(FABRIC_EVENT_BUS, fabricBusKernel.bus);
   const { ls, overlay } = createAppDashboardShell(gateway, {
     getTile: () => settingsTile,
     setTile: (t) => {
@@ -84,7 +85,7 @@
     return attachOperatorShellLifecycle({
       syncRouteFromHash,
       gateway,
-      fabricEventBus,
+      fabricBusKernel,
       layoutStore: ls,
       setPlugins: (items) => {
         plugins = items;
@@ -96,13 +97,17 @@
 <main class="min-h-screen bg-slate-100 p-8 dark:bg-gray-900">
   <div class="mx-auto w-full max-w-6xl">
     <ShellHeader
+      bus={fabricBusKernel.bus}
       {route}
+      layout={$layout}
       layoutSource={$layoutSource}
       editorOpen={$editorOpen}
       onSelectDashboardView={() => void selectDashboardView()}
       onOpenEditor={() => ls.openEditor()}
       onResetBaseline={() => void ls.resetToBaseline()}
       onSaveLayoutToFile={() => void ls.saveLayoutToFile()}
+      onImportLayout={(next) => ls.importLayout(next)}
+      onImportError={(message) => ls.loadError.set(message)}
       onGoHome={goHome}
       onGoAdmin={() => void goAdmin()}
     />

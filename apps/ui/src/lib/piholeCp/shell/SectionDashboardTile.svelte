@@ -39,7 +39,7 @@
 </script>
 
 <section
-  class="rounded-lg border border-slate-200 bg-white p-3 pt-9 shadow-sm dark:border-gray-700 dark:bg-gray-900"
+  class="dashboard-section-tile-body rounded-lg border border-slate-200 bg-white p-3 pt-9 dark:border-gray-700 dark:bg-gray-900"
 >
   <h2 class="mb-3 text-sm font-semibold text-slate-900 dark:text-gray-100">{title}</h2>
 

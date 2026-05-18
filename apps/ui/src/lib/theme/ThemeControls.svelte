@@ -12,8 +12,15 @@
     saveThemePreferences,
   } from "./themeStorage";
 
-  let { showAccent = true, showGaugeSegmentToggle = false }: { showAccent?: boolean; showGaugeSegmentToggle?: boolean } =
-    $props();
+  let {
+    showAccent = true,
+    showGaugeSegmentToggle = false,
+    toolbarRow = false,
+  }: {
+    showAccent?: boolean;
+    showGaugeSegmentToggle?: boolean;
+    toolbarRow?: boolean;
+  } = $props();
 
   const accentItems: { value: ColorPreset; name: string }[] = [
     { value: "default", name: "Default (blue)" },
@@ -92,7 +99,7 @@
 </script>
 
 <div
-  class="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-4"
+  class="flex gap-2 {toolbarRow ? 'flex-row items-end' : 'flex-col sm:flex-row sm:items-end sm:gap-4'}"
   data-testid="theme-controls"
   aria-label="Theme"
 >

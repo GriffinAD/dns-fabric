@@ -19,6 +19,30 @@ describe("featureFlags", () => {
     expect(getFeatureFlag("ui.palette.v2")).toBe(true);
   });
 
+  it("treats boolean true in import.meta.env as on", () => {
+    const meta = import.meta as unknown as { env: Record<string, unknown> };
+    const had = Object.prototype.hasOwnProperty.call(meta.env, "VITE_UI_PALETTE_V2");
+    const prevVal = meta.env.VITE_UI_PALETTE_V2;
+    meta.env.VITE_UI_PALETTE_V2 = true;
+    try {
+      expect(getFeatureFlag("ui.palette.v2")).toBe(true);
+    } finally {
+      if (had) meta.env.VITE_UI_PALETTE_V2 = prevVal;
+      else delete meta.env.VITE_UI_PALETTE_V2;
+    }
+  });
+
+  it("falls back to defaults when import.meta.env is missing", () => {
+    const meta = import.meta as unknown as { env?: ViteImportMetaEnv };
+    const prev = meta.env;
+    delete meta.env;
+    try {
+      expect(getFeatureFlag("ui.palette.v2")).toBe(true);
+    } finally {
+      meta.env = prev;
+    }
+  });
+
   it("falls back to defaults when import.meta.env is undefined", () => {
     const meta = import.meta as unknown as { env: ViteImportMetaEnv | null | undefined };
     const prev = meta.env;

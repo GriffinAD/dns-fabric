@@ -15,7 +15,7 @@ export type DashboardDataBootstrapHandlers = {
 };
 
 /**
- * Plugins list, default dashboard layout GET, and fabric SSE via `bus` (`docs/planning/UI_ENGINE_PLAN.md` P5).
+ * Plugins list and default dashboard layout GET. Fabric SSE is owned by `attachFabricBusKernel` (`docs/planning/UI_ENGINE_PLAN.md` P5).
  * Hash routing and theme listeners stay in App.svelte.
  */
 export function mountDashboardGatewaySideEffects(
@@ -48,9 +48,5 @@ export function mountDashboardGatewaySideEffects(
       handlers.onLayoutHydrationFromServerFailed?.();
     });
 
-  const stopBus = bus.connect();
-
-  return () => {
-    stopBus();
-  };
+  return () => {};
 }

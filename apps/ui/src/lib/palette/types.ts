@@ -13,7 +13,7 @@ export type PaletteItem =
     }
   | {
       kind: "core";
-      id: "core:add-group";
+      id: "core:add-group" | "core:add-tab-group" | "core:add-stack-group";
       label: string;
       category: string;
       searchText: string;

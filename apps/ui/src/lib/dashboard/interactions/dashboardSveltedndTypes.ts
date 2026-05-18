@@ -5,8 +5,11 @@
 export type DashboardDragPayload =
   | { k: "pp"; i: string }
   | { k: "pg" }
+  | { k: "pgt" }
+  | { k: "pgs" }
   | { k: "cr"; i: string }
-  | { k: "cg"; g: string; i: string };
+  | { k: "cg"; g: string; i: string }
+  | { k: "tt"; g: string; i: string };
 
 export function palettePluginPayload(pluginId: string): DashboardDragPayload {
   return { k: "pp", i: pluginId };
@@ -16,12 +19,22 @@ export function paletteAddGroupPayload(): DashboardDragPayload {
   return { k: "pg" };
 }
 
+export function paletteAddTabGroupPayload(): DashboardDragPayload {
+  return { k: "pgt" };
+}
+
+export function paletteAddStackGroupPayload(): DashboardDragPayload {
+  return { k: "pgs" };
+}
+
 /** Per-plugin palette source id so sveltednd does not treat all chips as one reorderable list. */
 export function palettePluginContainer(pluginId: string): string {
   return `palette:p:${pluginId}`;
 }
 
 export const PALETTE_ADD_GROUP_CONTAINER = "palette:add-group";
+export const PALETTE_ADD_TAB_GROUP_CONTAINER = "palette:add-tab-group";
+export const PALETTE_ADD_STACK_GROUP_CONTAINER = "palette:add-stack-group";
 
 export function rootCellPayload(id: string): DashboardDragPayload {
   return { k: "cr", i: id };
@@ -29,6 +42,16 @@ export function rootCellPayload(id: string): DashboardDragPayload {
 
 export function groupCellPayload(groupId: string, childId: string): DashboardDragPayload {
   return { k: "cg", g: groupId, i: childId };
+}
+
+/** Tab strip reorder within a tab-control group (H2). */
+export function tabStripCellPayload(groupId: string, childId: string): DashboardDragPayload {
+  return { k: "tt", g: groupId, i: childId };
+}
+
+/** Horizontal tab strip droppable list for `hostControl: tab-control`. */
+export function tabGroupTabsContainer(groupId: string): string {
+  return `g:${groupId}:tabs`;
 }
 
 /** Root row slot (before/after relative to this row). */
@@ -96,7 +119,8 @@ export type ParsedDropSlot =
   | { kind: "groupEmpty"; groupId: string }
   | { kind: "groupCanvas"; groupId: string }
   | { kind: "groupGapAfter"; groupId: string; childId: string }
-  | { kind: "groupAppend"; groupId: string };
+  | { kind: "groupAppend"; groupId: string }
+  | { kind: "groupTabs"; groupId: string };
 
 export function parseDropContainer(container: string | null): ParsedDropSlot | null {
   if (!container) return null;
@@ -124,6 +148,11 @@ export function parseDropContainer(container: string | null): ParsedDropSlot | n
     if (!m?.[1]) return null;
     return { kind: "groupAppend", groupId: m[1] };
   }
+  if (container.endsWith(":tabs")) {
+    const m = /^g:([^:]+):tabs$/.exec(container);
+    if (!m?.[1]) return null;
+    return { kind: "groupTabs", groupId: m[1] };
+  }
   if (container.includes(":gap:")) {
     const m = /^g:([^:]+):gap:(.+)$/.exec(container);
     if (!m?.[1] || !m[2]) return null;
@@ -150,7 +179,10 @@ export function parseDragPayload(raw: unknown): DashboardDragPayload | null {
   const o = raw as Record<string, unknown>;
   if (o.k === "pp" && typeof o.i === "string") return { k: "pp", i: o.i };
   if (o.k === "pg") return { k: "pg" };
+  if (o.k === "pgt") return { k: "pgt" };
+  if (o.k === "pgs") return { k: "pgs" };
   if (o.k === "cr" && typeof o.i === "string") return { k: "cr", i: o.i };
   if (o.k === "cg" && typeof o.g === "string" && typeof o.i === "string") return { k: "cg", g: o.g, i: o.i };
+  if (o.k === "tt" && typeof o.g === "string" && typeof o.i === "string") return { k: "tt", g: o.g, i: o.i };
   return null;
 }

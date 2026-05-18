@@ -4,7 +4,15 @@ import { get } from "svelte/store";
 import type { FabricEvent } from "../../api/types";
 import { DataGateway } from "../../gateway/dataGateway";
 import { perfSummaryForTick } from "../../../mock/perfSimulate";
-import { createFabricEventBus, perfUpdatedCpuPercent, perfUpdatedFullSummary } from "./eventBus";
+import {
+  createFabricEventBus,
+  dhcpClientsListUpdated,
+  dhcpPoolsListUpdated,
+  dhcpReservationsListUpdated,
+  discoveryScanUpdated,
+  perfUpdatedCpuPercent,
+  perfUpdatedFullSummary,
+} from "./eventBus";
 
 describe("createFabricEventBus", () => {
   it("returns the same disconnect when connect is called twice", () => {
@@ -109,7 +117,7 @@ describe("createFabricEventBus", () => {
     bus.subscribe("custom.topic", (p) => p, (v) => received.push(v));
     bus.emit("custom.topic", { ok: true });
     bus.emit("custom.topic", "scalar");
-    expect(received).toEqual([{ ok: true }, { value: "scalar" }]);
+    expect(received).toEqual([{ ok: true }, "scalar"]);
   });
 
   it("can reconnect after teardown (idle → open)", async () => {
@@ -138,6 +146,23 @@ describe("createFabricEventBus", () => {
     await vi.waitUntil(() => get(bus.connectionState) === "open");
     expect(stop2).not.toBe(stop);
     stop2();
+  });
+
+  it("aggregates connectionState across multiple transports", async () => {
+    const gw = new DataGateway("");
+    const bus = createFabricEventBus(gw);
+    const cp = bus.declareTransport("cp-perf");
+    cp.setState("open");
+    expect(get(bus.connectionState)).toBe("open");
+
+    vi.spyOn(gw, "subscribeFabricEvents").mockReturnValue(() => {});
+    const stopSse = bus.connect();
+    expect(get(bus.connectionState)).toBe("open");
+
+    cp.release();
+    expect(get(bus.connectionState)).toBe("connecting");
+    stopSse();
+    expect(get(bus.connectionState)).toBe("idle");
   });
 });
 
@@ -169,5 +194,25 @@ describe("perfUpdatedFullSummary", () => {
 
   it("returns null when shape is invalid", () => {
     expect(perfUpdatedFullSummary({ tick: 1, cpu_percent_total: 1 })).toBeNull();
+  });
+});
+
+describe("discoveryScanUpdated", () => {
+  it("parses scan snapshots", () => {
+    expect(
+      discoveryScanUpdated({ state: "running", updated_at: "2026-01-01T00:00:00Z" }),
+    ).toEqual({ state: "running", updated_at: "2026-01-01T00:00:00Z" });
+    expect(discoveryScanUpdated({ state: "nope", updated_at: "t" })).toBeNull();
+  });
+});
+
+describe("dhcp list selectors", () => {
+  it("parse list payloads and reject revision-only signals", () => {
+    expect(dhcpPoolsListUpdated({ items: [] })).toEqual([]);
+    expect(dhcpPoolsListUpdated({ revision: 1 })).toBeNull();
+    expect(dhcpClientsListUpdated({ items: [] })).toEqual([]);
+    expect(dhcpClientsListUpdated({ revision: 1 })).toBeNull();
+    expect(dhcpReservationsListUpdated({ items: [] })).toEqual([]);
+    expect(dhcpReservationsListUpdated({ revision: 1 })).toBeNull();
   });
 });

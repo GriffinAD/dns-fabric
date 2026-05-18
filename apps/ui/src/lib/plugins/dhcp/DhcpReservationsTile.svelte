@@ -6,14 +6,18 @@
   import type { BaseDataTableColumn, BaseDataTableSettingsPatch } from "../../components/baseDataTable/baseDataTable";
   import { defaultBaseDataTableSettings, mergeBaseDataTableSettings } from "../../components/baseDataTable/baseDataTable";
   import { validateIpv4Address, validateMacAddress } from "../../components/validation/netValidation";
+  import { dhcpReservationsListUpdated, type FabricEventBus } from "../../dashboard/eventBus";
   import { DataGateway } from "../../gateway/dataGateway";
   import type { DashboardTile } from "../../dashboard/types";
+  import { subscribeListWithInitialFetch } from "../pluginDataBus";
 
   let {
     gateway,
+    bus,
     tile,
   }: {
     gateway: DataGateway;
+    bus: FabricEventBus;
     tile: DashboardTile;
   } = $props();
 
@@ -75,18 +79,19 @@
     },
   ]);
 
-  function load() {
+  function applyItems(next: DhcpReservation[]) {
+    items = next;
     err = null;
+    loading = false;
+  }
+
+  function reload() {
     loading = true;
     void gateway
       .listDhcpReservations()
-      .then((r) => {
-        items = r.items;
-      })
+      .then((r) => applyItems(r.items))
       .catch((e: unknown) => {
         err = e instanceof Error ? e.message : String(e);
-      })
-      .finally(() => {
         loading = false;
       });
   }
@@ -110,7 +115,15 @@
     items = items.map((row) => ((row as DhcpReservation).id === rowId ? updated : row));
   }
 
-  onMount(load);
+  onMount(() => {
+    return subscribeListWithInitialFetch({
+      bus,
+      topic: "fabric.dhcp.reservations.updated",
+      fetch: () => gateway.listDhcpReservations(),
+      parseItems: dhcpReservationsListUpdated,
+      onItems: applyItems,
+    });
+  });
 </script>
 
 <BaseDataTable
@@ -123,8 +136,8 @@
   {columns}
   rowKey={(r) => (r as DhcpReservation).id}
   settings={tableSettings}
-  onRetry={load}
-  onRefresh={load}
+  onRetry={reload}
+  onRefresh={reload}
   {onCommit}
 >
   {#snippet compactSummary()}

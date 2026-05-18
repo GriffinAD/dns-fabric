@@ -2,6 +2,7 @@
   import Button from "flowbite-svelte/Button.svelte";
   import Modal from "flowbite-svelte/Modal.svelte";
   import ArrowLeft from "lucide-svelte/icons/arrow-left";
+  import Cog from "lucide-svelte/icons/cog";
   import House from "lucide-svelte/icons/house";
   import Pencil from "lucide-svelte/icons/pencil";
   import Save from "lucide-svelte/icons/save";
@@ -9,40 +10,99 @@
 
   import ThemeControls from "../../theme/ThemeControls.svelte";
   import { UI_VERSION } from "../../version/uiVersion";
-  import DashboardControls from "./DashboardControls.svelte";
+  import EditorSettingsModal from "../EditorSettingsModal.svelte";
+  import LayoutMenuSelect from "../LayoutMenuSelect.svelte";
+  import FabricBusConnectionBadge from "../FabricBusConnectionBadge.svelte";
+  import type { FabricEventBus } from "../eventBus";
+  import { importDashboardLayoutFromJson } from "../layoutImport";
   import type { LayoutSource } from "../layout/layoutStore";
+  import { downloadDashboardLayoutFile } from "../layout/layoutStorage";
+  import type { DashboardLayout } from "../types";
 
   let {
+    bus,
     route,
+    layout,
     layoutSource,
     editorOpen,
     onSelectDashboardView,
     onOpenEditor,
     onResetBaseline,
     onSaveLayoutToFile,
+    onImportLayout,
+    onImportError,
     onGoHome,
     onGoAdmin,
   }: {
+    bus: FabricEventBus;
     route: "home" | "admin";
+    layout: DashboardLayout;
     layoutSource: LayoutSource;
     editorOpen: boolean;
     onSelectDashboardView: () => void;
     onOpenEditor: () => void;
     onResetBaseline: () => void;
     onSaveLayoutToFile: () => void;
+    onImportLayout: (layout: DashboardLayout) => void;
+    onImportError?: (message: string) => void;
     onGoHome: () => void;
     onGoAdmin: () => void;
   } = $props();
 
   let resetConfirmOpen = $state(false);
+  let importConfirmOpen = $state(false);
+  let editorSettingsOpen = $state(false);
+  let pendingImportLayout = $state<DashboardLayout | null>(null);
+  let layoutFileInput = $state<HTMLInputElement | undefined>(undefined);
 
   function confirmResetBaseline() {
     onResetBaseline();
     resetConfirmOpen = false;
   }
 
+  function exportLayout() {
+    downloadDashboardLayoutFile(layout);
+  }
+
+  function openLayoutFilePicker() {
+    layoutFileInput?.click();
+  }
+
+  async function onLayoutFileSelected(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    const text = await file.text();
+    const result = importDashboardLayoutFromJson(text);
+    if (!result.ok) {
+      onImportError?.(result.message);
+      return;
+    }
+    pendingImportLayout = result.layout;
+    importConfirmOpen = true;
+  }
+
+  function confirmImportLayout() {
+    if (pendingImportLayout) {
+      onImportLayout(pendingImportLayout);
+      pendingImportLayout = null;
+    }
+    importConfirmOpen = false;
+  }
+
+  function cancelImportLayout() {
+    pendingImportLayout = null;
+    importConfirmOpen = false;
+  }
+
   $effect(() => {
-    if (!editorOpen) resetConfirmOpen = false;
+    if (!editorOpen) {
+      resetConfirmOpen = false;
+      importConfirmOpen = false;
+      editorSettingsOpen = false;
+      pendingImportLayout = null;
+    }
   });
 
   /** Height-only (zero width) so it does not widen icon columns — matches ThemeControls label band on sm+. */
@@ -56,8 +116,9 @@
       <House class="h-8 w-8 shrink-0" aria-hidden="true" />
       Kea Fabric
     </h1>
-    <p class="text-slate-600 dark:text-gray-400">
-      Operator shell ({UI_VERSION}). Flowbite Svelte v2 + mocked <code class="font-mono text-sm">/api/v1</code>.
+    <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-600 dark:text-gray-400">
+      <span>Operator shell ({UI_VERSION}). Flowbite Svelte v2 + mocked <code class="font-mono text-sm">/api/v1</code>.</span>
+      <FabricBusConnectionBadge {bus} />
     </p>
     {#if layoutSource === "cache"}
       <p
@@ -72,11 +133,36 @@
     class="flex w-full min-w-0 flex-col items-stretch gap-3 sm:max-w-none sm:flex-1 sm:items-end"
     data-testid="app-header-actions"
   >
-    <div class="flex w-full flex-wrap items-end justify-end gap-3">
-      <ThemeControls showAccent={route === "home" && editorOpen} />
-      {#if route === "home" && editorOpen}
-        <DashboardControls />
-      {/if}
+    <div class="flex w-full flex-wrap items-end justify-end gap-2">
+      <div class="flex items-end gap-2">
+        <ThemeControls showAccent={false} toolbarRow={route === "home" && editorOpen} />
+        {#if route === "home" && editorOpen}
+          <div class="flex flex-col items-end">
+            <span class={headerLabelBandSpacerClass} aria-hidden="true"></span>
+            <Button
+              type="button"
+              color="alternative"
+              size="sm"
+              class="!p-2 shrink-0"
+              aria-label="Display settings"
+              data-testid="editor-display-settings-open"
+              onclick={() => (editorSettingsOpen = true)}
+            >
+              <Cog class="h-5 w-5" aria-hidden="true" />
+            </Button>
+          </div>
+          <LayoutMenuSelect onExport={exportLayout} onImport={openLayoutFilePicker} />
+          <input
+            bind:this={layoutFileInput}
+            type="file"
+            accept="application/json,.json"
+            class="hidden"
+            aria-hidden="true"
+            tabindex={-1}
+            onchange={onLayoutFileSelected}
+          />
+        {/if}
+      </div>
       {#if route === "admin"}
         <Button
           type="button"
@@ -108,7 +194,7 @@
           <div
             role="toolbar"
             aria-label="Dashboard mode"
-            class="flex flex-wrap items-end {editorOpen ? 'gap-3' : 'gap-1'}"
+            class="flex flex-wrap items-end gap-1"
           >
             {#if editorOpen}
               <Button
@@ -162,6 +248,7 @@
 </header>
 
 {#if route === "home"}
+  <EditorSettingsModal bind:open={editorSettingsOpen} />
   <Modal bind:open={resetConfirmOpen} title="Reset dashboard layout?" size="md" class="z-[100]">
     {#snippet children()}
       <p class="text-base leading-relaxed text-gray-600 dark:text-gray-400">
@@ -172,6 +259,21 @@
       <div class="flex w-full flex-wrap justify-end gap-2">
         <Button type="button" color="alternative" onclick={() => (resetConfirmOpen = false)}>Cancel</Button>
         <Button type="button" color="danger" onclick={confirmResetBaseline}>Yes</Button>
+      </div>
+    {/snippet}
+  </Modal>
+
+  <Modal bind:open={importConfirmOpen} title="Replace entire dashboard layout?" size="md" class="z-[100]">
+    {#snippet children()}
+      <p class="text-base leading-relaxed text-gray-600 dark:text-gray-400">
+        Importing a layout file replaces the current dashboard. This cannot be undone except with Undo in the layout
+        editor.
+      </p>
+    {/snippet}
+    {#snippet footer()}
+      <div class="flex w-full flex-wrap justify-end gap-2">
+        <Button type="button" color="alternative" onclick={cancelImportLayout}>Cancel</Button>
+        <Button type="button" color="brand" onclick={confirmImportLayout}>Replace layout</Button>
       </div>
     {/snippet}
   </Modal>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { dashboardLayoutJsonSchema } from "./layoutZod";
-import { tileOptionsSchemaForPlugin } from "./tileOptionsZod";
+import { tileOptionsSchemaForPlugin } from "../../plugins/core/tileOptionsZod";
 
 const BUILTIN_PLUGIN_IDS = [
   "dhcp.pools",

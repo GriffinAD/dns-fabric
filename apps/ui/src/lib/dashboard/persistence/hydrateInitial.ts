@@ -62,7 +62,7 @@ export function initialDashboardLayout(): DashboardLayoutV3 {
       return gridPlacement.layoutWithGrid(gridPlacement.cloneLayoutJson(DEFAULT_DASHBOARD_LAYOUT));
     }
     const beforeStrip = ensureLayoutV3(stored);
-    const base = stripLegacyPerfSummaryTiles(stored);
+    const base = stripLegacyPerfSummaryTiles(beforeStrip);
     const strippedAny = countAllTiles(beforeStrip) !== countAllTiles(base);
     const merged = mergeMissingDefaultPlugins(base);
     const mergedGrew = countAllTiles(merged) > countAllTiles(base);

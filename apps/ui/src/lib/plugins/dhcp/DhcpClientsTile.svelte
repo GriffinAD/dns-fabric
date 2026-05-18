@@ -5,14 +5,18 @@
   import BaseDataTable from "../../components/baseDataTable/BaseDataTable.svelte";
   import type { BaseDataTableColumn, BaseDataTableSettingsPatch } from "../../components/baseDataTable/baseDataTable";
   import { defaultBaseDataTableSettings, mergeBaseDataTableSettings } from "../../components/baseDataTable/baseDataTable";
+  import { dhcpClientsListUpdated, type FabricEventBus } from "../../dashboard/eventBus";
   import { DataGateway } from "../../gateway/dataGateway";
   import type { DashboardTile } from "../../dashboard/types";
+  import { subscribeListWithInitialFetch } from "../pluginDataBus";
 
   let {
     gateway,
+    bus,
     tile,
   }: {
     gateway: DataGateway;
+    bus: FabricEventBus;
     tile: DashboardTile;
   } = $props();
 
@@ -70,18 +74,19 @@
     },
   ]);
 
-  function load() {
+  function applyItems(next: DhcpClient[]) {
+    items = next;
     err = null;
+    loading = false;
+  }
+
+  function reload() {
     loading = true;
     void gateway
       .listDhcpClients()
-      .then((r) => {
-        items = r.items;
-      })
+      .then((r) => applyItems(r.items))
       .catch((e: unknown) => {
         err = e instanceof Error ? e.message : String(e);
-      })
-      .finally(() => {
         loading = false;
       });
   }
@@ -98,7 +103,15 @@
     items = items.map((row) => ((row as DhcpClient).id === rowId ? updated : row));
   }
 
-  onMount(load);
+  onMount(() => {
+    return subscribeListWithInitialFetch({
+      bus,
+      topic: "fabric.dhcp.clients.updated",
+      fetch: () => gateway.listDhcpClients(),
+      parseItems: dhcpClientsListUpdated,
+      onItems: applyItems,
+    });
+  });
 </script>
 
 <BaseDataTable
@@ -111,7 +124,7 @@
   {columns}
   rowKey={(c) => (c as DhcpClient).id}
   settings={tableSettings}
-  onRetry={load}
-  onRefresh={load}
+  onRetry={reload}
+  onRefresh={reload}
   {onCommit}
 />

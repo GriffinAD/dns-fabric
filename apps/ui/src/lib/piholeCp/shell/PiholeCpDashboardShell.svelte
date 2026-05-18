@@ -37,6 +37,7 @@
     PIHOLE_CP_LAYOUT_STORAGE_KEY,
     stripPiholeCpLayoutWhenKeaDhcpDisabled,
   } from "../layout/buildLayoutFromDashboard";
+  import { shouldApplyCpLayoutResync, shouldMergeServerWidgets } from "../piholeCpLayoutResync";
   import type { DashboardResponse } from "../layout/dashboardZod";
   import type { PiholeCpMeta } from "../gateway/PiholeCpGateway";
   import PiholeCpEnvSettings from "../env/PiholeCpEnvSettings.svelte";
@@ -123,28 +124,45 @@
     void layoutResyncEpoch;
     void dashboard;
     void meta;
-    piholeCpDashboardData.set(dashboard);
-    if (layoutResyncEpoch > 0) {
-      const stored = loadDashboardLayout(PIHOLE_CP_LAYOUT_STORAGE_KEY);
-      const fresh = pickInitialPiholeCpLayout(dashboard, stored, meta);
-      ls.applyStructure(stripPiholeCpLayoutWhenKeaDhcpDisabled(fresh, meta, dashboard), {
-        skipHistory: true,
-      });
-    }
-    let cur = get(ls.layout);
-    if (layoutContainsPiholeCpKeaDisabledTiles(cur, meta, dashboard)) {
-      ls.applyStructure(stripPiholeCpLayoutWhenKeaDhcpDisabled(cur, meta, dashboard), { skipHistory: true });
-      cur = get(ls.layout);
-    }
-    const merged = mergeNewServerWidgetsIntoLayout(cur, dashboard, meta);
-    if (merged) {
-      ls.applyStructure(merged, { skipHistory: true });
-    }
+
+    const syncLayoutFromServer = () => {
+      const editorOpen = get(ls.editorOpen);
+      piholeCpDashboardData.set(dashboard);
+      if (
+        shouldApplyCpLayoutResync({
+          layoutResyncEpoch,
+          editorOpen,
+          forceAfterEnvApply: layoutResyncEpoch > 0,
+        })
+      ) {
+        const stored = loadDashboardLayout(PIHOLE_CP_LAYOUT_STORAGE_KEY);
+        const fresh = pickInitialPiholeCpLayout(dashboard, stored, meta);
+        ls.applyStructure(stripPiholeCpLayoutWhenKeaDhcpDisabled(fresh, meta, dashboard), {
+          skipHistory: true,
+        });
+      }
+      let cur = get(ls.layout);
+      if (layoutContainsPiholeCpKeaDisabledTiles(cur, meta, dashboard)) {
+        ls.applyStructure(stripPiholeCpLayoutWhenKeaDhcpDisabled(cur, meta, dashboard), {
+          skipHistory: true,
+        });
+        cur = get(ls.layout);
+      }
+      if (shouldMergeServerWidgets(editorOpen)) {
+        const merged = mergeNewServerWidgetsIntoLayout(cur, dashboard, meta);
+        if (merged) {
+          ls.applyStructure(merged, { skipHistory: true });
+        }
+      }
+    };
+
+    syncLayoutFromServer();
+    return ls.editorOpen.subscribe(() => syncLayoutFromServer());
   });
 </script>
 
 <div
-  class="sticky top-0 z-40 -mx-4 border-b border-slate-200/90 bg-slate-100/95 px-4 py-4 backdrop-blur-sm sm:-mx-6 sm:px-6 dark:border-gray-700/90 dark:bg-gray-900/95"
+  class="sticky top-0 z-40 -mx-4 bg-slate-100/95 px-4 py-4 backdrop-blur-sm sm:-mx-6 sm:px-6 dark:bg-gray-900/95"
   data-testid="pihole-cp-sticky-chrome"
 >
   <PiholeCpShellHeader

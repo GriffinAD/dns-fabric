@@ -17,6 +17,8 @@ Perf **CPU / RAM / Network / Disk** gauges in the Pi-hole CP bundle call **`GET 
 | **`CONTROL_PLANE_KEA_FABRIC_API_BASE_URL`** (on the node, in **`.env`**) | Passed into the **`control-plane`** container and published in **`GET /v1/meta`** as `kea_fabric_api_base_url`. **Required** for DHCP/discovery when those tiles should talk to Kea Fabric; perf does **not** depend on it. |
 | **`GET /v1/meta`** `dhcp_mode` | Mirrors stack **`DHCP_MODE`**. DHCP operator tiles (pools, clients, reservations) are listed only when `dhcp_mode` is **`kea`**; discovery still follows Kea when configured. |
 
+**Reverse proxies (Kea fabric SSE):** when the browser opens `EventSource` on Kea Fabric `GET /api/v1/events/stream` with an `access_token` query parameter, reverse proxies and access logs **must not** record request query strings for that path (tokens would leak into log aggregation). Redact or omit query parameters in access-log format strings, or terminate SSE with header-based auth at the proxy where supported.
+
 ```bash
 cd /path/to/pi-fabric/apps/ui
 VITE_PIHOLE_CP_BASE_URL=http://192.0.2.4:8091 \

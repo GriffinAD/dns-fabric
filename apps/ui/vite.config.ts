@@ -84,6 +84,7 @@ export default defineConfig({
       include: ["src/lib/**/*.ts", "src/lib/components/**/*.svelte", "src/lib/theme/**/*.svelte"],
       exclude: [
         "src/lib/**/types.ts",
+        "src/lib/dashboard/layout/tileOptionsZod.ts",
         "src/lib/app/appDashboardShell.ts",
         "src/lib/components/tablePlugin/tablePluginShell.ts",
         /* v8 + Flowbite Modal: branch/function attribution on dialog + snippets misses global 99%/100% despite Modal tests. */

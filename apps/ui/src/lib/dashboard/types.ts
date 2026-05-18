@@ -5,6 +5,24 @@ export type { TileOptions };
 /** Max nesting depth for `kind: "group"` under the root (`items` depth = 1). */
 export const MAX_DASHBOARD_GROUP_DEPTH = 8;
 
+/** Max tabs in a `hostControl: "tab-control"` group (ADR-0054). */
+export const MAX_TAB_GROUP_CHILDREN = 12;
+
+/** Container chrome on `DashboardGroup`. Omitted or `panel` = bordered group (default). */
+export type GroupHostControl = "panel" | "tab-control" | "vertical-stack" | "split-grid";
+
+export interface GroupHostState {
+  /** Active tab child `id`; defaults to first child when omitted. */
+  activeChildId?: string;
+  /** Section ids collapsed in a `vertical-stack` group. */
+  collapsedChildIds?: string[];
+}
+
+/** Tab strip label when the node is a child of a tab-control group (ADR-0054). */
+export interface TabLabelled {
+  tabLabel?: string;
+}
+
 /** Root grid placement (same 0…(GRID_COLUMNS−1) column contract; see `pluginGridPolicy.GRID_COLUMNS`). */
 export interface GridPlacement {
   col: number;
@@ -17,7 +35,7 @@ export interface GridPlacement {
  * A dashboard tile. May appear on the **root** grid or as a child of a `group` (inner grid;
  * `grid` is then relative to the group’s inner columns / rows).
  */
-export interface DashboardTile {
+export interface DashboardTile extends TabLabelled {
   id: string;
   pluginId: string;
   hostControl: HostControl;
@@ -43,7 +61,7 @@ export function isDashboardGroupNode(c: GroupChild): c is DashboardGroup {
  * A container that sits on the root grid and holds tiles on an inner G×n grid
  * (same column semantics as the main dashboard); can span any root rows/columns.
  */
-export interface DashboardGroup {
+export interface DashboardGroup extends TabLabelled {
   kind: "group";
   id: string;
   /** When true, draw a border on the group and hide inner tile card chrome. Default true. */
@@ -59,6 +77,9 @@ export interface DashboardGroup {
   innerWrap?: boolean;
   /** Placement on the root grid (`GRID_COLUMNS` wide). */
   grid?: GridPlacement;
+  /** Container chrome. Default `panel` when omitted (ADR-0054). */
+  hostControl?: GroupHostControl;
+  hostState?: GroupHostState;
   children: GroupChild[];
 }
 

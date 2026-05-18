@@ -1,8 +1,9 @@
 <script lang="ts">
   import type { PluginEntry } from "../../api/types";
   import type { DataGateway } from "../../gateway/dataGateway";
+  import type { FabricEventBus } from "../eventBus";
   import { resolvePluginTileMount } from "../../platform/extensions/dashboardTileRegistry";
-  import { tileOptionsSchemaForPlugin } from "../layout/tileOptionsZod";
+  import { tileOptionsSchemaForPlugin } from "../../plugins/core/tileOptionsZod";
   import TileErrorBoundary from "./TileErrorBoundary.svelte";
   import TileFallback from "./TileFallback.svelte";
   import TileHostControl from "./TileHostControl.svelte";
@@ -10,6 +11,7 @@
 
   let {
     gateway,
+    bus,
     tile,
     plugins = [] as PluginEntry[],
     editLayout = false,
@@ -17,6 +19,7 @@
     onPerfTileGridHint,
   }: {
     gateway: DataGateway;
+    bus: FabricEventBus;
     tile: DashboardTile;
     plugins?: PluginEntry[];
     editLayout?: boolean;
@@ -29,6 +32,7 @@
   const resolved = $derived(
     resolvePluginTileMount({
       gateway,
+      bus,
       tile,
       editLayout,
       onEditTile,

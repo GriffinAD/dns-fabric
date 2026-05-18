@@ -65,16 +65,49 @@ flowchart LR
     F --> S
 ```
 
-## Operator UI (fabric SSE)
+## Operator UI — `FabricEventBus` data plane
 
-The Vite operator shell (`apps/ui`) opens **one** browser `EventSource` on
-`/api/v1/events/stream` via `DataGateway.subscribeFabricEvents`. The
-**`createFabricEventBus`** helper (`apps/ui/src/lib/dashboard/eventBus.ts`)
-subscribes once and demultiplexes by `topic` so tiles can call
-`bus.subscribe("fabric.perf.updated", selector, onValue)` without each owning
-the stream. Connection state is exposed as a readonly Svelte store
-(`connectionState`). Invalid payloads are logged and skipped at the gateway
-(Zod); subscribers only see typed values their selector returns.
+The dashboard kernel treats **`FabricEventBus`** as the **single real-time data
+plane** for operator tiles (Kea Fabric shell and Pi-hole HA control plane). Upstream
+sources are **transports** only; they call `bus.emit` or attach Kea SSE via
+`bus.connect()` — plugins never open their own `EventSource` or `setInterval`
+poll loops.
+
+| Role | Module | Responsibility |
+| --- | --- | --- |
+| Kernel | `fabricBusKernel.ts` | `attachFabricBusKernel` creates the bus, calls `bus.connect()` for Kea SSE, optional `registerCpTransports` |
+| Kea SSE | `eventBus.ts` `connect()` | One `EventSource` on `/api/v1/events/stream` via `DataGateway.subscribeFabricEvents` |
+| CP perf | `transports/cpFabricTransport.ts` | Polls CP `/v1/node/perf/summary`; emits `fabric.perf.updated` |
+| Tiles | `plugins/pluginDataBus.ts` | `subscribeWithInitialFetch` / `subscribeListWithInitialFetch` — one-shot GET bootstrap, then bus topics |
+
+**Invariant:** `DataGateway` is for **commands** (POST/PATCH/PUT) and **initial
+hydrate** GETs inside `pluginDataBus` helpers. Ongoing tile refresh is **bus
+topics only** (enforced by `scripts/check_ui_plugin_no_gateway_poll.sh`).
+
+`createFabricEventBus` demultiplexes by `topic`. Tiles call
+`bus.subscribe("fabric.perf.updated", selector, onValue)` without owning the
+stream. Invalid payloads are logged and skipped at the gateway (Zod); subscribers
+only see typed values their selector returns.
+
+**Connection state:** each transport registers with `bus.declareTransport(id)`
+and sets `idle` \| `connecting` \| `open` \| `error`. The shell reads aggregated
+`bus.connectionState` (`open` when **any** transport is connected). Kea operator
+shell: transport `kea-sse`. Pi-hole CP: `cp-perf` always; `kea-sse` when
+`meta.kea_fabric_api_base_url` is configured.
+
+### Fabric topic registry (operator dashboard)
+
+| Topic | Typical payload | Transport | Tile / consumer |
+| --- | --- | --- | --- |
+| `fabric.perf.updated` | `PerfSummaryResponse` (+ optional `tick` stripped) | Kea SSE, CP poll (`emit`) | `perf.*` tiles |
+| `fabric.discovery.scan.updated` | `DiscoveryScanResponse` | Kea SSE | `DiscoveryTile` |
+| `fabric.dhcp.clients.updated` | `{ items: DhcpClient[] }` or `{ revision: number }` | Kea SSE | `DhcpClientsTile` (revision → refetch) |
+| `fabric.dhcp.pools.updated` | `{ items: DhcpPool[] }` or `{ revision: number }` | Kea SSE (when emitted); local `emit` after mutation | `DhcpPoolsTile` |
+| `fabric.dhcp.reservations.updated` | `{ items: DhcpReservation[] }` or `{ revision: number }` | Kea SSE (when emitted); local `emit` after mutation | `DhcpReservationsTile` |
+
+Selectors live in `eventBus.ts` (`perfUpdatedFullSummary`, `discoveryScanUpdated`,
+`dhcpPoolsListUpdated`, …). List topics accept revision-only payloads so tiles
+refetch via `subscribeListWithInitialFetch`.
 
 ## Cross-refs
 
@@ -89,6 +122,7 @@ the stream. Connection state is exposed as a readonly Svelte store
 
 | Date | Status | Reviewer | Notes |
 | --- | --- | --- | --- |
+| 2026-05-17 | Accepted | GriffinAD | FabricEventBus as dashboard data plane; transport aggregation; topic registry table. |
 | 2026-04-23 | Accepted | GriffinAD | Document operator UI fabric event bus (`eventBus.ts`). |
 | 2026-04-19 | Proposed | GriffinAD | Initial event architecture draft with durability model. |
 | 2026-04-19 | Accepted | GriffinAD | Self-review; Gate 1 Tier B (core) acceptance. |

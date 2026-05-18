@@ -15,7 +15,129 @@ import type {
   RootLayoutItem,
   RootTileItem,
 } from "../types";
-import { isDashboardGroupNode, isLayoutV2, isLayoutV3, MAX_DASHBOARD_GROUP_DEPTH } from "../types";
+import { normalizeTabChildPaneGroups, wrapTabTileInPaneGroup } from "../groups/tabGroupOps";
+import { normalizeStackChildPaneGroups } from "../groups/verticalStackGroupOps";
+import {
+  isDashboardGroupNode,
+  isLayoutV2,
+  isLayoutV3,
+  MAX_DASHBOARD_GROUP_DEPTH,
+} from "../types";
+
+/** Wrapper group id for legacy tile-level `hostControl: "tab-control"` (ADR-0054). */
+export function tabGroupWrapperId(tileId: string): string {
+  return `tab-group-${tileId}`;
+}
+
+/**
+ * Legacy tile-level `hostControl: "tab-control"` (ADR-0049 placeholder era) becomes a tab
+ * container group: same root `grid`, one `single-panel` child, `hostState.activeChildId` = child id.
+ */
+export function wrapLegacyTabControlTile(tile: DashboardTile): DashboardGroup {
+  const { hostControl: _hc, ...rest } = tile;
+  const child: DashboardTile = {
+    ...rest,
+    hostControl: "single-panel",
+    tabLabel: tile.tabLabel ?? tile.pluginId,
+  };
+  const pane = wrapTabTileInPaneGroup(child);
+  return {
+    kind: "group",
+    id: tabGroupWrapperId(tile.id),
+    showBorder: true,
+    hostControl: "tab-control",
+    hostState: { activeChildId: pane.id },
+    grid: tile.grid,
+    children: [pane],
+  };
+}
+
+function migrateLegacyTabControlInChildren(children: GroupChild[]): GroupChild[] {
+  let changed = false;
+  const next = children.map((c) => {
+    if (isDashboardGroupNode(c)) {
+      let group = c;
+      if (c.hostControl === "tab-control") {
+        const normalized = normalizeTabChildPaneGroups(c);
+        if (normalized !== c) {
+          changed = true;
+          group = normalized;
+        }
+      }
+      if (c.hostControl === "vertical-stack") {
+        const normalized = normalizeStackChildPaneGroups(c);
+        if (normalized !== c) {
+          changed = true;
+          group = normalized;
+        }
+      }
+      const migratedChildren = migrateLegacyTabControlInChildren(group.children);
+      if (migratedChildren !== group.children) {
+        changed = true;
+        return { ...group, children: migratedChildren };
+      }
+      return group;
+    }
+    if (c.hostControl === "tab-control") {
+      changed = true;
+      return wrapLegacyTabControlTile(c);
+    }
+    return c;
+  });
+  return changed ? next : children;
+}
+
+/** Upgrade any remaining tile-level `tab-control` nodes to group tab containers. */
+export function migrateLegacyTabControlItems(items: RootLayoutItem[]): RootLayoutItem[] {
+  let changed = false;
+  const next = items.map((it) => {
+    if (it.kind === "group") {
+      let group = it;
+      if (it.hostControl === "tab-control") {
+        const normalized = normalizeTabChildPaneGroups(it);
+        if (normalized !== it) {
+          changed = true;
+          group = normalized;
+        }
+      }
+      if (it.hostControl === "vertical-stack") {
+        const normalized = normalizeStackChildPaneGroups(it);
+        if (normalized !== it) {
+          changed = true;
+          group = normalized;
+        }
+      }
+      const children = migrateLegacyTabControlInChildren(group.children);
+      if (children !== group.children) {
+        changed = true;
+        return { ...group, children };
+      }
+      return group;
+    }
+    if (it.hostControl === "tab-control") {
+      changed = true;
+      return wrapLegacyTabControlTile(it);
+    }
+    return it;
+  });
+  return changed ? next : items;
+}
+
+function finalizeLayoutV3(layout: DashboardLayoutV3): DashboardLayoutV3 {
+  let items = layout.items;
+  let changed = false;
+  if (layoutGraphHasDuplicateIds(items)) {
+    items = dedupeLayoutV3ItemIds({ version: 3, items }).items;
+    changed = true;
+  }
+  const migrated = migrateLegacyTabControlItems(items);
+  if (migrated !== items) {
+    items = migrated;
+    changed = true;
+  }
+  if (!changed) return layout;
+  return { version: 3, items };
+}
 
 function deepCloneItems(items: RootLayoutItem[]): RootLayoutItem[] {
   return JSON.parse(JSON.stringify(items)) as RootLayoutItem[];
@@ -180,11 +302,9 @@ export function migrateV2ToV3(layout: DashboardLayoutV2): DashboardLayoutV3 {
 
 export function ensureLayoutV3(layout: DashboardLayout): DashboardLayoutV3 {
   if (isLayoutV3(layout)) {
-    if (!layoutGraphHasDuplicateIds(layout.items)) return layout;
-    return dedupeLayoutV3ItemIds(layout);
+    return finalizeLayoutV3(layout);
   }
   const v2 = ensureLayoutV2(layout);
   const v3 = migrateV2ToV3(v2);
-  if (!layoutGraphHasDuplicateIds(v3.items)) return v3;
-  return dedupeLayoutV3ItemIds(v3);
+  return finalizeLayoutV3(v3);
 }

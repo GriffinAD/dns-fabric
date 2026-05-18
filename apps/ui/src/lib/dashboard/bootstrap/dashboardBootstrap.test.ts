@@ -42,6 +42,7 @@ describe("mountDashboardGatewaySideEffects", () => {
     const layouts: unknown[] = [];
     const cpus: unknown[] = [];
     bus.subscribe("fabric.perf.updated", perfUpdatedCpuPercent, (v) => cpus.push(v));
+    const stopBus = bus.connect();
 
     const stop = mountDashboardGatewaySideEffects(gw, bus, {
       onPluginsLoaded: (items) => plugins.push(items),
@@ -54,6 +55,7 @@ describe("mountDashboardGatewaySideEffects", () => {
     expect(layouts.length).toBe(1);
     expect(cpus[0]).toBe(44);
     stop();
+    stopBus();
     expect(unsub).toHaveBeenCalled();
   });
 

@@ -2,7 +2,86 @@
   import Button from "flowbite-svelte/Button.svelte";
 
   import { clampGridColSpan, clampGridRowSpan, GRID_COLUMNS } from "../grid/gridPlacement";
-  import type { DashboardGroup } from "../types";
+  import type { DashboardGroup, GroupChild, GroupHostControl } from "../types";
+  import { isDashboardGroupNode, MAX_TAB_GROUP_CHILDREN } from "../types";
+
+  const CONTAINER_TYPE_OPTIONS: {
+    value: GroupHostControl;
+    label: string;
+    disabled?: boolean;
+    title?: string;
+  }[] = [
+    { value: "panel", label: "panel" },
+    { value: "tab-control", label: "tab-control" },
+    { value: "vertical-stack", label: "vertical-stack" },
+    {
+      value: "split-grid",
+      label: "split-grid",
+      disabled: true,
+      title: "not implemented",
+    },
+  ];
+
+  function effectiveHostControl(g: DashboardGroup): GroupHostControl {
+    return g.hostControl ?? "panel";
+  }
+
+  function tabLabelForChild(child: GroupChild): string {
+    return isDashboardGroupNode(child)
+      ? (child.tabLabel ?? child.id)
+      : (child.tabLabel ?? child.pluginId);
+  }
+
+  function labelTabChildren(children: GroupChild[]): GroupChild[] {
+    return children.map((child) => {
+      const tabLabel = tabLabelForChild(child);
+      if (isDashboardGroupNode(child)) {
+        return { ...child, tabLabel };
+      }
+      if (child.hostControl === "tab-control") {
+        const { hostControl: _hc, ...rest } = child;
+        return { ...rest, hostControl: "single-panel", tabLabel };
+      }
+      return { ...child, tabLabel };
+    });
+  }
+
+  function convertToTabControl(group: DashboardGroup): DashboardGroup {
+    const children = labelTabChildren(group.children);
+    const active =
+      group.hostState?.activeChildId != null &&
+      children.some((c) => c.id === group.hostState?.activeChildId)
+        ? group.hostState.activeChildId
+        : children[0]?.id;
+    return {
+      ...group,
+      hostControl: "tab-control",
+      innerWrap: false,
+      hostState: active != null ? { activeChildId: active } : undefined,
+      children,
+    };
+  }
+
+  function convertToVerticalStack(group: DashboardGroup): DashboardGroup {
+    const children = labelTabChildren(group.children);
+    return {
+      ...group,
+      hostControl: "vertical-stack",
+      innerWrap: false,
+      hostState: undefined,
+      children,
+    };
+  }
+
+  function convertToPanel(group: DashboardGroup): DashboardGroup {
+    const { hostControl: _hc, hostState: _hs, ...rest } = group;
+    return rest;
+  }
+
+  function canUseTabControl(group: DashboardGroup): boolean {
+    const n = group.children.length;
+    return n >= 1 && n <= MAX_TAB_GROUP_CHILDREN;
+  }
 
   let {
     group,
@@ -45,7 +124,8 @@
   function save() {
     if (!draft?.grid) return;
     const g = draft.grid;
-    onSave({
+    const host = effectiveHostControl(draft);
+    let next: DashboardGroup = {
       ...draft,
       showBorder: draft.showBorder !== false,
       innerWrap: draft.innerWrap === true,
@@ -55,7 +135,32 @@
         colSpan: clampGridColSpan(g.colSpan),
         rowSpan: clampGridRowSpan(g.rowSpan),
       },
-    });
+    };
+    if (host === "tab-control") {
+      next = convertToTabControl(next);
+    } else if (host === "vertical-stack") {
+      next = convertToVerticalStack(next);
+    } else {
+      next = convertToPanel(next);
+    }
+    onSave(next);
+  }
+
+  function onContainerTypeChange(value: GroupHostControl) {
+    if (!draft) return;
+    if (value === "tab-control") {
+      if (!canUseTabControl(draft)) return;
+      draft = convertToTabControl(draft);
+      return;
+    }
+    if (value === "vertical-stack") {
+      if (!canUseTabControl(draft)) return;
+      draft = convertToVerticalStack(draft);
+      return;
+    }
+    if (value === "panel") {
+      draft = convertToPanel(draft);
+    }
   }
 
   function onBackdropClick(e: MouseEvent) {
@@ -93,6 +198,46 @@
         <p class="mb-4 font-mono text-sm text-gray-900 dark:text-white">{draft.id}</p>
 
         <div class="space-y-4">
+          <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
+            <span>Container type</span>
+            <select
+              class="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              data-testid="group-settings-container-type"
+              value={effectiveHostControl(draft)}
+              onchange={(e) => {
+                onContainerTypeChange(
+                  (e.currentTarget as HTMLSelectElement).value as GroupHostControl,
+                );
+              }}
+            >
+              {#each CONTAINER_TYPE_OPTIONS as opt (opt.value)}
+                <option
+                  value={opt.value}
+                  disabled={opt.disabled ||
+                    ((opt.value === "tab-control" || opt.value === "vertical-stack") &&
+                      !canUseTabControl(draft))}
+                  title={opt.title ??
+                    ((opt.value === "tab-control" || opt.value === "vertical-stack") &&
+                    !canUseTabControl(draft)
+                      ? `${opt.value} requires 1–${MAX_TAB_GROUP_CHILDREN} children`
+                      : undefined)}
+                >
+                  {opt.label}
+                </option>
+              {/each}
+            </select>
+          </label>
+          {#if effectiveHostControl(draft) === "tab-control"}
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Each child is a tab; labels default from plugin or container id when you switch
+              types.
+            </p>
+          {:else if effectiveHostControl(draft) === "vertical-stack"}
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Each child is a collapsible section; rename headers in the stack editor.
+            </p>
+          {/if}
+
           <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
             <input
               type="checkbox"
@@ -103,21 +248,23 @@
             />
             Show border around container
           </label>
-          <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <input
-              type="checkbox"
-              checked={draft.innerWrap === true}
-              data-testid="group-settings-inner-wrap"
-              onchange={() => {
-                draft = { ...draft!, innerWrap: !draft!.innerWrap };
-              }}
-            />
-            Auto wrap tiles to a new row when a row is full
-          </label>
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            When off, tiles use the same G-wide column grid without reflowing; turn on to pack into
-            additional rows when a row would not fit.
-          </p>
+          {#if effectiveHostControl(draft) !== "tab-control" && effectiveHostControl(draft) !== "vertical-stack"}
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={draft.innerWrap === true}
+                data-testid="group-settings-inner-wrap"
+                onchange={() => {
+                  draft = { ...draft!, innerWrap: !draft!.innerWrap };
+                }}
+              />
+              Auto wrap tiles to a new row when a row is full
+            </label>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              When off, tiles use the same G-wide column grid without reflowing; turn on to pack into
+              additional rows when a row would not fit.
+            </p>
+          {/if}
 
           <p class="text-xs text-gray-500 dark:text-gray-400">
             Placement on the main dashboard grid ({GRID_COLUMNS} columns). Adjust column/row origin and span.

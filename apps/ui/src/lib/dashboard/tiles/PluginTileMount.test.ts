@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import { mount, unmount } from "svelte";
 
 import type { PluginEntry } from "../../api/types";
+import { createFabricEventBus } from "../eventBus";
 import type { DataGateway } from "../../gateway/dataGateway";
 import PluginTileMount from "./PluginTileMount.svelte";
 import type { DashboardTile } from "../types";
 
 const gateway = {} as DataGateway;
+const bus = createFabricEventBus(gateway);
 
 function baseTile(pluginId: string): DashboardTile {
   return {
@@ -27,6 +29,7 @@ describe("PluginTileMount", () => {
       target: el,
       props: {
         gateway,
+        bus,
         tile: baseTile("audit.never"),
         plugins: [],
       },
@@ -43,6 +46,7 @@ describe("PluginTileMount", () => {
       target: el,
       props: {
         gateway,
+        bus,
         tile: {
           ...baseTile("perf.cpu"),
           options: { not_a_valid_key: true } as unknown as DashboardTile["options"],
@@ -63,6 +67,7 @@ describe("PluginTileMount", () => {
       target: el,
       props: {
         gateway,
+        bus,
         tile: baseTile("perf.cpu"),
         plugins,
       },
