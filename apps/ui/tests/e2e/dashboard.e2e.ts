@@ -201,6 +201,35 @@ test("tile settings parent: move tile from container to dashboard root", async (
   expect(groupStatus?.children?.some((c) => c.id === "tile-perf-ram")).toBe(false);
 });
 
+test("palette drop on tab pane empty adds a tile inside the tab container", async ({ page }) => {
+  await seedTabGroupLayoutInLocalStorageBeforeNavigation(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Edit layout" }).click();
+  const pane = page.getByTestId("tab-group-pane");
+  await expect(pane.getByTestId("editor-group-nowrap-empty")).toBeVisible();
+  await simulateSveltedndDrop(
+    page,
+    '.inline-flex[data-palette-drag-plugin-id="dhcp.reservations"]',
+    '[data-palette-drag-plugin-id="dhcp.reservations"] [data-testid="palette-chip-drag"]',
+    '[data-testid="editor-group-nowrap-empty"]',
+    { k: "pp", i: "dhcp.reservations" },
+  );
+  await expect(pane.getByRole("heading", { name: "Static reservations" })).toBeVisible({
+    timeout: 8000,
+  });
+  const raw = await page.evaluate(() => localStorage.getItem("kea-fabric-dashboard-layout"));
+  expect(raw).toBeTruthy();
+  const stored = JSON.parse(raw!) as {
+    version: number;
+    items: { kind: string; id: string; hostControl?: string; children?: { kind?: string; children?: { pluginId?: string }[] }[] }[];
+  };
+  const tabsGroup = stored.items.find((i) => i.kind === "group" && i.id === "tabs-e2e");
+  const paneGroup = tabsGroup?.children?.[0];
+  expect(paneGroup && "children" in paneGroup && paneGroup.children?.some((c) => c.pluginId === "dhcp.reservations")).toBe(
+    true,
+  );
+});
+
 test("palette drop on tab strip adds a tab", async ({ page }) => {
   await seedTabGroupLayoutInLocalStorageBeforeNavigation(page);
   await page.goto("/");
@@ -225,7 +254,12 @@ test("palette drop on tab strip adds a tab", async ({ page }) => {
   };
   const tabsGroup = stored.items.find((i) => i.kind === "group" && i.id === "tabs-e2e");
   expect(tabsGroup?.hostControl).toBe("tab-control");
-  expect(tabsGroup?.children?.some((c) => c.pluginId === "dhcp.reservations")).toBe(true);
+  const hasReservationsTab = tabsGroup?.children?.some(
+    (c) =>
+      ("children" in c && c.children?.some((t) => t.pluginId === "dhcp.reservations")) ||
+      c.pluginId === "dhcp.reservations",
+  );
+  expect(hasReservationsTab).toBe(true);
 });
 
 test("palette drag adds tile to editor grid", async ({ page }) => {

@@ -17,6 +17,7 @@
     reorderRootLayoutItemsPreservingSlotOrigins,
   } from "../grid/gridPlacement";
   import TabGroupHost from "../groups/TabGroupHost.svelte";
+  import { addStackChild } from "../groups/verticalStackGroupOps";
   import { addTabChild } from "../groups/tabGroupOps";
   import DashboardReadNestedHost from "./DashboardReadNestedHost.svelte";
   import GroupReadNoWrap from "../tiles/GroupReadNoWrap.svelte";
@@ -27,6 +28,7 @@
   import DashboardEditRootGrid from "./DashboardEditRootGrid.svelte";
   import {
     clearEditorDragHover,
+    DND_CONTAINER_ATTR,
     getLastEditorDragClient,
     syncEditorDragHoverFromPointer,
   } from "../interactions/dashboardEditorDragHover";
@@ -60,7 +62,11 @@
     plugins = [] as PluginEntry[],
     onAddTile,
     onAddGroup,
+    onAddTabGroup,
+    onAddStackGroup,
     onAddGroupToGroup,
+    onAddTabGroupToGroup,
+    onAddStackGroupToGroup,
     onAddTileToGroup,
     onLayoutStructureChange,
     onPerfTileGridHint,
@@ -78,8 +84,12 @@
     onAddTile?: (pluginId: string, insertBeforeIndex?: number) => void;
     /** Add a new empty container on the root grid at index, or append when index is omitted. */
     onAddGroup?: (insertBeforeIndex?: number) => void;
+    onAddTabGroup?: (insertBeforeIndex?: number) => void;
+    onAddStackGroup?: (insertBeforeIndex?: number) => void;
     /** Add a new empty nested container inside an existing group (nowrap / nested-capable parents only). */
     onAddGroupToGroup?: (parentGroupId: string) => void;
+    onAddTabGroupToGroup?: (parentGroupId: string) => void;
+    onAddStackGroupToGroup?: (parentGroupId: string) => void;
     /** Drop a plugin from the palette onto a container in edit mode. */
     onAddTileToGroup?: (groupId: string, pluginId: string) => void;
     onLayoutStructureChange?: (next: DashboardLayout) => void;
@@ -176,7 +186,7 @@
         },
         onDragOver: (e) => {
           const drag = parseDragPayload(dndState.draggedItem);
-          if (e.dataTransfer && (drag?.k === "pp" || drag?.k === "pg")) {
+          if (e.dataTransfer && (drag?.k === "pp" || drag?.k === "pg" || drag?.k === "pgt" || drag?.k === "pgs")) {
             e.dataTransfer.dropEffect = dndState.invalidDrop ? "none" : "copy";
           }
         },
@@ -201,6 +211,21 @@
     }
   }
 
+  function onAddStackToGroup(groupId: string, pluginId: string) {
+    const group = findGroupByIdInItems(layout.items, groupId);
+    if (!group || group.hostControl !== "vertical-stack") return;
+    const sectionLabel = plugins.find((p) => p.id === pluginId)?.name ?? pluginId;
+    try {
+      const next = addStackChild(group, { pluginId, sectionLabel });
+      onLayoutStructureChange?.({
+        version: 3,
+        items: mapLayoutReplaceGroupById(layout.items, groupId, next),
+      });
+    } catch {
+      /* max sections */
+    }
+  }
+
   function buildDropContext(): DashboardDropContext {
     return {
       dndRoot,
@@ -210,9 +235,14 @@
       onLayoutStructureChange,
       onAddTile,
       onAddGroup,
+      onAddTabGroup,
+      onAddStackGroup,
       onAddTileToGroup,
       onAddTabToGroup,
+      onAddStackToGroup,
       onAddGroupToGroup,
+      onAddTabGroupToGroup,
+      onAddStackGroupToGroup,
     };
   }
 
@@ -229,7 +259,9 @@
       const hit = document.elementFromPoint(last.x, last.y);
       const overGrid = hit?.closest('[data-dashboard-editor="grid-chrome"]') != null;
       const overPalette = hit?.closest('[data-dashboard-editor="palette"]') != null;
-      if (!overGrid && overPalette) return;
+      const overDropTarget = hit?.closest(`[${DND_CONTAINER_ATTR}]`) != null;
+      // Floating palette can sit above the grid; still accept drops on tab/stack targets.
+      if (!overGrid && overPalette && !overDropTarget) return;
     }
     if (dropCommittedForActiveDrag) return;
     dropCommittedForActiveDrag = true;
@@ -278,8 +310,8 @@
 {/snippet}
 
 <div class="flex flex-col gap-4" data-testid="dashboard-host">
-  {#if editLayout && (palette.length > 0 || onAddGroup)}
-    <PluginPalette {plugins} {onAddTile} {onAddGroup} {gateway} {bus} />
+  {#if editLayout && (palette.length > 0 || onAddGroup || onAddTabGroup || onAddStackGroup)}
+    <PluginPalette {plugins} {onAddTile} {onAddGroup} {onAddTabGroup} {onAddStackGroup} {gateway} {bus} />
   {/if}
 
   {#if editLayout}

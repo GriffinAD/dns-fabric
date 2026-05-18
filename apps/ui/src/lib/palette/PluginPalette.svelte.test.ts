@@ -47,6 +47,23 @@ describe("PluginPalette", () => {
     expect(screen.getByTestId("layout-add-container")).toBeTruthy();
   });
 
+  it("renders tab and stack container chips when handlers provided", () => {
+    const onAddTabGroup = vi.fn();
+    const onAddStackGroup = vi.fn();
+    render(PluginPalette, {
+      props: {
+        plugins: [{ id: "dhcp.pools", name: "Pools", enabled: true }],
+        onAddGroup: vi.fn(),
+        onAddTabGroup,
+        onAddStackGroup,
+      },
+    });
+    fireEvent.click(screen.getByTestId("layout-add-tab-container"));
+    fireEvent.click(screen.getByTestId("layout-add-stack-container"));
+    expect(onAddTabGroup).toHaveBeenCalledTimes(1);
+    expect(onAddStackGroup).toHaveBeenCalledTimes(1);
+  });
+
   it("exposes dock mode controls (inline, sticky, float)", () => {
     const mem: Record<string, string> = {
       "kea-fabric-palette-dock": JSON.stringify("inline"),

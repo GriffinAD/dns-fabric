@@ -14,8 +14,10 @@
   } from "../interactions/editorChrome";
   import type { DashboardDragPayload } from "../interactions/dashboardSveltedndTypes";
   import { rootCellPayload, rootSlotContainer } from "../interactions/dashboardSveltedndTypes";
+  import type { HostPaneEditorBindings } from "../groups/hostGroupPaneEditorTypes";
   import { dedupeById } from "../layout/layoutTree";
   import TabGroupHost from "../groups/TabGroupHost.svelte";
+  import VerticalStackGroupHost from "../groups/VerticalStackGroupHost.svelte";
   import EditorGroupInnerWrap from "./EditorGroupInnerWrap.svelte";
   import EditorGroupNoWrapStrip from "./EditorGroupNoWrapStrip.svelte";
   import type { PluginEntry } from "../../api/types";
@@ -80,6 +82,21 @@
   const gItems = $derived(dedupeById(dndByGroup[group.id] ?? []));
   const isGroupEmpty = $derived(!gItems.length);
   const G = $derived(groupOuterColSpan(group));
+
+  const paneEditor = $derived.by((): HostPaneEditorBindings => ({
+    dropCb,
+    getSubDndList,
+    noWrapEditPortW,
+    noWrapStripPortMeasure,
+    chromeDragSm,
+    chromeEditSm,
+    editorTileInPlay,
+    editorGroupInPlay,
+    onEditGroup,
+    onEditTile,
+    onItemColSpanChange,
+    groupInnerSurfaceDragActive,
+  }));
 </script>
 
 <div
@@ -135,7 +152,7 @@
     <div class="editor-group-root-grid-drop editor-group-root-hit-active pointer-events-auto absolute inset-0 z-[45] rounded-md" aria-hidden="true" use:droppable={{ container: rootSlotContainer(item.id), direction: "grid", callbacks: dropCb, attributes: dndDropAttrs }} data-dnd-container={rootSlotContainer(item.id)}></div>
   {/if}
   <div
-    class="editor-group-inner relative z-[2] min-h-0 w-full min-w-0 flex-1 overflow-hidden rounded-md pl-0 pt-8 {rootGroupGridDropActive(group.id)
+    class="editor-group-inner pointer-events-auto relative z-[2] min-h-0 w-full min-w-0 flex-1 overflow-hidden rounded-md pl-0 pt-8 {rootGroupGridDropActive(group.id)
       ? 'pointer-events-none'
       : ''}"
     data-editor-group-inner="true"
@@ -149,6 +166,19 @@
           {editLayout}
           {onGroupChange}
           layoutDropCb={dropCb}
+          {paneEditor}
+          {plugins}
+          {onEditTile}
+          {onEditGroup}
+          {tileContent}
+        />
+      {:else if group.hostControl === "vertical-stack"}
+        <VerticalStackGroupHost
+          {group}
+          {editLayout}
+          {onGroupChange}
+          layoutDropCb={dropCb}
+          {paneEditor}
           {plugins}
           {onEditTile}
           {onEditGroup}

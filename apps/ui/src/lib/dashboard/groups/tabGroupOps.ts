@@ -1,6 +1,5 @@
-import type { DisplayMode } from "../../api/types";
 import type { DashboardGroup, DashboardTile, GroupChild } from "../types";
-import { MAX_TAB_GROUP_CHILDREN } from "../types";
+import { isDashboardGroupNode, MAX_TAB_GROUP_CHILDREN } from "../types";
 
 /** Tab strip label; defaults to child `id` (ADR-0054). */
 export function tabStripLabel(child: GroupChild): string {
@@ -21,7 +20,6 @@ export function activeTabChild(group: DashboardGroup): GroupChild | undefined {
 export type AddTabChildOpts = {
   pluginId: string;
   tabLabel: string;
-  displayMode?: DisplayMode;
 };
 
 export type AddTabContainerOpts = {
@@ -102,22 +100,65 @@ function mapChild(
   return { ...group, children };
 }
 
+/** Each tab is a panel group (container surface); plugin tiles live inside the pane. */
+export function wrapTabTileInPaneGroup(tile: DashboardTile): DashboardGroup {
+  return {
+    kind: "group",
+    id: tile.id,
+    showBorder: true,
+    tabLabel: tile.tabLabel,
+    children: [tile],
+  };
+}
+
+/** Tab panes fill the host panel; strip `grid` on pane groups is not used for layout. */
+function clearTabPaneStripGrid(pane: DashboardGroup): { child: DashboardGroup; changed: boolean } {
+  if (
+    pane.hostControl === "tab-control" ||
+    pane.hostControl === "vertical-stack" ||
+    pane.grid == null
+  ) {
+    return { child: pane, changed: false };
+  }
+  const { grid: _grid, ...rest } = pane;
+  return { child: rest, changed: true };
+}
+
+/** Legacy layouts may store a plugin tile as the tab child; upgrade to a pane group. */
+export function normalizeTabChildPaneGroups(group: DashboardGroup): DashboardGroup {
+  assertTabControlGroup(group);
+  let changed = false;
+  const children = group.children.map((child) => {
+    if (!isDashboardGroupNode(child)) {
+      changed = true;
+      return wrapTabTileInPaneGroup(child);
+    }
+    const cleared = clearTabPaneStripGrid(child);
+    if (cleared.changed) changed = true;
+    return cleared.child;
+  });
+  return changed ? withChildren(group, children) : group;
+}
+
 export function addTabChild(group: DashboardGroup, opts: AddTabChildOpts): DashboardGroup {
   assertTabControlGroup(group);
   if (group.children.length >= MAX_TAB_GROUP_CHILDREN) {
     throw new Error(`tab-control group has the maximum of ${MAX_TAB_GROUP_CHILDREN} tabs`);
   }
   const ids = childIds(group.children);
-  const id = uniqueChildId(`tab-${opts.pluginId.replace(/[^a-z0-9]+/gi, "-")}`, ids);
-  const tile: DashboardTile = {
-    id,
-    pluginId: opts.pluginId,
+  const paneId = uniqueChildId(
+    `tab-pane-${opts.pluginId.replace(/[^a-z0-9]+/gi, "-")}`,
+    ids,
+  );
+  const pane: DashboardGroup = {
+    kind: "group",
+    id: paneId,
+    showBorder: true,
     tabLabel: opts.tabLabel,
-    hostControl: "single-panel",
-    displayMode: opts.displayMode ?? "full",
+    children: [],
   };
-  const children = [...group.children, tile];
-  return withChildren(group, children, { hostState: { activeChildId: id } });
+  const children = [...group.children, pane];
+  return withChildren(group, children, { hostState: { activeChildId: paneId } });
 }
 
 export function addTabContainer(
@@ -129,7 +170,7 @@ export function addTabContainer(
     throw new Error(`tab-control group has the maximum of ${MAX_TAB_GROUP_CHILDREN} tabs`);
   }
   const ids = childIds(group.children);
-  const id = opts.id ?? uniqueChildId("tab-group", ids);
+  const id = opts.id ?? uniqueChildId("tab-pane", ids);
   if (ids.has(id)) {
     throw new Error(`tab child id already exists: ${id}`);
   }
@@ -137,8 +178,7 @@ export function addTabContainer(
     kind: "group",
     id,
     showBorder: true,
-    hostControl: "tab-control",
-    tabLabel: opts.tabLabel ?? "Tabs",
+    tabLabel: opts.tabLabel ?? `Tab ${group.children.length + 1}`,
     children: [],
   };
   const children = [...group.children, nested];

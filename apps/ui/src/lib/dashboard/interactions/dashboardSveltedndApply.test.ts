@@ -13,6 +13,8 @@ import {
   groupEmptyContainer,
   groupGapAfterContainer,
   paletteAddGroupPayload,
+  paletteAddStackGroupPayload,
+  paletteAddTabGroupPayload,
   palettePluginContainer,
   palettePluginPayload,
   parseDragPayload,
@@ -335,6 +337,55 @@ describe("applyDashboardDrop", () => {
     expect(onAddTileToGroup).not.toHaveBeenCalled();
   });
 
+  it("calls onAddStackToGroup for palette → vertical-stack group tabs surface", () => {
+    const onAddStackToGroup = vi.fn();
+    const stack = layoutGroup("stack1", []);
+    stack.hostControl = "vertical-stack";
+    const pane = {
+      kind: "group" as const,
+      id: "stack-pane-1",
+      showBorder: true,
+      tabLabel: "Section 1",
+      children: [],
+    };
+    stack.children = [pane];
+    applyDashboardDrop(
+      state({
+        draggedItem: palettePluginPayload("dhcp.clients"),
+        targetContainer: `g:${stack.id}:append`,
+      }),
+      {
+        dndRoot: [{ id: "stack1", item: stack }],
+        dndByGroup: {},
+        layoutItems: [stack],
+        onAddStackToGroup,
+      },
+    );
+    expect(onAddStackToGroup).toHaveBeenCalledWith("stack1", "dhcp.clients");
+  });
+
+  it("calls onAddStackToGroup for palette → vertical-stack group child slot", () => {
+    const onAddStackToGroup = vi.fn();
+    const onAddTileToGroup = vi.fn();
+    const stack = layoutGroup("stack1", [childTile("s1")]);
+    stack.hostControl = "vertical-stack";
+    applyDashboardDrop(
+      state({
+        draggedItem: palettePluginPayload("dhcp.clients"),
+        targetContainer: groupChildSlotContainer("stack1", "s1"),
+      }),
+      {
+        dndRoot: [{ id: "stack1", item: stack }],
+        dndByGroup: {},
+        layoutItems: [stack],
+        onAddStackToGroup,
+        onAddTileToGroup,
+      },
+    );
+    expect(onAddStackToGroup).toHaveBeenCalledWith("stack1", "dhcp.clients");
+    expect(onAddTileToGroup).not.toHaveBeenCalled();
+  });
+
   it("calls onAddTabToGroup for palette → tab-control group child slot", () => {
     const onAddTabToGroup = vi.fn();
     const onAddTileToGroup = vi.fn();
@@ -357,6 +408,327 @@ describe("applyDashboardDrop", () => {
     );
     expect(onAddTabToGroup).toHaveBeenCalledWith("tabs1", "dhcp.clients");
     expect(onAddTileToGroup).not.toHaveBeenCalled();
+  });
+
+  it("calls onAddTileToGroup for palette → empty stack section child slot", () => {
+    const onAddStackToGroup = vi.fn();
+    const onAddTileToGroup = vi.fn();
+    const stack = layoutGroup("stack1", []);
+    stack.hostControl = "vertical-stack";
+    const pane = {
+      kind: "group" as const,
+      id: "stack-pane-1",
+      showBorder: true,
+      tabLabel: "Section 1",
+      children: [],
+    };
+    stack.children = [pane];
+    applyDashboardDrop(
+      state({
+        draggedItem: palettePluginPayload("dhcp.clients"),
+        targetContainer: groupChildSlotContainer("stack1", pane.id),
+      }),
+      {
+        dndRoot: [{ id: "stack1", item: stack }],
+        dndByGroup: {},
+        layoutItems: [stack],
+        onAddStackToGroup,
+        onAddTileToGroup,
+      },
+    );
+    expect(onAddTileToGroup).toHaveBeenCalledWith("stack-pane-1", "dhcp.clients");
+    expect(onAddStackToGroup).not.toHaveBeenCalled();
+  });
+
+  it("calls onAddTabGroupToGroup for palette tab container → group empty", () => {
+    const onAddTabGroupToGroup = vi.fn();
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddTabGroupPayload(),
+        targetContainer: groupEmptyContainer("g1"),
+      }),
+      { dndRoot: [], dndByGroup: { g1: [] }, layoutItems: [], onAddTabGroupToGroup },
+    );
+    expect(onAddTabGroupToGroup).toHaveBeenCalledWith("g1");
+  });
+
+  it("calls onAddStackGroupToGroup for palette stack container → group empty", () => {
+    const onAddStackGroupToGroup = vi.fn();
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddStackGroupPayload(),
+        targetContainer: groupEmptyContainer("g1"),
+      }),
+      { dndRoot: [], dndByGroup: { g1: [] }, layoutItems: [], onAddStackGroupToGroup },
+    );
+    expect(onAddStackGroupToGroup).toHaveBeenCalledWith("g1");
+  });
+
+  it("calls onAddTabGroupToGroup for palette tab container → empty stack section slot", () => {
+    const onAddTabGroupToGroup = vi.fn();
+    const stack = layoutGroup("stack1", []);
+    stack.hostControl = "vertical-stack";
+    const pane = {
+      kind: "group" as const,
+      id: "stack-pane-1",
+      showBorder: true,
+      tabLabel: "Section 1",
+      children: [],
+    };
+    stack.children = [pane];
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddTabGroupPayload(),
+        targetContainer: groupChildSlotContainer("stack1", pane.id),
+      }),
+      {
+        dndRoot: [{ id: "stack1", item: stack }],
+        dndByGroup: {},
+        layoutItems: [stack],
+        onAddTabGroupToGroup,
+      },
+    );
+    expect(onAddTabGroupToGroup).toHaveBeenCalledWith("stack-pane-1");
+  });
+
+  it("calls onAddStackGroupToGroup for palette stack container → empty tab pane slot", () => {
+    const onAddStackGroupToGroup = vi.fn();
+    const tabs = layoutGroup("tabs1", []);
+    tabs.hostControl = "tab-control";
+    const pane = {
+      kind: "group" as const,
+      id: "tab-pane-1",
+      showBorder: true,
+      tabLabel: "Tab 1",
+      children: [],
+    };
+    tabs.children = [pane];
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddStackGroupPayload(),
+        targetContainer: groupChildSlotContainer("tabs1", pane.id),
+      }),
+      {
+        dndRoot: [{ id: "tabs1", item: tabs }],
+        dndByGroup: {},
+        layoutItems: [tabs],
+        onAddStackGroupToGroup,
+      },
+    );
+    expect(onAddStackGroupToGroup).toHaveBeenCalledWith("tab-pane-1");
+  });
+
+  it("calls onAddGroupToGroup for palette group → empty tab pane slot", () => {
+    const onAddGroupToGroup = vi.fn();
+    const tabs = layoutGroup("tabs1", []);
+    tabs.hostControl = "tab-control";
+    const pane = {
+      kind: "group" as const,
+      id: "tab-pane-1",
+      showBorder: true,
+      tabLabel: "Tab 1",
+      children: [],
+    };
+    tabs.children = [pane];
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddGroupPayload(),
+        targetContainer: groupChildSlotContainer("tabs1", pane.id),
+      }),
+      {
+        dndRoot: [{ id: "tabs1", item: tabs }],
+        dndByGroup: {},
+        layoutItems: [tabs],
+        onAddGroupToGroup,
+      },
+    );
+    expect(onAddGroupToGroup).toHaveBeenCalledWith("tab-pane-1");
+  });
+
+  it("calls onAddGroupToGroup for palette group → empty stack section slot", () => {
+    const onAddGroupToGroup = vi.fn();
+    const stack = layoutGroup("stack1", []);
+    stack.hostControl = "vertical-stack";
+    const pane = {
+      kind: "group" as const,
+      id: "stack-pane-1",
+      showBorder: true,
+      tabLabel: "Section 1",
+      children: [],
+    };
+    stack.children = [pane];
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddGroupPayload(),
+        targetContainer: groupChildSlotContainer("stack1", pane.id),
+      }),
+      {
+        dndRoot: [{ id: "stack1", item: stack }],
+        dndByGroup: {},
+        layoutItems: [stack],
+        onAddGroupToGroup,
+      },
+    );
+    expect(onAddGroupToGroup).toHaveBeenCalledWith("stack-pane-1");
+  });
+
+  it("calls onAddTabGroupToGroup for palette tab container → empty tab pane slot", () => {
+    const onAddTabGroupToGroup = vi.fn();
+    const tabs = layoutGroup("tabs1", []);
+    tabs.hostControl = "tab-control";
+    const pane = {
+      kind: "group" as const,
+      id: "tab-pane-1",
+      showBorder: true,
+      tabLabel: "Tab 1",
+      children: [],
+    };
+    tabs.children = [pane];
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddTabGroupPayload(),
+        targetContainer: groupChildSlotContainer("tabs1", pane.id),
+      }),
+      {
+        dndRoot: [{ id: "tabs1", item: tabs }],
+        dndByGroup: {},
+        layoutItems: [tabs],
+        onAddTabGroupToGroup,
+      },
+    );
+    expect(onAddTabGroupToGroup).toHaveBeenCalledWith("tab-pane-1");
+  });
+
+  it("calls onAddStackGroupToGroup for palette stack container → empty stack section slot", () => {
+    const onAddStackGroupToGroup = vi.fn();
+    const stack = layoutGroup("stack1", []);
+    stack.hostControl = "vertical-stack";
+    const pane = {
+      kind: "group" as const,
+      id: "stack-pane-1",
+      showBorder: true,
+      tabLabel: "Section 1",
+      children: [],
+    };
+    stack.children = [pane];
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddStackGroupPayload(),
+        targetContainer: groupChildSlotContainer("stack1", pane.id),
+      }),
+      {
+        dndRoot: [{ id: "stack1", item: stack }],
+        dndByGroup: {},
+        layoutItems: [stack],
+        onAddStackGroupToGroup,
+      },
+    );
+    expect(onAddStackGroupToGroup).toHaveBeenCalledWith("stack-pane-1");
+  });
+
+  it("calls onAddTabGroupToGroup for palette tab container → plain group child slot", () => {
+    const onAddTabGroupToGroup = vi.fn();
+    const group = layoutGroup("g1", [childTile("t1")]);
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddTabGroupPayload(),
+        targetContainer: groupChildSlotContainer("g1", "t1"),
+      }),
+      {
+        dndRoot: [{ id: "g1", item: group }],
+        dndByGroup: {},
+        layoutItems: [group],
+        onAddTabGroupToGroup,
+      },
+    );
+    expect(onAddTabGroupToGroup).toHaveBeenCalledWith("g1");
+  });
+
+  it("calls onAddStackGroupToGroup for palette stack container → plain group child slot", () => {
+    const onAddStackGroupToGroup = vi.fn();
+    const group = layoutGroup("g1", [childTile("t1")]);
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddStackGroupPayload(),
+        targetContainer: groupChildSlotContainer("g1", "t1"),
+      }),
+      {
+        dndRoot: [{ id: "g1", item: group }],
+        dndByGroup: {},
+        layoutItems: [group],
+        onAddStackGroupToGroup,
+      },
+    );
+    expect(onAddStackGroupToGroup).toHaveBeenCalledWith("g1");
+  });
+
+  it("calls onAddTabGroupToGroup for palette tab container → tab append slot", () => {
+    const onAddTabGroupToGroup = vi.fn();
+    const tabs = layoutGroup("tabs1", [childTile("t1")]);
+    tabs.hostControl = "tab-control";
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddTabGroupPayload(),
+        targetContainer: groupAppendContainer("tabs1"),
+      }),
+      {
+        dndRoot: [{ id: "tabs1", item: tabs }],
+        dndByGroup: {},
+        layoutItems: [tabs],
+        onAddTabGroupToGroup,
+      },
+    );
+    expect(onAddTabGroupToGroup).toHaveBeenCalledWith("tabs1");
+  });
+
+  it("calls onAddStackGroupToGroup for palette stack container → stack append slot", () => {
+    const onAddStackGroupToGroup = vi.fn();
+    const stack = layoutGroup("stack1", [childTile("s1")]);
+    stack.hostControl = "vertical-stack";
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddStackGroupPayload(),
+        targetContainer: groupAppendContainer("stack1"),
+      }),
+      {
+        dndRoot: [{ id: "stack1", item: stack }],
+        dndByGroup: {},
+        layoutItems: [stack],
+        onAddStackGroupToGroup,
+      },
+    );
+    expect(onAddStackGroupToGroup).toHaveBeenCalledWith("stack1");
+  });
+
+  it("calls onAddTileToGroup for palette → empty tab pane child slot", () => {
+    const onAddTabToGroup = vi.fn();
+    const onAddTileToGroup = vi.fn();
+    const tabs = layoutGroup("tabs1", []);
+    tabs.hostControl = "tab-control";
+    const pane = {
+      kind: "group" as const,
+      id: "tab-pane-1",
+      showBorder: true,
+      tabLabel: "Tab 1",
+      children: [],
+    };
+    tabs.children = [pane];
+    tabs.hostState = { activeChildId: pane.id };
+    applyDashboardDrop(
+      state({
+        draggedItem: palettePluginPayload("dhcp.clients"),
+        targetContainer: groupChildSlotContainer("tabs1", pane.id),
+      }),
+      {
+        dndRoot: [{ id: "tabs1", item: tabs }],
+        dndByGroup: {},
+        layoutItems: [tabs],
+        onAddTabToGroup,
+        onAddTileToGroup,
+      },
+    );
+    expect(onAddTileToGroup).toHaveBeenCalledWith("tab-pane-1", "dhcp.clients");
+    expect(onAddTabToGroup).not.toHaveBeenCalled();
   });
 
   it("reorders root via onLayoutStructureChange", () => {
@@ -895,6 +1267,28 @@ describe("applyDashboardDrop", () => {
       { dndRoot: [], dndByGroup: {}, layoutItems: [], onAddGroupToGroup },
     );
     expect(onAddGroupToGroup).toHaveBeenCalledWith("g1");
+  });
+
+  it("palette tab/stack containers → root insert", () => {
+    const onAddTabGroup = vi.fn();
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddTabGroupPayload(),
+        targetContainer: ROOT_EMPTY_CONTAINER,
+      }),
+      { dndRoot: [], dndByGroup: {}, layoutItems: [], onAddTabGroup },
+    );
+    expect(onAddTabGroup).toHaveBeenCalled();
+
+    const onAddStackGroup = vi.fn();
+    applyDashboardDrop(
+      state({
+        draggedItem: paletteAddStackGroupPayload(),
+        targetContainer: ROOT_EMPTY_CONTAINER,
+      }),
+      { dndRoot: [], dndByGroup: {}, layoutItems: [], onAddStackGroup },
+    );
+    expect(onAddStackGroup).toHaveBeenCalled();
   });
 
   it("palette plugin → group child slot", () => {

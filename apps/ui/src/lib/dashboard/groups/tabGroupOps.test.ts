@@ -4,14 +4,19 @@ import {
   activeTabChild,
   addTabChild,
   addTabContainer,
+  normalizeTabChildPaneGroups,
   removeTabChild,
   renameTabChild,
   reorderTabChildren,
   setActiveTab,
   tabStripLabel,
 } from "./tabGroupOps";
+import { groupOuterColSpan, isHostPanelSectionGroup, packOneGroupInLayout } from "../grid/gridPlacement";
+import { GRID_COLUMNS } from "../../plugins/core/builtinMeta";
+import { isDashboardGroupNode } from "../types";
 import type { DashboardGroup } from "../types";
 import { MAX_TAB_GROUP_CHILDREN } from "../types";
+import { makeTabControlGroup } from "./hostGroupFactory";
 
 function tabGroup(): DashboardGroup {
   return {
@@ -46,11 +51,44 @@ describe("tabGroupOps", () => {
     expect(activeTabChild({ ...tabGroup(), children: [] })).toBeUndefined();
   });
 
-  it("addTabChild appends a new tile tab", () => {
+  it("addTabChild appends an empty pane group tab", () => {
     const next = addTabChild(tabGroup(), { pluginId: "perf.ram", tabLabel: "RAM" });
     expect(next.children).toHaveLength(2);
-    expect(next.children[1]).toMatchObject({ pluginId: "perf.ram", tabLabel: "RAM" });
-    expect(next.hostState?.activeChildId).toBe(next.children[1]!.id);
+    const pane = next.children[1]!;
+    expect(isDashboardGroupNode(pane)).toBe(true);
+    if (!isDashboardGroupNode(pane)) return;
+    expect(pane.tabLabel).toBe("RAM");
+    expect(pane.children).toEqual([]);
+    expect(next.hostState?.activeChildId).toBe(pane.id);
+  });
+
+  it("normalizeTabChildPaneGroups wraps legacy tile tabs in pane groups", () => {
+    const next = normalizeTabChildPaneGroups(tabGroup());
+    const pane = next.children[0]!;
+    expect(isDashboardGroupNode(pane)).toBe(true);
+    if (!isDashboardGroupNode(pane)) return;
+    expect(pane.children[0]).toMatchObject({ id: "a", pluginId: "perf.cpu" });
+  });
+
+  it("normalizeTabChildPaneGroups strips vestigial strip grid from pane tabs", () => {
+    const g: DashboardGroup = {
+      ...tabGroup(),
+      children: [
+        {
+          kind: "group",
+          id: "pane1",
+          showBorder: true,
+          tabLabel: "A",
+          grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 },
+          children: [],
+        },
+      ],
+    };
+    const next = normalizeTabChildPaneGroups(g);
+    const pane = next.children[0]!;
+    expect(isDashboardGroupNode(pane)).toBe(true);
+    if (!isDashboardGroupNode(pane)) return;
+    expect(pane.grid).toBeUndefined();
   });
 
   it("renameTabChild updates tabLabel", () => {
@@ -91,17 +129,17 @@ describe("tabGroupOps", () => {
     expect(next.hostState?.activeChildId).toBe(ramId);
   });
 
-  it("addTabContainer appends empty nested tab-control group", () => {
+  it("addTabContainer appends empty nested panel group", () => {
     const next = addTabContainer(tabGroup(), { tabLabel: "Nested" });
     expect(next.children).toHaveLength(2);
     const nested = next.children[1];
     expect(nested).toMatchObject({
       kind: "group",
       tabLabel: "Nested",
-      hostControl: "tab-control",
       showBorder: true,
       children: [],
     });
+    expect(nested!.kind === "group" && !("hostControl" in nested!)).toBe(true);
   });
 
   it("addTabChild throws at max tab count", () => {
@@ -120,22 +158,85 @@ describe("tabGroupOps", () => {
     vi.spyOn(Date, "now").mockReturnValue(now);
     const g = addTabChild(tabGroup(), { pluginId: "perf.ram", tabLabel: "RAM" });
     const next = addTabChild(g, { pluginId: "perf.ram", tabLabel: "RAM 2" });
-    expect(next.children[2]!.id).toBe(`tab-perf-ram-${now}-1`);
+    expect(next.children[2]!.id).toBe(`tab-pane-perf-ram-${now}-1`);
     vi.restoreAllMocks();
   });
 
-  it("addTabChild accepts custom displayMode", () => {
-    const next = addTabChild(tabGroup(), {
-      pluginId: "dhcp.pools",
-      tabLabel: "Pools",
-      displayMode: "compact",
-    });
-    expect(next.children[1]).toMatchObject({ displayMode: "compact" });
+  it("isHostPanelSectionGroup identifies tab/stack section panes", () => {
+    expect(
+      isHostPanelSectionGroup({
+        kind: "group",
+        id: "p1",
+        showBorder: true,
+        tabLabel: "Tab 2",
+        children: [],
+      }),
+    ).toBe(true);
+    expect(
+      isHostPanelSectionGroup({
+        kind: "group",
+        id: "tc",
+        showBorder: true,
+        hostControl: "tab-control",
+        tabLabel: "ignored",
+        children: [],
+      }),
+    ).toBe(false);
   });
 
-  it("addTabContainer defaults tabLabel to Tabs", () => {
+  it("groupOuterColSpan ignores vestigial strip grid on host panel section panes", () => {
+    const pane: DashboardGroup = {
+      kind: "group",
+      id: "pane2",
+      showBorder: true,
+      tabLabel: "Tab 2",
+      grid: { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+      children: [],
+    };
+    expect(groupOuterColSpan(pane)).toBe(GRID_COLUMNS);
+  });
+
+  it("packOneGroupInLayout leaves legacy tile tab children unchanged", () => {
+    const g: DashboardGroup = {
+      kind: "group",
+      id: "tg",
+      showBorder: true,
+      hostControl: "tab-control",
+      children: [
+        {
+          id: "legacy",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "full",
+        },
+      ],
+    };
+    const packed = packOneGroupInLayout(g);
+    expect(packed.children[0]).toMatchObject({ id: "legacy", pluginId: "perf.cpu" });
+  });
+
+  it("packOneGroupInLayout does not assign strip grid to tab pane children", () => {
+    let g = addTabContainer(makeTabControlGroup("tg-pack"), { tabLabel: "Tab 2" });
+    const first = g.children[0]!;
+    expect(isDashboardGroupNode(first)).toBe(true);
+    if (!isDashboardGroupNode(first)) return;
+    g = {
+      ...g,
+      children: [
+        { ...first, grid: { col: 0, row: 0, colSpan: 6, rowSpan: 1 } },
+        g.children[1]!,
+      ],
+    };
+    const packed = packOneGroupInLayout(g);
+    for (const child of packed.children) {
+      expect(isDashboardGroupNode(child)).toBe(true);
+      if (isDashboardGroupNode(child)) expect(child.grid).toBeUndefined();
+    }
+  });
+
+  it("addTabContainer defaults tabLabel from tab count", () => {
     const next = addTabContainer(tabGroup());
-    expect(next.children[1]).toMatchObject({ tabLabel: "Tabs" });
+    expect(next.children[1]).toMatchObject({ tabLabel: "Tab 2" });
   });
 
   it("addTabContainer throws when id collides with existing child", () => {

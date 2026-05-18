@@ -13,12 +13,7 @@
   }[] = [
     { value: "panel", label: "panel" },
     { value: "tab-control", label: "tab-control" },
-    {
-      value: "vertical-stack",
-      label: "vertical-stack",
-      disabled: true,
-      title: "not implemented",
-    },
+    { value: "vertical-stack", label: "vertical-stack" },
     {
       value: "split-grid",
       label: "split-grid",
@@ -63,6 +58,17 @@
       hostControl: "tab-control",
       innerWrap: false,
       hostState: active != null ? { activeChildId: active } : undefined,
+      children,
+    };
+  }
+
+  function convertToVerticalStack(group: DashboardGroup): DashboardGroup {
+    const children = labelTabChildren(group.children);
+    return {
+      ...group,
+      hostControl: "vertical-stack",
+      innerWrap: false,
+      hostState: undefined,
       children,
     };
   }
@@ -132,6 +138,8 @@
     };
     if (host === "tab-control") {
       next = convertToTabControl(next);
+    } else if (host === "vertical-stack") {
+      next = convertToVerticalStack(next);
     } else {
       next = convertToPanel(next);
     }
@@ -143,6 +151,11 @@
     if (value === "tab-control") {
       if (!canUseTabControl(draft)) return;
       draft = convertToTabControl(draft);
+      return;
+    }
+    if (value === "vertical-stack") {
+      if (!canUseTabControl(draft)) return;
+      draft = convertToVerticalStack(draft);
       return;
     }
     if (value === "panel") {
@@ -201,10 +214,12 @@
                 <option
                   value={opt.value}
                   disabled={opt.disabled ||
-                    (opt.value === "tab-control" && !canUseTabControl(draft))}
+                    ((opt.value === "tab-control" || opt.value === "vertical-stack") &&
+                      !canUseTabControl(draft))}
                   title={opt.title ??
-                    (opt.value === "tab-control" && !canUseTabControl(draft)
-                      ? `tab-control requires 1–${MAX_TAB_GROUP_CHILDREN} children`
+                    ((opt.value === "tab-control" || opt.value === "vertical-stack") &&
+                    !canUseTabControl(draft)
+                      ? `${opt.value} requires 1–${MAX_TAB_GROUP_CHILDREN} children`
                       : undefined)}
                 >
                   {opt.label}
@@ -216,6 +231,10 @@
             <p class="text-xs text-gray-500 dark:text-gray-400">
               Each child is a tab; labels default from plugin or container id when you switch
               types.
+            </p>
+          {:else if effectiveHostControl(draft) === "vertical-stack"}
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Each child is a collapsible section; rename headers in the stack editor.
             </p>
           {/if}
 
@@ -229,7 +248,7 @@
             />
             Show border around container
           </label>
-          {#if effectiveHostControl(draft) !== "tab-control"}
+          {#if effectiveHostControl(draft) !== "tab-control" && effectiveHostControl(draft) !== "vertical-stack"}
             <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input
                 type="checkbox"

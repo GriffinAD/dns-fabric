@@ -6,6 +6,7 @@
   import type { Snippet } from "svelte";
   import type { PluginEntry } from "../../api/types";
   import TabGroupHost from "../groups/TabGroupHost.svelte";
+  import VerticalStackGroupHost from "../groups/VerticalStackGroupHost.svelte";
   import DashboardReadNestedHost from "./DashboardReadNestedHost.svelte";
   import TileEditChrome from "../tiles/TileEditChrome.svelte";
   import {
@@ -109,6 +110,15 @@
       >
         {#if child.hostControl === "tab-control"}
           <TabGroupHost
+            group={child}
+            {editLayout}
+            {onGroupChange}
+            {plugins}
+            {onEditTile}
+            {tileContent}
+          />
+        {:else if child.hostControl === "vertical-stack"}
+          <VerticalStackGroupHost
             group={child}
             {editLayout}
             {onGroupChange}

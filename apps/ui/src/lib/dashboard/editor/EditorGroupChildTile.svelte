@@ -82,12 +82,14 @@
       return `flex: 0 0 min(100%, calc(100% * ${T} / ${trackCount}));${rowMin}`;
     }
     const wpx = nowrapWidthPx ?? 0;
-    const width = wpx < 1 ? 40 : wpx;
     const rowMin =
       rs > 1
         ? ` min-height: ${Math.min(12, rs) * 2.25}rem;`
         : " min-height: 0;";
-    return `width: ${width}px;${rowMin}`;
+    if (wpx < 1) {
+      return `flex: 0 0 calc(100% * ${T} / ${trackCount});${rowMin}`;
+    }
+    return `width: ${wpx}px;${rowMin}`;
   });
   const captionPad = $derived(compact ? "pl-0.5 pr-0.5" : "pl-1 pr-1");
   const dragLabel = $derived(

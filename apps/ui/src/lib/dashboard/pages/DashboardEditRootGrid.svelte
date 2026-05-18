@@ -106,7 +106,8 @@
   function groupInnerSurfaceDragActive(): boolean {
     const drag = activeDragPayload;
     if (!editorPointerDndActive || !drag) return false;
-    if (drag.k === "cg" || drag.k === "pp" || drag.k === "pg") return true;
+    if (drag.k === "cg" || drag.k === "pp" || drag.k === "pg" || drag.k === "pgt" || drag.k === "pgs")
+      return true;
     return drag.k === "cr" && draggingRootPluginTile(drag);
   }
 

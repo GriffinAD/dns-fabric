@@ -61,6 +61,23 @@ describe("attachEditorPointerTracking", () => {
     release();
   });
 
+  it("calls preventDefault on dragover over a nested drop target", () => {
+    const drop = document.createElement("div");
+    drop.setAttribute("data-dnd-container", "g:pane-1:empty");
+    document.body.appendChild(drop);
+    const orig = document.elementFromPoint;
+    document.elementFromPoint = () => drop;
+
+    const release = attachEditorPointerTracking(true, handlers);
+    const over = dragEvent("dragover", 5, 6);
+    document.dispatchEvent(over);
+    expect(over.preventDefault).toHaveBeenCalled();
+
+    release();
+    document.elementFromPoint = orig;
+    drop.remove();
+  });
+
   it("handles dragover, grid preventDefault, and dragend", () => {
     const grid = document.createElement("div");
     grid.setAttribute("data-dashboard-editor", "grid-chrome");

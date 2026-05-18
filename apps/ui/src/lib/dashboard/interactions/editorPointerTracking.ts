@@ -1,4 +1,4 @@
-import { clearEditorDragHover, syncEditorDragHoverFromPointer } from "./dashboardEditorDragHover";
+import { clearEditorDragHover, DND_CONTAINER_ATTR, syncEditorDragHoverFromPointer } from "./dashboardEditorDragHover";
 import type { DashboardDndListItem } from "../grid/groupDndFinalize";
 
 export type EditorPointerTrackingHandlers = {
@@ -31,10 +31,11 @@ export function attachEditorPointerTracking(
     if (opts?.getDndRoot) {
       syncEditorDragHoverFromPointer(e.clientX, e.clientY, opts.getDndRoot());
     }
-    const overGrid =
-      document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-dashboard-editor="grid-chrome"]') !=
-      null;
-    if (overGrid) e.preventDefault();
+    const hit = document.elementFromPoint(e.clientX, e.clientY);
+    const overGrid = hit?.closest('[data-dashboard-editor="grid-chrome"]') != null;
+    const overDropTarget = hit?.closest(`[${DND_CONTAINER_ATTR}]`) != null;
+    // HTML5 drop requires preventDefault on dragover — including nested container/tab panes.
+    if (overGrid || overDropTarget) e.preventDefault();
     handlers.onDragOver?.(e);
   };
 

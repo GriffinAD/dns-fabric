@@ -20,11 +20,11 @@ export const E2E_TAB_GROUP_V3_LAYOUT: DashboardLayoutV3 = {
       grid: { col: 0, row: 0, colSpan: 20, rowSpan: 2 },
       children: [
         {
+          kind: "group",
           id: "tab-cpu",
+          showBorder: true,
           tabLabel: "CPU",
-          pluginId: "perf.cpu",
-          hostControl: "single-panel",
-          displayMode: "full",
+          children: [],
         },
       ],
     },

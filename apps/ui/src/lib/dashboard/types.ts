@@ -14,6 +14,8 @@ export type GroupHostControl = "panel" | "tab-control" | "vertical-stack" | "spl
 export interface GroupHostState {
   /** Active tab child `id`; defaults to first child when omitted. */
   activeChildId?: string;
+  /** Section ids collapsed in a `vertical-stack` group. */
+  collapsedChildIds?: string[];
 }
 
 /** Tab strip label when the node is a child of a tab-control group (ADR-0054). */

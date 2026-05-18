@@ -49,8 +49,26 @@ export function maxRowEndFromPlacedGroupChildren(
   return Math.max(1, m);
 }
 
+/**
+ * Tab-control / vertical-stack section pane (labelled panel, not a host container).
+ * Strip `grid` on these nodes is vestigial from nowrap packing and must not narrow the pane editor.
+ */
+export function isHostPanelSectionGroup(g: DashboardGroup): boolean {
+  const label = g.tabLabel?.trim();
+  return (
+    label != null &&
+    label.length > 0 &&
+    g.hostControl !== "tab-control" &&
+    g.hostControl !== "vertical-stack" &&
+    g.innerWrap !== true
+  );
+}
+
 /** Root-level width in dashboard columns; used to align sub-layouts to the same column rhythm as the group/tile. */
 export function groupOuterColSpan(g: DashboardGroup): number {
+  if (isHostPanelSectionGroup(g)) {
+    return GRID_COLUMNS;
+  }
   const cg = g.grid;
   if (cg != null && Number.isInteger(cg.colSpan) && cg.colSpan >= 1 && cg.colSpan <= GRID_COLUMNS) {
     return clampGridColSpan(cg.colSpan);
@@ -291,6 +309,24 @@ export function commitGroupInnerRowWraps(items: RootLayoutItem[]): RootLayoutIte
   return items.map((it) => (it.kind === "group" ? commitInnerWrapOnGroup(it) : it));
 }
 
+function isHostPanelChildParent(parent: DashboardGroup): boolean {
+  return parent.hostControl === "tab-control" || parent.hostControl === "vertical-stack";
+}
+
+/** Tab/stack section panes are not nowrap-strip siblings; strip `grid` on them is vestigial. */
+function clearHostPanelChildStripGrid(child: GroupChild): GroupChild {
+  if (!isDashboardGroupNode(child)) return child;
+  if (
+    child.hostControl === "tab-control" ||
+    child.hostControl === "vertical-stack" ||
+    child.grid == null
+  ) {
+    return child;
+  }
+  const { grid: _grid, ...rest } = child;
+  return rest;
+}
+
 /** Strip-mode group children: recurse into nested groups; then strip-pack any incomplete placements. */
 function packGroupChildrenNoWrapMixed(
   parent: DashboardGroup,
@@ -302,6 +338,9 @@ function packGroupChildrenNoWrapMixed(
   const withRecurse = children.map((c) =>
     isDashboardGroupNode(c) ? packOneGroupInLayout(c, options) : c,
   );
+  if (isHostPanelChildParent(parent)) {
+    return withRecurse.map(clearHostPanelChildStripGrid);
+  }
   if (nested) {
     if (withRecurse.every(noWrapGroupChildIsCompleteInStrip)) {
       return withRecurse;

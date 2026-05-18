@@ -12,7 +12,11 @@
   import type { DashboardTile } from "../dashboard/types";
   import {
     PALETTE_ADD_GROUP_CONTAINER,
+    PALETTE_ADD_STACK_GROUP_CONTAINER,
+    PALETTE_ADD_TAB_GROUP_CONTAINER,
     paletteAddGroupPayload,
+    paletteAddStackGroupPayload,
+    paletteAddTabGroupPayload,
     palettePluginContainer,
     palettePluginPayload,
     parseDragPayload,
@@ -56,12 +60,16 @@
     bus,
     onAddTile,
     onAddGroup,
+    onAddTabGroup,
+    onAddStackGroup,
   }: {
     plugins?: PluginEntry[];
     gateway?: DataGateway;
     bus?: FabricEventBus;
     onAddTile?: (pluginId: string, insertBeforeIndex?: number) => void;
     onAddGroup?: (insertBeforeIndex?: number) => void;
+    onAddTabGroup?: (insertBeforeIndex?: number) => void;
+    onAddStackGroup?: (insertBeforeIndex?: number) => void;
   } = $props();
 
   function preparePluginDragImage(pluginId: string): void {
@@ -206,6 +214,14 @@
     }
     if (item.kind === "core" && item.id === "core:add-group") {
       onAddGroup?.();
+      return;
+    }
+    if (item.kind === "core" && item.id === "core:add-tab-group") {
+      onAddTabGroup?.();
+      return;
+    }
+    if (item.kind === "core" && item.id === "core:add-stack-group") {
+      onAddStackGroup?.();
       return;
     }
     if (item.kind === "plugin") {
@@ -518,7 +534,9 @@
       How to add tiles
     </summary>
     <p class="mt-1 pl-0.5">
-      <strong>Containers:</strong> <span class="font-mono">Add container</span> or drag it.
+      <strong>Containers:</strong> <span class="font-mono">Add container</span>,
+      <span class="font-mono">Add tab container</span>, or
+      <span class="font-mono">Add stack container</span> (drag or click).
       <strong>Tiles:</strong> drag a chip or press Enter when focused.
     </p>
   </details>
@@ -558,6 +576,100 @@
               aria-label={item.label}
               onkeydown={(e) => onChipKeydown(e, item)}
               onclick={() => onAddGroup?.()}
+            >
+              {item.label}
+            </button>
+          </div>
+          <button
+            type="button"
+            class="rounded px-1 text-[10px] leading-none font-medium {pinnedIds.includes(item.id)
+              ? 'text-emerald-500 hover:text-emerald-400 dark:text-emerald-400 dark:hover:text-emerald-300'
+              : 'text-gray-700 hover:text-gray-900 dark:text-white/75 dark:hover:text-primary-200'}"
+            aria-label="Pin or unpin {item.label}"
+            onclick={() => togglePin(item.id)}
+          >
+            {pinnedIds.includes(item.id) ? "★" : "☆"}
+          </button>
+        </div>
+      {:else if item.kind === "core" && item.id === "core:add-tab-group" && onAddTabGroup}
+        <div class="flex max-w-full items-center gap-1">
+          <div
+            class="inline-flex min-w-0 flex-1 select-none items-center gap-1 rounded-md border border-gray-400/60 bg-gray-300/95 px-1 py-1 text-xs font-medium text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:shadow-none"
+            ondragstartcapture={onPaletteDragStartCapture}
+            use:draggable={{
+              dragData: paletteAddTabGroupPayload(),
+              container: PALETTE_ADD_TAB_GROUP_CONTAINER,
+              handle: '[data-testid="palette-add-tab-group-drag"]',
+              attributes: paletteDragAttrs,
+              callbacks: paletteAddGroupDragCallbacks(),
+            }}
+          >
+            <button
+              type="button"
+              tabindex="0"
+              class="flex h-6 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm hover:bg-gray-400/45 focus:ring-2 focus:ring-primary-500 focus:outline-none active:cursor-grabbing dark:hover:bg-gray-600/90"
+              data-testid="palette-add-tab-group-drag"
+              aria-label="Drag to add tab container on the dashboard"
+              onpointerdown={rememberPointer}
+              ondragend={clearDragImage}
+            >
+              <GripVertical class="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              tabindex="0"
+              class="min-w-0 flex-1 cursor-pointer rounded-sm px-1 py-0.5 text-left hover:bg-gray-400/45 focus:ring-2 focus:ring-primary-500 focus:outline-none dark:hover:bg-gray-600/85"
+              data-testid="layout-add-tab-container"
+              aria-label={item.label}
+              onkeydown={(e) => onChipKeydown(e, item)}
+              onclick={() => onAddTabGroup?.()}
+            >
+              {item.label}
+            </button>
+          </div>
+          <button
+            type="button"
+            class="rounded px-1 text-[10px] leading-none font-medium {pinnedIds.includes(item.id)
+              ? 'text-emerald-500 hover:text-emerald-400 dark:text-emerald-400 dark:hover:text-emerald-300'
+              : 'text-gray-700 hover:text-gray-900 dark:text-white/75 dark:hover:text-primary-200'}"
+            aria-label="Pin or unpin {item.label}"
+            onclick={() => togglePin(item.id)}
+          >
+            {pinnedIds.includes(item.id) ? "★" : "☆"}
+          </button>
+        </div>
+      {:else if item.kind === "core" && item.id === "core:add-stack-group" && onAddStackGroup}
+        <div class="flex max-w-full items-center gap-1">
+          <div
+            class="inline-flex min-w-0 flex-1 select-none items-center gap-1 rounded-md border border-gray-400/60 bg-gray-300/95 px-1 py-1 text-xs font-medium text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:shadow-none"
+            ondragstartcapture={onPaletteDragStartCapture}
+            use:draggable={{
+              dragData: paletteAddStackGroupPayload(),
+              container: PALETTE_ADD_STACK_GROUP_CONTAINER,
+              handle: '[data-testid="palette-add-stack-group-drag"]',
+              attributes: paletteDragAttrs,
+              callbacks: paletteAddGroupDragCallbacks(),
+            }}
+          >
+            <button
+              type="button"
+              tabindex="0"
+              class="flex h-6 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm hover:bg-gray-400/45 focus:ring-2 focus:ring-primary-500 focus:outline-none active:cursor-grabbing dark:hover:bg-gray-600/90"
+              data-testid="palette-add-stack-group-drag"
+              aria-label="Drag to add stack container on the dashboard"
+              onpointerdown={rememberPointer}
+              ondragend={clearDragImage}
+            >
+              <GripVertical class="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              tabindex="0"
+              class="min-w-0 flex-1 cursor-pointer rounded-sm px-1 py-0.5 text-left hover:bg-gray-400/45 focus:ring-2 focus:ring-primary-500 focus:outline-none dark:hover:bg-gray-600/85"
+              data-testid="layout-add-stack-container"
+              aria-label={item.label}
+              onkeydown={(e) => onChipKeydown(e, item)}
+              onclick={() => onAddStackGroup?.()}
             >
               {item.label}
             </button>

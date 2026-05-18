@@ -49,7 +49,15 @@ function syncDropPositionFromPointer(
     dndState.dropPosition = band === "after" ? "after" : "before";
     return;
   }
-  if (slot.kind === "rootRowEnd" || slot.kind === "rootGapAfter" || slot.kind === "groupGapAfter") {
+  if (
+    slot.kind === "rootRowEnd" ||
+    slot.kind === "rootGapAfter" ||
+    slot.kind === "groupGapAfter" ||
+    slot.kind === "groupTabs" ||
+    slot.kind === "groupAppend" ||
+    slot.kind === "groupEmpty" ||
+    slot.kind === "groupCanvas"
+  ) {
     dndState.dropPosition = "after";
     return;
   }

@@ -30,6 +30,7 @@ const groupHostControlEnum = z.enum(["panel", "tab-control", "vertical-stack", "
 const groupHostStateSchema = z
   .object({
     activeChildId: z.string().min(1).optional(),
+    collapsedChildIds: z.array(z.string().min(1)).optional(),
   })
   .strict();
 const tabLabelSchema = z.string().min(1).max(64);
@@ -78,6 +79,49 @@ type GroupJsonForTabRefine = {
   hostState?: z.infer<typeof groupHostStateSchema>;
   children: Array<{ id: string; kind?: string }>;
 };
+
+function refineVerticalStackGroup(g: GroupJsonForTabRefine, ctx: z.RefinementCtx): void {
+  if (g.hostControl !== "vertical-stack") return;
+  if (g.innerWrap === true) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["innerWrap"],
+      message: "vertical-stack groups cannot use innerWrap",
+    });
+  }
+  const n = g.children.length;
+  if (n < 1 || n > MAX_TAB_GROUP_CHILDREN) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["children"],
+      message: `vertical-stack group must have 1–${MAX_TAB_GROUP_CHILDREN} children`,
+    });
+  }
+  const childIds = new Set<string>();
+  g.children.forEach((c, i) => {
+    const id = c.id;
+    if (childIds.has(id)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["children", i, "id"],
+        message: "duplicate stack section id",
+      });
+    }
+    childIds.add(id);
+  });
+  const collapsed = g.hostState?.collapsedChildIds;
+  if (collapsed) {
+    collapsed.forEach((id, i) => {
+      if (!childIds.has(id)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["hostState", "collapsedChildIds", i],
+          message: "collapsedChildIds must reference a child id",
+        });
+      }
+    });
+  }
+}
 
 function refineTabControlGroup(g: GroupJsonForTabRefine, ctx: z.RefinementCtx): void {
   if (g.hostControl !== "tab-control") return;
@@ -139,6 +183,7 @@ const groupJsonSchema = z
   .strict()
   .superRefine((g, ctx) => {
     refineTabControlGroup(g, ctx);
+    refineVerticalStackGroup(g, ctx);
     if (g.grid != null && !isCompleteGridPlacement(g.grid)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["grid"], message: "invalid group grid placement" });
     }
@@ -172,6 +217,7 @@ const groupJsonSchemaV3: z.ZodTypeAny = z.lazy(() =>
     .strict()
     .superRefine((g, ctx) => {
       refineTabControlGroup(g, ctx);
+      refineVerticalStackGroup(g, ctx);
       if (g.grid != null && !isCompleteGridPlacement(g.grid)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["grid"], message: "invalid group grid placement" });
       }

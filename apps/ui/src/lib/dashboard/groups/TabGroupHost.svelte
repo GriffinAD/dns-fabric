@@ -14,6 +14,7 @@
   import { reorderByTarget } from "../interactions/dashboardSveltedndApply";
   import type { DashboardDragPayload } from "../interactions/dashboardSveltedndTypes";
   import {
+    groupAppendContainer,
     groupChildSlotContainer,
     parseDragPayload,
     parseDropContainer,
@@ -24,11 +25,19 @@
   import { dedupeById } from "../layout/layoutTree";
   import type { DashboardGroup, DashboardTile, GroupChild } from "../types";
   import { isDashboardGroupNode, MAX_TAB_GROUP_CHILDREN } from "../types";
+  import {
+    createHostGroupStripDropCallbacks,
+    isPaletteDragPayload,
+  } from "./hostGroupDropCallbacks";
+  import GroupHostPaneEditor from "./GroupHostPaneEditor.svelte";
+  import type { HostPaneEditorBindings } from "./hostGroupPaneEditorTypes";
+  import { hostGroupAppendDropContainer } from "./hostGroupPaneDrop";
   import TabGroupHost from "./TabGroupHost.svelte";
+  import VerticalStackGroupHost from "./VerticalStackGroupHost.svelte";
   import {
     activeTabChild,
-    addTabChild,
     addTabContainer,
+    normalizeTabChildPaneGroups,
     removeTabChild,
     renameTabChild,
     reorderTabChildren,
@@ -41,6 +50,7 @@
     editLayout = false,
     onGroupChange,
     layoutDropCb,
+    paneEditor,
     tileContent,
     plugins = [] as PluginEntry[],
     onEditTile,
@@ -55,6 +65,8 @@
       onDragOver: (state: DragDropState<DashboardDragPayload>) => void;
       onDragEnd: (state: DragDropState<DashboardDragPayload>) => void;
     };
+    /** Drop surfaces inside each tab's panel (edit mode). */
+    paneEditor?: HostPaneEditorBindings;
     tileContent: Snippet<[DashboardTile]>;
     plugins?: PluginEntry[];
     onEditTile?: (tile: DashboardTile) => void;
@@ -72,38 +84,55 @@
     }
     return activeTabChild(group);
   });
-  const palette = $derived(plugins.filter((p) => p.enabled));
   const atMaxTabs = $derived(children.length >= MAX_TAB_GROUP_CHILDREN);
 
   let renamingId = $state<string | null>(null);
   let renameDraft = $state("");
-  let addPluginPick = $state("");
 
-  function isPaletteDrag(drag: DashboardDragPayload | null): boolean {
-    return drag?.k === "pp" || drag?.k === "pg";
-  }
+  const noopLayoutDropCb = {
+    onDrop: () => {},
+    onDragOver: (state: DragDropState<DashboardDragPayload>) => {
+      state.invalidDrop = false;
+    },
+    onDragEnd: () => {},
+  };
+  const tabStripDropCb = createHostGroupStripDropCallbacks(
+    layoutDropCb ?? noopLayoutDropCb,
+    onTabStripDrop,
+  );
 
-  const tabStripDropCb = {
+  /** Palette drops belong on the active tab pane (container), not the strip labels. */
+  const readOnlyStripDroppable = {
+    container: `g:${group.id}:strip-readonly`,
+    direction: "horizontal" as const,
+    callbacks: noopLayoutDropCb,
+    attributes: dndDropAttrs,
+  };
+
+  const tabStripPaletteDropCb = {
     onDrop: (state: DragDropState<DashboardDragPayload>) => {
       const drag = parseDragPayload(state.draggedItem);
-      if (isPaletteDrag(drag)) {
-        layoutDropCb?.onDrop(state);
-        return;
-      }
-      onTabStripDrop(state);
+      const slot = parseDropContainer(state.targetContainer);
+      if (isPaletteDragPayload(drag) && slot?.kind !== "groupAppend") return;
+      tabStripDropCb.onDrop(state);
     },
     onDragOver: (state: DragDropState<DashboardDragPayload>) => {
       const drag = parseDragPayload(state.draggedItem);
-      if (isPaletteDrag(drag)) {
-        layoutDropCb?.onDragOver(state);
+      const slot = parseDropContainer(state.targetContainer);
+      if (isPaletteDragPayload(drag) && slot?.kind !== "groupAppend") {
+        state.invalidDrop = true;
         return;
       }
-      state.invalidDrop = false;
+      tabStripDropCb.onDragOver(state);
     },
-    onDragEnd: (state: DragDropState<DashboardDragPayload>) => {
-      layoutDropCb?.onDragEnd(state);
-    },
+    onDragEnd: tabStripDropCb.onDragEnd,
   };
+
+  $effect(() => {
+    if (!editLayout || !onGroupChange) return;
+    const normalized = normalizeTabChildPaneGroups(group);
+    if (normalized !== group) commit(normalized);
+  });
 
   function commit(next: DashboardGroup) {
     onGroupChange?.(next);
@@ -148,22 +177,10 @@
     }
   }
 
-  function onAddPluginTab() {
-    if (!addPluginPick || atMaxTabs) return;
-    const entry = palette.find((p) => p.id === addPluginPick);
-    if (!entry) return;
-    try {
-      commit(addTabChild(group, { pluginId: entry.id, tabLabel: entry.name }));
-      addPluginPick = "";
-    } catch {
-      /* max tabs */
-    }
-  }
-
-  function onAddNestedTabGroup() {
+  function onAddTab() {
     if (atMaxTabs) return;
     try {
-      commit(addTabContainer(group, { tabLabel: "Tabs" }));
+      commit(addTabContainer(group, { tabLabel: `Tab ${children.length + 1}` }));
     } catch {
       /* max tabs */
     }
@@ -186,7 +203,10 @@
     let pos: "before" | "after" = state.dropPosition ?? "before";
     if (slot.kind === "groupChild" && slot.groupId === group.id) {
       anchorId = slot.childId;
-    } else if (slot.kind === "groupTabs" && slot.groupId === group.id) {
+    } else if (
+      (slot.kind === "groupTabs" || slot.kind === "groupAppend") &&
+      slot.groupId === group.id
+    ) {
       anchorId = children[children.length - 1]?.id ?? null;
       pos = "after";
     }
@@ -205,13 +225,15 @@
     class="flex min-w-0 flex-nowrap items-end gap-1 overflow-x-auto border-b border-slate-200/80 pb-px dark:border-gray-600/60"
     role="tablist"
     aria-label="Tabs for {group.id}"
-    use:droppable={{
-      container: tabGroupTabsContainer(group.id),
-      direction: "horizontal",
-      callbacks: tabStripDropCb,
-      attributes: dndDropAttrs,
-    }}
-    data-dnd-container={tabGroupTabsContainer(group.id)}
+    use:droppable={editLayout
+      ? {
+          container: tabGroupTabsContainer(group.id),
+          direction: "horizontal",
+          callbacks: tabStripPaletteDropCb,
+          attributes: dndDropAttrs,
+        }
+      : readOnlyStripDroppable}
+    data-dnd-container={editLayout ? tabGroupTabsContainer(group.id) : readOnlyStripDroppable.container}
     data-testid="tab-group-strip"
   >
     {#each children as child (child.id)}
@@ -219,13 +241,17 @@
       {@const isActive = child.id === activeId}
       <div
         class="group/tab flex shrink-0 items-center"
-        use:droppable={{
-          container: groupChildSlotContainer(group.id, child.id),
-          direction: "horizontal",
-          callbacks: tabStripDropCb,
-          attributes: dndDropAttrs,
-        }}
-        data-dnd-container={groupChildSlotContainer(group.id, child.id)}
+        use:droppable={editLayout
+          ? {
+              container: groupChildSlotContainer(group.id, child.id),
+              direction: "horizontal",
+              callbacks: tabStripPaletteDropCb,
+              attributes: dndDropAttrs,
+            }
+          : readOnlyStripDroppable}
+        data-dnd-container={editLayout
+          ? groupChildSlotContainer(group.id, child.id)
+          : readOnlyStripDroppable.container}
       >
         {#if editLayout && renamingId === child.id}
           <input
@@ -302,46 +328,34 @@
       </div>
     {/each}
     {#if editLayout}
-      <div class="flex shrink-0 items-center gap-1 pb-0.5 pl-1" data-testid="tab-group-add">
-        <label class="sr-only" for="tab-add-plugin-{group.id}">Add plugin tab</label>
-        <select
-          id="tab-add-plugin-{group.id}"
-          class="max-w-[8rem] rounded border border-slate-200/80 bg-white px-1 py-1 text-[10px] dark:border-gray-600 dark:bg-gray-900"
-          bind:value={addPluginPick}
-          disabled={atMaxTabs || palette.length === 0}
-          data-testid="tab-add-plugin-select"
-        >
-          <option value="">+ Tab…</option>
-          {#each palette as p (p.id)}
-            <option value={p.id}>{p.name}</option>
-          {/each}
-        </select>
+      <div
+        class="flex shrink-0 items-center gap-1 pb-0.5 pl-1"
+        data-testid="tab-group-add"
+        use:droppable={{
+          container: hostGroupAppendDropContainer(group.id),
+          direction: "horizontal",
+          callbacks: tabStripPaletteDropCb,
+          attributes: dndDropAttrs,
+        }}
+        data-dnd-container={groupAppendContainer(group.id)}
+        data-editor-group-surface-drop="true"
+      >
         <button
           type="button"
           class="flex items-center gap-0.5 rounded border border-slate-200/80 bg-white px-1.5 py-1 text-[10px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
-          disabled={!addPluginPick || atMaxTabs}
-          data-testid="tab-add-plugin-confirm"
-          onclick={onAddPluginTab}
+          disabled={atMaxTabs}
+          data-testid="tab-add-button"
+          onclick={onAddTab}
         >
           <Plus class="h-3 w-3" aria-hidden="true" />
           Tab
-        </button>
-        <button
-          type="button"
-          class="flex items-center gap-0.5 rounded border border-dashed border-slate-300/90 px-1.5 py-1 text-[10px] font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/50"
-          disabled={atMaxTabs}
-          data-testid="tab-add-container"
-          onclick={onAddNestedTabGroup}
-        >
-          <Plus class="h-3 w-3" aria-hidden="true" />
-          Container
         </button>
       </div>
     {/if}
   </div>
 
   <div
-    class="tab-group-pane relative min-h-0 min-w-0 flex-1 overflow-hidden"
+    class="tab-group-pane pointer-events-auto relative z-10 flex min-h-32 min-w-0 flex-1 flex-col overflow-hidden"
     role="tabpanel"
     aria-label={active ? tabStripLabel(active) : "Tab content"}
     data-testid="tab-group-pane"
@@ -354,11 +368,31 @@
             group={nested}
             {editLayout}
             onGroupChange={handleNestedGroupChange}
+            {layoutDropCb}
+            {paneEditor}
             {tileContent}
             {plugins}
             {onEditTile}
             {onEditGroup}
           />
+        {:else if nested.hostControl === "vertical-stack"}
+          <VerticalStackGroupHost
+            group={nested}
+            {editLayout}
+            onGroupChange={handleNestedGroupChange}
+            {layoutDropCb}
+            {paneEditor}
+            {tileContent}
+            {plugins}
+            {onEditTile}
+            {onEditGroup}
+          />
+        {:else if editLayout && paneEditor}
+          <div class="relative z-[2] flex h-full min-h-0 min-w-0 flex-1 flex-col">
+            {#key nested.id}
+              <GroupHostPaneEditor paneGroup={nested} {editLayout} {paneEditor} {tileContent} />
+            {/key}
+          </div>
         {:else}
           <DashboardReadNestedHost
             group={nested}

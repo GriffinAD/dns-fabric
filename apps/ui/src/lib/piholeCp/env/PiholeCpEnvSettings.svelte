@@ -219,17 +219,6 @@
         Writable keys from the host <code class="text-[0.7rem]">.env</code> (secrets are listed but not editable).
         Save stages changes; Apply merges on the host and may restart services.
       </p>
-      <label class="mb-3 block text-xs">
-        <span class="text-slate-500 dark:text-gray-500">API token</span>
-        <input
-          type="password"
-          class="mt-1 block w-full rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-xs sm:w-1/2 dark:border-gray-700 dark:bg-gray-950"
-          bind:value={apiTokenInput}
-          autocomplete="off"
-          disabled={busy}
-          aria-label="API token"
-        />
-      </label>
       {#if config?.pending}
         <p class="mb-2 text-xs text-amber-800 dark:text-amber-200">
           Pending staged patch: {Object.keys(config.pending).join(", ")}
@@ -237,6 +226,22 @@
       {/if}
       {#if writableKeys.length > 0}
         <dl class="mb-3 max-h-[min(28rem,50vh)] grid gap-2 overflow-y-auto pr-1">
+          <div class="grid gap-1 text-xs sm:grid-cols-[minmax(0,33%)_minmax(0,66%)] sm:items-start">
+            <dt class="min-w-0 text-slate-600 dark:text-gray-400">
+              API token
+              <span class="block font-mono text-[0.65rem] text-slate-400 dark:text-gray-500">session</span>
+            </dt>
+            <dd class="min-w-0">
+              <input
+                type="password"
+                class="w-full max-w-full rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono dark:border-gray-700 dark:bg-gray-950"
+                bind:value={apiTokenInput}
+                autocomplete="off"
+                disabled={busy}
+                aria-label="API token"
+              />
+            </dd>
+          </div>
           {#each writableKeys as entry (entry.key)}
             <div
               class="grid gap-1 text-xs sm:grid-cols-[minmax(0,33%)_minmax(0,66%)] sm:items-start"

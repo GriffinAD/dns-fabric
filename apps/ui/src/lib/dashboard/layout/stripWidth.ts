@@ -30,9 +30,27 @@ export function flexStripDistributedWidth(
 export function stripScrollportObserve(el: HTMLElement, onWidth: (width: number) => void): {
   destroy: () => void;
 } {
-  const apply = () => onWidth(Math.max(0, el.clientWidth));
+  let raf = 0;
+  let retries = 0;
+  const apply = () => {
+    const w = Math.max(0, el.clientWidth);
+    if (w === 0 && retries < 8) {
+      retries += 1;
+      raf = requestAnimationFrame(apply);
+      return;
+    }
+    onWidth(w);
+  };
   apply();
-  const ro = new ResizeObserver(apply);
+  const ro = new ResizeObserver(() => {
+    retries = 0;
+    apply();
+  });
   ro.observe(el);
-  return { destroy: () => ro.disconnect() };
+  return {
+    destroy: () => {
+      if (raf) cancelAnimationFrame(raf);
+      ro.disconnect();
+    },
+  };
 }

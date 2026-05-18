@@ -83,10 +83,11 @@
     attributes: dndDropAttrs,
   }}
   data-dnd-container={groupEmptyContainer(group.id)}
+  data-editor-group-surface-drop={isGroupEmpty ? "true" : undefined}
 >
   {#if isGroupEmpty}
     <div
-      class="min-h-28 min-w-full flex-1 rounded-md border border-dashed border-gray-200/65 bg-gray-50/40 dark:border-gray-600 dark:bg-gray-900/30"
+      class="pointer-events-auto min-h-28 min-w-full flex-1 rounded-md border border-dashed border-gray-200/65 bg-gray-50/40 dark:border-gray-600 dark:bg-gray-900/30"
       use:droppable={{
         container: groupEmptyContainer(group.id),
         direction: "horizontal",
@@ -94,7 +95,9 @@
         attributes: dndDropAttrs,
       }}
       data-dnd-container={groupEmptyContainer(group.id)}
+      data-editor-group-surface-drop="true"
       data-testid="editor-group-nowrap-empty"
+      aria-label="Drop plugins here"
     ></div>
   {:else}
     <div

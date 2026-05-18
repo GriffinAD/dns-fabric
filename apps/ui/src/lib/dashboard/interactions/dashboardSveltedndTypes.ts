@@ -5,6 +5,8 @@
 export type DashboardDragPayload =
   | { k: "pp"; i: string }
   | { k: "pg" }
+  | { k: "pgt" }
+  | { k: "pgs" }
   | { k: "cr"; i: string }
   | { k: "cg"; g: string; i: string }
   | { k: "tt"; g: string; i: string };
@@ -17,12 +19,22 @@ export function paletteAddGroupPayload(): DashboardDragPayload {
   return { k: "pg" };
 }
 
+export function paletteAddTabGroupPayload(): DashboardDragPayload {
+  return { k: "pgt" };
+}
+
+export function paletteAddStackGroupPayload(): DashboardDragPayload {
+  return { k: "pgs" };
+}
+
 /** Per-plugin palette source id so sveltednd does not treat all chips as one reorderable list. */
 export function palettePluginContainer(pluginId: string): string {
   return `palette:p:${pluginId}`;
 }
 
 export const PALETTE_ADD_GROUP_CONTAINER = "palette:add-group";
+export const PALETTE_ADD_TAB_GROUP_CONTAINER = "palette:add-tab-group";
+export const PALETTE_ADD_STACK_GROUP_CONTAINER = "palette:add-stack-group";
 
 export function rootCellPayload(id: string): DashboardDragPayload {
   return { k: "cr", i: id };
@@ -167,6 +179,8 @@ export function parseDragPayload(raw: unknown): DashboardDragPayload | null {
   const o = raw as Record<string, unknown>;
   if (o.k === "pp" && typeof o.i === "string") return { k: "pp", i: o.i };
   if (o.k === "pg") return { k: "pg" };
+  if (o.k === "pgt") return { k: "pgt" };
+  if (o.k === "pgs") return { k: "pgs" };
   if (o.k === "cr" && typeof o.i === "string") return { k: "cr", i: o.i };
   if (o.k === "cg" && typeof o.g === "string" && typeof o.i === "string") return { k: "cg", g: o.g, i: o.i };
   if (o.k === "tt" && typeof o.g === "string" && typeof o.i === "string") return { k: "tt", g: o.g, i: o.i };

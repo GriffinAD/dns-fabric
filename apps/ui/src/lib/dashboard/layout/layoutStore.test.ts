@@ -252,6 +252,52 @@ describe("createLayoutStore", () => {
     expect(t.options).toMatchObject({ section: "ha", title: "Ha" });
   });
 
+  it("addTabGroup inserts at index when provided", () => {
+    const gw = new DataGateway();
+    const ls = createLayoutStore({ gateway: gw });
+    ls.addGroup();
+    ls.addTabGroup(0);
+    const L = get(ls.layout);
+    expect(L.items[0]?.kind).toBe("group");
+    if (L.items[0]?.kind !== "group") return;
+    expect(L.items[0].hostControl).toBe("tab-control");
+  });
+
+  it("addTabGroup appends a tab-control group with one tab", () => {
+    const gw = new DataGateway();
+    const ls = createLayoutStore({ gateway: gw });
+    ls.addTabGroup();
+    const L = get(ls.layout);
+    const g = L.items[L.items.length - 1];
+    expect(g?.kind).toBe("group");
+    if (g?.kind !== "group") return;
+    expect(g.hostControl).toBe("tab-control");
+    expect(g.children.length).toBe(1);
+  });
+
+  it("addStackGroup inserts at index when provided", () => {
+    const gw = new DataGateway();
+    const ls = createLayoutStore({ gateway: gw });
+    ls.addGroup();
+    ls.addStackGroup(0);
+    const L = get(ls.layout);
+    expect(L.items[0]?.kind).toBe("group");
+    if (L.items[0]?.kind !== "group") return;
+    expect(L.items[0].hostControl).toBe("vertical-stack");
+  });
+
+  it("addStackGroup appends a vertical-stack group with one section", () => {
+    const gw = new DataGateway();
+    const ls = createLayoutStore({ gateway: gw });
+    ls.addStackGroup();
+    const L = get(ls.layout);
+    const g = L.items[L.items.length - 1];
+    expect(g?.kind).toBe("group");
+    if (g?.kind !== "group") return;
+    expect(g.hostControl).toBe("vertical-stack");
+    expect(g.children.length).toBe(1);
+  });
+
   it("addGroup appends a group", () => {
     const gw = new DataGateway("");
     vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
@@ -282,6 +328,82 @@ describe("createLayoutStore", () => {
     expect(get(ls.layout).items.length).toBe(2);
     expect(get(ls.layout).items[0]).toMatchObject({ kind: "group" });
     expect(get(ls.layout).items[1]).toMatchObject({ id: "t1" });
+  });
+
+  it("addTabGroupToParent appends nested tab-control group", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout({
+      version: 3,
+      items: [{ kind: "group", id: "g1", showBorder: true, children: [] }],
+    });
+    ls.addTabGroupToParent("g1");
+    const g = get(ls.layout).items[0];
+    expect(g?.kind).toBe("group");
+    if (g?.kind === "group") {
+      expect(g.children.length).toBe(1);
+      expect(g.children[0]).toMatchObject({ kind: "group", hostControl: "tab-control" });
+    }
+  });
+
+  it("addTabGroupToParent rejects innerWrap parent with loadError", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout({
+      version: 3,
+      items: [{ kind: "group", id: "g1", showBorder: true, innerWrap: true, children: [] }],
+    });
+    ls.addTabGroupToParent("g1");
+    expect(get(ls.loadError)).toMatch(/tab containers/i);
+  });
+
+  it("addTabGroupToParent sets loadError when parent id is missing", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout(minimalLayout());
+    ls.addTabGroupToParent("no-such-group");
+    expect(get(ls.loadError)).toMatch(/not found/i);
+  });
+
+  it("addStackGroupToParent appends nested vertical-stack group", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout({
+      version: 3,
+      items: [{ kind: "group", id: "g1", showBorder: true, children: [] }],
+    });
+    ls.addStackGroupToParent("g1");
+    const g = get(ls.layout).items[0];
+    expect(g?.kind).toBe("group");
+    if (g?.kind === "group") {
+      expect(g.children.length).toBe(1);
+      expect(g.children[0]).toMatchObject({ kind: "group", hostControl: "vertical-stack" });
+    }
+  });
+
+  it("addStackGroupToParent rejects innerWrap parent with loadError", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout({
+      version: 3,
+      items: [{ kind: "group", id: "g1", showBorder: true, innerWrap: true, children: [] }],
+    });
+    ls.addStackGroupToParent("g1");
+    expect(get(ls.loadError)).toMatch(/stack containers/i);
+  });
+
+  it("addStackGroupToParent sets loadError when parent id is missing", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    ls.acceptServerLayout(minimalLayout());
+    ls.addStackGroupToParent("no-such-group");
+    expect(get(ls.loadError)).toMatch(/not found/i);
   });
 
   it("addGroupToParent appends nested group when parent allows nesting", () => {
@@ -351,6 +473,26 @@ describe("createLayoutStore", () => {
     const top = groupChain(8, "d");
     ls.acceptServerLayout({ version: 3, items: [top] });
     ls.addGroupToParent(deepestEmptyGroupId(top));
+    expect(get(ls.loadError)).toMatch(/depth/i);
+  });
+
+  it("addTabGroupToParent rejects when nesting would exceed max depth", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    const top = groupChain(8, "d");
+    ls.acceptServerLayout({ version: 3, items: [top] });
+    ls.addTabGroupToParent(deepestEmptyGroupId(top));
+    expect(get(ls.loadError)).toMatch(/depth/i);
+  });
+
+  it("addStackGroupToParent rejects when nesting would exceed max depth", () => {
+    const gw = new DataGateway("");
+    vi.spyOn(gw, "putDashboardLayout").mockResolvedValue(undefined);
+    const ls = createLayoutStore({ gateway: gw });
+    const top = groupChain(8, "d");
+    ls.acceptServerLayout({ version: 3, items: [top] });
+    ls.addStackGroupToParent(deepestEmptyGroupId(top));
     expect(get(ls.loadError)).toMatch(/depth/i);
   });
 

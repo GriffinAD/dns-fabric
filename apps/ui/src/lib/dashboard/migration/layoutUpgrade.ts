@@ -15,6 +15,7 @@ import type {
   RootLayoutItem,
   RootTileItem,
 } from "../types";
+import { normalizeTabChildPaneGroups, wrapTabTileInPaneGroup } from "../groups/tabGroupOps";
 import {
   isDashboardGroupNode,
   isLayoutV2,
@@ -38,14 +39,15 @@ export function wrapLegacyTabControlTile(tile: DashboardTile): DashboardGroup {
     hostControl: "single-panel",
     tabLabel: tile.tabLabel ?? tile.pluginId,
   };
+  const pane = wrapTabTileInPaneGroup(child);
   return {
     kind: "group",
     id: tabGroupWrapperId(tile.id),
     showBorder: true,
     hostControl: "tab-control",
-    hostState: { activeChildId: tile.id },
+    hostState: { activeChildId: pane.id },
     grid: tile.grid,
-    children: [child],
+    children: [pane],
   };
 }
 
@@ -53,12 +55,20 @@ function migrateLegacyTabControlInChildren(children: GroupChild[]): GroupChild[]
   let changed = false;
   const next = children.map((c) => {
     if (isDashboardGroupNode(c)) {
-      const migratedChildren = migrateLegacyTabControlInChildren(c.children);
-      if (migratedChildren !== c.children) {
-        changed = true;
-        return { ...c, children: migratedChildren };
+      let group = c;
+      if (c.hostControl === "tab-control") {
+        const normalized = normalizeTabChildPaneGroups(c);
+        if (normalized !== c) {
+          changed = true;
+          group = normalized;
+        }
       }
-      return c;
+      const migratedChildren = migrateLegacyTabControlInChildren(group.children);
+      if (migratedChildren !== group.children) {
+        changed = true;
+        return { ...group, children: migratedChildren };
+      }
+      return group;
     }
     if (c.hostControl === "tab-control") {
       changed = true;
@@ -74,12 +84,20 @@ export function migrateLegacyTabControlItems(items: RootLayoutItem[]): RootLayou
   let changed = false;
   const next = items.map((it) => {
     if (it.kind === "group") {
-      const children = migrateLegacyTabControlInChildren(it.children);
-      if (children !== it.children) {
-        changed = true;
-        return { ...it, children };
+      let group = it;
+      if (it.hostControl === "tab-control") {
+        const normalized = normalizeTabChildPaneGroups(it);
+        if (normalized !== it) {
+          changed = true;
+          group = normalized;
+        }
       }
-      return it;
+      const children = migrateLegacyTabControlInChildren(group.children);
+      if (children !== group.children) {
+        changed = true;
+        return { ...group, children };
+      }
+      return group;
     }
     if (it.hostControl === "tab-control") {
       changed = true;

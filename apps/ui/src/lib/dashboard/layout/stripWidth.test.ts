@@ -20,6 +20,80 @@ describe("flexStripDistributedWidth", () => {
 });
 
 describe("stripScrollportObserve", () => {
+  it("retries when clientWidth is zero until layout reports width", () => {
+    let width = 0;
+    const el = { get clientWidth() { return width; } } as HTMLElement;
+    const raf = vi.fn((cb: FrameRequestCallback) => {
+      width = 120;
+      cb(0);
+    });
+    vi.stubGlobal("requestAnimationFrame", raf);
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    const observe = vi.fn();
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe = observe;
+        disconnect = vi.fn();
+        constructor(public cb: () => void) {
+          void this.cb;
+        }
+      },
+    );
+    const onWidth = vi.fn();
+    stripScrollportObserve(el, onWidth);
+    expect(raf).toHaveBeenCalled();
+    expect(onWidth).toHaveBeenCalledWith(120);
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("re-measures when ResizeObserver reports a size change", () => {
+    let width = 50;
+    const el = { get clientWidth() { return width; } } as HTMLElement;
+    let roCb: (() => void) | undefined;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe = vi.fn();
+        disconnect = vi.fn();
+        constructor(cb: () => void) {
+          roCb = cb;
+        }
+      },
+    );
+    const onWidth = vi.fn();
+    stripScrollportObserve(el, onWidth);
+    expect(onWidth).toHaveBeenCalledWith(50);
+    width = 88;
+    roCb!();
+    expect(onWidth).toHaveBeenLastCalledWith(88);
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("cancels a pending animation frame when destroyed before measure", () => {
+    const el = { clientWidth: 0 } as HTMLElement;
+    const cancel = vi.fn();
+    vi.stubGlobal("requestAnimationFrame", () => 99);
+    vi.stubGlobal("cancelAnimationFrame", cancel);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe = vi.fn();
+        disconnect = vi.fn();
+        constructor(public cb: () => void) {
+          void this.cb;
+        }
+      },
+    );
+    const { destroy } = stripScrollportObserve(el, vi.fn());
+    destroy();
+    expect(cancel).toHaveBeenCalledWith(99);
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   it("calls onWidth with clientWidth and disconnect stops observer", () => {
     const el = { clientWidth: 50 } as unknown as HTMLElement;
     const observe = vi.fn();

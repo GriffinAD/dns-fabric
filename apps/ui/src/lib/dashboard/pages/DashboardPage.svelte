@@ -221,7 +221,11 @@
         activeEditorId={$editorSelection?.id ?? null}
         onAddTile={ls.addRootTile}
         onAddGroup={ls.addGroup}
+        onAddTabGroup={ls.addTabGroup}
+        onAddStackGroup={ls.addStackGroup}
         onAddGroupToGroup={ls.addGroupToParent}
+        onAddTabGroupToGroup={ls.addTabGroupToParent}
+        onAddStackGroupToGroup={ls.addStackGroupToParent}
         onAddTileToGroup={ls.addTileToGroup}
         onLayoutStructureChange={(next) =>
           ls.applyStructure(next, { preserveRootPlacementIfComplete: true })}

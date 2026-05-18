@@ -10,13 +10,29 @@ function pluginCategoryFromId(id: string): string {
 
 /** Deterministic sort: core first, then plugins by category then label. */
 export function buildPaletteCatalog(plugins: PluginEntry[]): PaletteItem[] {
-  const core: PaletteItem = {
-    kind: "core",
-    id: "core:add-group",
-    label: "Add container",
-    category: "Layout",
-    searchText: "add container layout group",
-  };
+  const core: PaletteItem[] = [
+    {
+      kind: "core",
+      id: "core:add-group",
+      label: "Add container",
+      category: "Layout",
+      searchText: "add container layout group panel",
+    },
+    {
+      kind: "core",
+      id: "core:add-tab-group",
+      label: "Add tab container",
+      category: "Layout",
+      searchText: "add tab container tabs tab-control",
+    },
+    {
+      kind: "core",
+      id: "core:add-stack-group",
+      label: "Add stack container",
+      category: "Layout",
+      searchText: "add stack container vertical-stack collapsible sections",
+    },
+  ];
   const pluginItems: PaletteItem[] = plugins
     .filter((p) => p.enabled)
     .map((p) => {
@@ -35,5 +51,5 @@ export function buildPaletteCatalog(plugins: PluginEntry[]): PaletteItem[] {
     if (c !== 0) return c;
     return a.label.localeCompare(b.label);
   });
-  return [core, ...pluginItems];
+  return [...core, ...pluginItems];
 }

@@ -26,6 +26,7 @@ import type {
   DashboardTile,
   RootLayoutItem,
 } from "../types";
+import { makeTabControlGroup, makeVerticalStackGroup } from "../groups/hostGroupFactory";
 import { MAX_DASHBOARD_GROUP_DEPTH } from "../types";
 
 export type LayoutSource = "server" | "cache";
@@ -270,6 +271,34 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
       applyStructure({ version: 3, items });
     },
 
+    addTabGroup(insertBeforeIndex?: number) {
+      const L = get(layout);
+      const n = L.items.length;
+      const id = `tab-group-${n + 1}-${Date.now()}`;
+      const g = makeTabControlGroup(id);
+      const items = [...L.items];
+      const at =
+        insertBeforeIndex === undefined || insertBeforeIndex < 0 || insertBeforeIndex > items.length
+          ? items.length
+          : insertBeforeIndex;
+      items.splice(at, 0, g);
+      applyStructure({ version: 3, items });
+    },
+
+    addStackGroup(insertBeforeIndex?: number) {
+      const L = get(layout);
+      const n = L.items.length;
+      const id = `stack-group-${n + 1}-${Date.now()}`;
+      const g = makeVerticalStackGroup(id);
+      const items = [...L.items];
+      const at =
+        insertBeforeIndex === undefined || insertBeforeIndex < 0 || insertBeforeIndex > items.length
+          ? items.length
+          : insertBeforeIndex;
+      items.splice(at, 0, g);
+      applyStructure({ version: 3, items });
+    },
+
     addGroupToParent(parentGroupId: string) {
       const L = get(layout);
       const parent = findGroupByIdInItems(L.items, parentGroupId);
@@ -287,6 +316,50 @@ export function createLayoutStore(options: CreateLayoutStoreOptions) {
       const id = `group-${m + 1}-${Date.now()}`;
       const grid = placementForNewEmptyNestedGroup(parent);
       const g: DashboardGroup = { kind: "group", id, showBorder: true, children: [], grid };
+      const nextItems = appendGroupToGroupInItems(L.items, parentGroupId, g);
+      if (layoutNestedGroupDepthExceeded(nextItems)) {
+        loadError.set(`Nested containers cannot exceed depth ${MAX_DASHBOARD_GROUP_DEPTH}.`);
+        return;
+      }
+      applyStructure({ version: 3, items: nextItems });
+    },
+
+    addTabGroupToParent(parentGroupId: string) {
+      const L = get(layout);
+      const parent = findGroupByIdInItems(L.items, parentGroupId);
+      if (!parent) {
+        loadError.set("Container not found.");
+        return;
+      }
+      if (parent.innerWrap === true) {
+        loadError.set(
+          "Nested tab containers are not allowed when Auto wrap is on for the parent. Turn off Auto wrap in container settings, then try again.",
+        );
+        return;
+      }
+      const g = makeTabControlGroup(`tab-group-${Date.now()}`);
+      const nextItems = appendGroupToGroupInItems(L.items, parentGroupId, g);
+      if (layoutNestedGroupDepthExceeded(nextItems)) {
+        loadError.set(`Nested containers cannot exceed depth ${MAX_DASHBOARD_GROUP_DEPTH}.`);
+        return;
+      }
+      applyStructure({ version: 3, items: nextItems });
+    },
+
+    addStackGroupToParent(parentGroupId: string) {
+      const L = get(layout);
+      const parent = findGroupByIdInItems(L.items, parentGroupId);
+      if (!parent) {
+        loadError.set("Container not found.");
+        return;
+      }
+      if (parent.innerWrap === true) {
+        loadError.set(
+          "Nested stack containers are not allowed when Auto wrap is on for the parent. Turn off Auto wrap in container settings, then try again.",
+        );
+        return;
+      }
+      const g = makeVerticalStackGroup(`stack-group-${Date.now()}`);
       const nextItems = appendGroupToGroupInItems(L.items, parentGroupId, g);
       if (layoutNestedGroupDepthExceeded(nextItems)) {
         loadError.set(`Nested containers cannot exceed depth ${MAX_DASHBOARD_GROUP_DEPTH}.`);
