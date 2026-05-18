@@ -68,16 +68,17 @@ test("palette drop on tab strip adds a tab", async ({ page }) => {
       id: string;
       hostControl?: string;
       children?: Array<
-        | { pluginId?: string }
-        | { children?: Array<{ pluginId?: string }> }
+        | { pluginId?: string; tabLabel?: string }
+        | { tabLabel?: string; children?: Array<{ pluginId?: string }> }
       >;
     }[];
   };
   const tabsGroup = stored.items.find((i) => i.kind === "group" && i.id === "tabs-e2e");
   expect(tabsGroup?.hostControl).toBe("tab-control");
   expect(
-    tabsGroup?.children?.some(
-      (c) => ("tabLabel" in c && c.tabLabel === "Static reservations") || c.pluginId === "dhcp.reservations",
-    ),
+    tabsGroup?.children?.some((c) => {
+      if ("tabLabel" in c && c.tabLabel === "Static reservations") return true;
+      return "pluginId" in c && c.pluginId === "dhcp.reservations";
+    }),
   ).toBe(true);
 });
