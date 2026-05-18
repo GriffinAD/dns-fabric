@@ -92,7 +92,7 @@
   }
 
   /** Tab/stack hosts manage their own layout; do not squeeze them into nowrap strip cells. */
-  function isReadLayoutHostControl(c: GroupChild): boolean {
+  function isReadLayoutHostControl(c: GroupChild): c is DashboardGroup {
     return (
       isDashboardGroupNode(c) &&
       (c.hostControl === "vertical-stack" || c.hostControl === "tab-control")

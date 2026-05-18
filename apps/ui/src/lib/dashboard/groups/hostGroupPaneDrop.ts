@@ -26,7 +26,10 @@ export function hostGroupPaneDropContainer(
   child: GroupChild,
 ): string {
   if (isDashboardGroupNode(child)) {
-    return isEmptyHostPaneGroup(child) ? groupEmptyContainer(child.id) : groupCanvasContainer(child.id);
+    const paneGroupId = child.id;
+    return isEmptyHostPaneGroup(child)
+      ? groupEmptyContainer(paneGroupId)
+      : groupCanvasContainer(paneGroupId);
   }
   return groupChildSlotContainer(hostGroupId, child.id);
 }

@@ -9,6 +9,7 @@ import {
   wrapLegacyTabControlTile,
 } from "./layoutUpgrade";
 import type { DashboardLayout, DashboardLayoutV3, RootLayoutItem } from "../types";
+import { isDashboardGroupNode } from "../types";
 
 describe("layoutUpgrade v3", () => {
   it("ensureLayoutV3 dedupes duplicate root tile ids", () => {
@@ -296,9 +297,9 @@ describe("layoutUpgrade v3", () => {
     if (outer?.kind === "group") {
       const tabs = outer.children[0];
       expect(tabs).toMatchObject({ kind: "group", hostControl: "tab-control" });
-      if (tabs?.kind === "group") {
+      if (isDashboardGroupNode(tabs)) {
         const pane = tabs.children[0];
-        expect(pane?.kind === "group" && pane.grid).toBeUndefined();
+        expect(isDashboardGroupNode(pane) && pane.grid).toBeUndefined();
       }
     }
   });
@@ -336,7 +337,7 @@ describe("layoutUpgrade v3", () => {
     if (outer?.kind === "group") {
       const stack = outer.children[0];
       expect(stack).toMatchObject({ kind: "group", hostControl: "vertical-stack" });
-      if (stack?.kind === "group") {
+      if (isDashboardGroupNode(stack)) {
         const pane = stack.children[0];
         expect(pane).toMatchObject({ kind: "group", tabLabel: "CPU" });
       }
@@ -374,9 +375,9 @@ describe("layoutUpgrade v3", () => {
     });
     const stack = out.items[0];
     expect(stack?.kind).toBe("group");
-    if (stack?.kind === "group") {
+    if (isDashboardGroupNode(stack)) {
       const pane2 = stack.children[1];
-      expect(pane2?.kind === "group" && pane2.grid).toBeUndefined();
+      expect(isDashboardGroupNode(pane2) && pane2.grid).toBeUndefined();
     }
   });
 
@@ -412,10 +413,10 @@ describe("layoutUpgrade v3", () => {
     });
     const tabs = out.items[0];
     expect(tabs?.kind).toBe("group");
-    if (tabs?.kind === "group") {
+    if (isDashboardGroupNode(tabs)) {
       expect(tabs.children[1]).toMatchObject({ kind: "group", id: "pane2", tabLabel: "Tab 2" });
       const pane2 = tabs.children[1];
-      expect(pane2?.kind === "group" && pane2.grid).toBeUndefined();
+      expect(isDashboardGroupNode(pane2) && pane2.grid).toBeUndefined();
     }
   });
 

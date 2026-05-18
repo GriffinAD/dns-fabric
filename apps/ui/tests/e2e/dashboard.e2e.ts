@@ -250,15 +250,24 @@ test("palette drop on tab strip adds a tab", async ({ page }) => {
   expect(raw).toBeTruthy();
   const stored = JSON.parse(raw!) as {
     version: number;
-    items: { kind: string; id: string; hostControl?: string; children?: { pluginId?: string }[] }[];
+    items: {
+      kind: string;
+      id: string;
+      hostControl?: string;
+      children?: Array<
+        | { pluginId?: string }
+        | { children?: Array<{ pluginId?: string }> }
+      >;
+    }[];
   };
   const tabsGroup = stored.items.find((i) => i.kind === "group" && i.id === "tabs-e2e");
   expect(tabsGroup?.hostControl).toBe("tab-control");
-  const hasReservationsTab = tabsGroup?.children?.some(
-    (c) =>
-      ("children" in c && c.children?.some((t) => t.pluginId === "dhcp.reservations")) ||
-      c.pluginId === "dhcp.reservations",
-  );
+  const hasReservationsTab = tabsGroup?.children?.some((c) => {
+    if ("children" in c && Array.isArray(c.children)) {
+      return c.children.some((t) => t.pluginId === "dhcp.reservations");
+    }
+    return "pluginId" in c && c.pluginId === "dhcp.reservations";
+  });
   expect(hasReservationsTab).toBe(true);
 });
 

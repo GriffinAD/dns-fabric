@@ -23,6 +23,23 @@ describe("hostGroupPaneDrop", () => {
     ).toBe("fill-pane");
   });
 
+  it("uses group canvas container for panel groups with content", () => {
+    const tabGroup = makeTabControlGroup("tabs-1");
+    const pane = {
+      ...tabGroup.children[0]!,
+      children: [
+        {
+          id: "t1",
+          pluginId: "perf.cpu",
+          tabLabel: "CPU",
+          hostControl: "single-panel" as const,
+          displayMode: "full" as const,
+        },
+      ],
+    };
+    expect(hostGroupPaneDropContainer(tabGroup.id, pane)).toBe(`g:${pane.id}:canvas`);
+  });
+
   it("uses group child slot container for tile children", () => {
     const tabGroup = makeTabControlGroup("tabs-1");
     const tile = {

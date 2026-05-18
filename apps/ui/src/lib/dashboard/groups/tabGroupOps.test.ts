@@ -139,7 +139,7 @@ describe("tabGroupOps", () => {
       showBorder: true,
       children: [],
     });
-    expect(nested!.kind === "group" && !("hostControl" in nested!)).toBe(true);
+    expect(isDashboardGroupNode(nested!) && nested!.hostControl == null).toBe(true);
   });
 
   it("addTabChild throws at max tab count", () => {
