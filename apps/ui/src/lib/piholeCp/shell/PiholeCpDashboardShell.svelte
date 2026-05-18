@@ -162,7 +162,7 @@
 </script>
 
 <div
-  class="sticky top-0 z-40 -mx-4 border-b border-slate-200/90 bg-slate-100/95 px-4 py-4 backdrop-blur-sm sm:-mx-6 sm:px-6 dark:border-gray-700/90 dark:bg-gray-900/95"
+  class="sticky top-0 z-40 -mx-4 bg-slate-100/95 px-4 py-4 backdrop-blur-sm sm:-mx-6 sm:px-6 dark:bg-gray-900/95"
   data-testid="pihole-cp-sticky-chrome"
 >
   <PiholeCpShellHeader

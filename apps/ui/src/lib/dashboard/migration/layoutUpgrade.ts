@@ -16,6 +16,7 @@ import type {
   RootTileItem,
 } from "../types";
 import { normalizeTabChildPaneGroups, wrapTabTileInPaneGroup } from "../groups/tabGroupOps";
+import { normalizeStackChildPaneGroups } from "../groups/verticalStackGroupOps";
 import {
   isDashboardGroupNode,
   isLayoutV2,
@@ -63,6 +64,13 @@ function migrateLegacyTabControlInChildren(children: GroupChild[]): GroupChild[]
           group = normalized;
         }
       }
+      if (c.hostControl === "vertical-stack") {
+        const normalized = normalizeStackChildPaneGroups(c);
+        if (normalized !== c) {
+          changed = true;
+          group = normalized;
+        }
+      }
       const migratedChildren = migrateLegacyTabControlInChildren(group.children);
       if (migratedChildren !== group.children) {
         changed = true;
@@ -87,6 +95,13 @@ export function migrateLegacyTabControlItems(items: RootLayoutItem[]): RootLayou
       let group = it;
       if (it.hostControl === "tab-control") {
         const normalized = normalizeTabChildPaneGroups(it);
+        if (normalized !== it) {
+          changed = true;
+          group = normalized;
+        }
+      }
+      if (it.hostControl === "vertical-stack") {
+        const normalized = normalizeStackChildPaneGroups(it);
         if (normalized !== it) {
           changed = true;
           group = normalized;

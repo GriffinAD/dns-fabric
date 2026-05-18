@@ -93,3 +93,38 @@ export const editorDndDropAttrs = {
   dragOverClass:
     "svelte-dnd-drop-target outline outline-2 outline-dashed outline-offset-[3px] rounded-md outline-primary-500",
 };
+
+/** Same elevation as plugin tiles (`--dashboard-tile-elevated-shadow` in app.css). */
+export const DASHBOARD_TILE_ELEVATED_SURFACE = "dashboard-tile-elevated-surface";
+
+/** Stack/tab host outer shell: solid surface + elevation (do not clip shadow with overflow). */
+export const DASHBOARD_HOST_CONTROL_SURFACE =
+  `rounded-lg border border-slate-200/80 bg-white dark:border-gray-600/60 dark:bg-gray-900 overflow-visible ${DASHBOARD_TILE_ELEVATED_SURFACE}`;
+
+/** Clips section content to rounded corners without clipping outer box-shadow. */
+export const DASHBOARD_HOST_CONTROL_SURFACE_INNER =
+  "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg";
+
+/** Default bordered dashboard group (padding on all sides). */
+export const DASHBOARD_GROUP_PANEL_SHELL =
+  `overflow-hidden rounded-lg border border-slate-200/70 bg-transparent py-1.5 ${DASHBOARD_TILE_ELEVATED_SURFACE} dark:border-gray-500/30`;
+
+/** Grid wrapper for tab/stack hosts — chrome lives on the host component, not here. */
+export const DASHBOARD_HOST_CONTROL_GROUP_SHELL =
+  "overflow-visible rounded-lg border-0 bg-transparent p-0 shadow-none [--tw-shadow:0_0_#0000]";
+
+/** Tab-control grid shell: room below for drop-shadow. */
+export const DASHBOARD_TAB_CONTROL_GROUP_SHELL = `${DASHBOARD_HOST_CONTROL_GROUP_SHELL} pb-3`;
+
+/** Raised panel surface (contrasts with `PiholeOperatorApp` slate-100 / gray-900 canvas). */
+export const TAB_CONTROL_SURFACE_BG = "bg-white dark:bg-gray-900";
+
+/** Tab frame: SVG border + external CSS shadow (no rectangular box-shadow). */
+export const TAB_CONTROL_FRAME =
+  "tab-control-frame relative isolate flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-visible";
+
+/** Strip + pane sit above the shadow silhouette layer. */
+export const TAB_CONTROL_BODY = "tab-control-body relative z-[1] flex min-h-0 min-w-0 flex-1 flex-col";
+
+/** Tab-control content pane (fill only; outline is SVG). */
+export const TAB_CONTROL_PANE = "tab-control-pane flex min-h-32 min-w-0 flex-1 flex-col";

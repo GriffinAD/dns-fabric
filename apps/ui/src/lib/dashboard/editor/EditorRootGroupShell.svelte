@@ -100,7 +100,9 @@
 </script>
 
 <div
-  class="editor-root-container-shell {EDITOR_LAYOUT_ELEVATED_CLASS} relative z-[2] flex h-full min-h-0 w-full max-w-full flex-col place-self-stretch rounded-md border border-slate-200/70 bg-transparent pt-2 pb-2 dark:border-gray-500/30 {editorGroupInPlay(group.id)
+  class="editor-root-container-shell {EDITOR_LAYOUT_ELEVATED_CLASS} relative z-[2] flex h-full min-h-0 w-full max-w-full flex-col place-self-stretch rounded-md bg-transparent pb-2 {group.hostControl === 'tab-control' || group.hostControl === 'vertical-stack'
+    ? 'border-0 pt-0 shadow-none [--tw-shadow:0_0_#0000]'
+    : 'border border-slate-200/70 pt-2 dark:border-gray-500/30'} {editorGroupInPlay(group.id)
     ? 'editor-surface-in-play'
     : ''}"
   style={placed?.grid ? gridAreaStyle(placed.grid) : ""}
@@ -152,7 +154,9 @@
     <div class="editor-group-root-grid-drop editor-group-root-hit-active pointer-events-auto absolute inset-0 z-[45] rounded-md" aria-hidden="true" use:droppable={{ container: rootSlotContainer(item.id), direction: "grid", callbacks: dropCb, attributes: dndDropAttrs }} data-dnd-container={rootSlotContainer(item.id)}></div>
   {/if}
   <div
-    class="editor-group-inner pointer-events-auto relative z-[2] min-h-0 w-full min-w-0 flex-1 overflow-hidden rounded-md pl-0 pt-8 {rootGroupGridDropActive(group.id)
+    class="editor-group-inner pointer-events-auto relative z-[2] min-h-0 w-full min-w-0 flex-1 rounded-md pl-0 {group.hostControl === 'tab-control' || group.hostControl === 'vertical-stack'
+      ? 'overflow-visible pt-0'
+      : 'overflow-hidden pt-8'} {rootGroupGridDropActive(group.id)
       ? 'pointer-events-none'
       : ''}"
     data-editor-group-inner="true"

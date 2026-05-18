@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { DashboardGroup } from "../types";
-import { MAX_TAB_GROUP_CHILDREN } from "../types";
+import { isDashboardGroupNode, MAX_TAB_GROUP_CHILDREN } from "../types";
 import {
   addStackChild,
   addStackSection,
   isStackSectionCollapsed,
+  normalizeStackChildPaneGroups,
   removeStackChild,
   renameStackChild,
   stackSectionLabel,
@@ -23,10 +24,55 @@ describe("verticalStackGroupOps", () => {
     expect(stackSectionLabel(g.children[0]!)).toBeTruthy();
   });
 
-  it("addStackChild appends a plugin section", () => {
+  it("addStackChild appends an empty pane group section", () => {
     const next = addStackChild(stackGroup(), { pluginId: "perf.ram", sectionLabel: "RAM" });
     expect(next.children).toHaveLength(2);
-    expect(next.children[1]?.tabLabel).toBe("RAM");
+    const pane = next.children[1]!;
+    expect(isDashboardGroupNode(pane)).toBe(true);
+    if (!isDashboardGroupNode(pane)) return;
+    expect(pane.tabLabel).toBe("RAM");
+    expect(pane.children).toEqual([]);
+  });
+
+  it("normalizeStackChildPaneGroups wraps legacy tile sections in pane groups", () => {
+    const g: DashboardGroup = {
+      ...stackGroup(),
+      children: [
+        {
+          id: "tile-1",
+          tabLabel: "CPU",
+          pluginId: "perf.cpu",
+          hostControl: "single-panel",
+          displayMode: "full",
+        },
+      ],
+    };
+    const next = normalizeStackChildPaneGroups(g);
+    const pane = next.children[0]!;
+    expect(isDashboardGroupNode(pane)).toBe(true);
+    if (!isDashboardGroupNode(pane)) return;
+    expect(pane.children[0]).toMatchObject({ id: "tile-1", pluginId: "perf.cpu" });
+  });
+
+  it("normalizeStackChildPaneGroups strips vestigial strip grid from pane sections", () => {
+    const g: DashboardGroup = {
+      ...stackGroup(),
+      children: [
+        {
+          kind: "group",
+          id: "pane1",
+          showBorder: true,
+          tabLabel: "Metrics",
+          grid: { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+          children: [],
+        },
+      ],
+    };
+    const next = normalizeStackChildPaneGroups(g);
+    const pane = next.children[0]!;
+    expect(isDashboardGroupNode(pane)).toBe(true);
+    if (!isDashboardGroupNode(pane)) return;
+    expect(pane.grid).toBeUndefined();
   });
 
   it("toggleStackSectionCollapsed tracks collapsed ids", () => {
@@ -46,10 +92,19 @@ describe("verticalStackGroupOps", () => {
     expect(next.children[0]?.tabLabel).toBe("Metrics");
   });
 
-  it("addStackSection appends nested panel section", () => {
+  it("addStackSection appends empty nested panel section", () => {
     const next = addStackSection(stackGroup(), { sectionLabel: "Nested" });
     expect(next.children).toHaveLength(2);
-    expect(next.children[1]?.tabLabel).toBe("Nested");
+    const pane = next.children[1]!;
+    expect(isDashboardGroupNode(pane)).toBe(true);
+    if (!isDashboardGroupNode(pane)) return;
+    expect(pane.tabLabel).toBe("Nested");
+    expect(pane.children).toEqual([]);
+  });
+
+  it("addStackSection defaults sectionLabel from section count", () => {
+    const next = addStackSection(stackGroup());
+    expect(next.children[1]?.tabLabel).toBe("Section 2");
   });
 
   it("removeStackChild removes a section when more than one", () => {

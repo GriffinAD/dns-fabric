@@ -14,22 +14,30 @@
   import type { DashboardDragPayload } from "../interactions/dashboardSveltedndTypes";
   import {
     groupAppendContainer,
-    groupChildSlotContainer,
+    parseDragPayload,
+    parseDropContainer,
   } from "../interactions/dashboardSveltedndTypes";
-  import { editorDndDropAttrs as dndDropAttrs } from "../interactions/editorChrome";
+  import {
+    DASHBOARD_HOST_CONTROL_SURFACE,
+    DASHBOARD_HOST_CONTROL_SURFACE_INNER,
+    editorDndDropAttrs as dndDropAttrs,
+  } from "../interactions/editorChrome";
   import { dedupeById } from "../layout/layoutTree";
   import type { DashboardGroup, DashboardTile, GroupChild } from "../types";
   import { isDashboardGroupNode, MAX_TAB_GROUP_CHILDREN } from "../types";
-  import { createHostGroupStripDropCallbacks } from "./hostGroupDropCallbacks";
+  import {
+    createHostGroupStripDropCallbacks,
+    isPaletteDragPayload,
+  } from "./hostGroupDropCallbacks";
   import GroupHostPaneEditor from "./GroupHostPaneEditor.svelte";
   import type { HostPaneEditorBindings } from "./hostGroupPaneEditorTypes";
   import { hostGroupAppendDropContainer } from "./hostGroupPaneDrop";
   import TabGroupHost from "./TabGroupHost.svelte";
   import VerticalStackGroupHost from "./VerticalStackGroupHost.svelte";
   import {
-    addStackChild,
     addStackSection,
     isStackSectionCollapsed,
+    normalizeStackChildPaneGroups,
     removeStackChild,
     renameStackChild,
     stackSectionLabel,
@@ -63,12 +71,29 @@
   } = $props();
 
   const children = $derived(dedupeById(group.children));
-  const palette = $derived(plugins.filter((p) => p.enabled));
   const atMaxSections = $derived(children.length >= MAX_TAB_GROUP_CHILDREN);
+
+  /** Read mode without `onGroupChange` keeps collapse local (sections still expand/collapse). */
+  let localCollapsedIds = $state<Set<string>>(new Set(group.hostState?.collapsedChildIds ?? []));
+
+  function sectionCollapsed(childId: string): boolean {
+    if (onGroupChange) return isStackSectionCollapsed(group, childId);
+    return localCollapsedIds.has(childId);
+  }
+
+  function toggleSectionCollapsed(childId: string) {
+    if (onGroupChange) {
+      commit(toggleStackSectionCollapsed(group, childId));
+      return;
+    }
+    const next = new Set(localCollapsedIds);
+    if (next.has(childId)) next.delete(childId);
+    else next.add(childId);
+    localCollapsedIds = next;
+  }
 
   let renamingId = $state<string | null>(null);
   let renameDraft = $state("");
-  let addPluginPick = $state("");
 
   function commit(next: DashboardGroup) {
     onGroupChange?.(next);
@@ -104,22 +129,10 @@
     }
   }
 
-  function onAddPluginSection() {
-    if (!addPluginPick || atMaxSections) return;
-    const entry = palette.find((p) => p.id === addPluginPick);
-    if (!entry) return;
-    try {
-      commit(addStackChild(group, { pluginId: entry.id, sectionLabel: entry.name }));
-      addPluginPick = "";
-    } catch {
-      /* max sections */
-    }
-  }
-
-  function onAddNestedSection() {
+  function onAddSection() {
     if (atMaxSections) return;
     try {
-      commit(addStackSection(group, { sectionLabel: "Section" }));
+      commit(addStackSection(group, { sectionLabel: `Section ${children.length + 1}` }));
     } catch {
       /* max sections */
     }
@@ -139,24 +152,51 @@
     },
     onDragEnd: () => {},
   };
-  const stackDropCb = createHostGroupStripDropCallbacks(layoutDropCb ?? noopLayoutDropCb);
+  const stackStripDropCb = createHostGroupStripDropCallbacks(layoutDropCb ?? noopLayoutDropCb);
+
+  /** Palette drops belong on section pane surfaces, not section headers. */
+  const stackAppendPaletteDropCb = {
+    onDrop: (state: import("@thisux/sveltednd").DragDropState<DashboardDragPayload>) => {
+      const drag = parseDragPayload(state.draggedItem);
+      const slot = parseDropContainer(state.targetContainer);
+      if (isPaletteDragPayload(drag) && slot?.kind !== "groupAppend") return;
+      stackStripDropCb.onDrop(state);
+    },
+    onDragOver: (state: import("@thisux/sveltednd").DragDropState<DashboardDragPayload>) => {
+      const drag = parseDragPayload(state.draggedItem);
+      const slot = parseDropContainer(state.targetContainer);
+      if (isPaletteDragPayload(drag) && slot?.kind !== "groupAppend") {
+        state.invalidDrop = true;
+        return;
+      }
+      stackStripDropCb.onDragOver(state);
+    },
+    onDragEnd: stackStripDropCb.onDragEnd,
+  };
+
+  $effect(() => {
+    if (!editLayout || !onGroupChange) return;
+    const normalized = normalizeStackChildPaneGroups(group);
+    if (normalized !== group) commit(normalized);
+  });
 
 </script>
 
 <div
-  class="flex h-full min-h-0 w-full min-w-0 flex-col gap-2"
+  class="flex h-full min-h-0 w-full min-w-0 flex-col gap-0 {DASHBOARD_HOST_CONTROL_SURFACE}"
   data-dashboard-stack-group={group.id}
   data-testid="vertical-stack-group-host"
 >
+  <div class={DASHBOARD_HOST_CONTROL_SURFACE_INNER}>
   {#snippet stackSectionInner(child: GroupChild, collapsed: boolean)}
-      <div class="group/section flex shrink-0 items-center gap-1 border-b border-slate-200/70 px-2 py-1 dark:border-gray-600/50">
+      <div class="group/section flex shrink-0 items-center gap-1 px-2 py-1.5">
         <button
           type="button"
           class="rounded p-0.5 text-slate-600 hover:bg-slate-100 dark:text-gray-300 dark:hover:bg-gray-800"
           aria-expanded={!collapsed}
           aria-label={collapsed ? "Expand section" : "Collapse section"}
           data-testid="stack-section-toggle"
-          onclick={() => commit(toggleStackSectionCollapsed(group, child.id))}
+          onclick={() => toggleSectionCollapsed(child.id)}
         >
           {#if collapsed}
             <ChevronRight class="h-4 w-4" aria-hidden="true" />
@@ -206,7 +246,11 @@
         {/if}
       </div>
       {#if !collapsed}
-        <div class="flex min-h-32 min-w-0 flex-1 flex-col overflow-hidden p-2" data-testid="stack-section-body">
+        <div
+          class="stack-section-body pointer-events-auto relative z-10 flex min-h-32 min-w-0 flex-1 flex-col overflow-hidden p-2"
+          data-testid="stack-section-body"
+          data-editor-group-surface-drop="true"
+        >
           {#if isDashboardGroupNode(child)}
             {@const nested = child}
             {#if nested.hostControl === "tab-control"}
@@ -260,80 +304,42 @@
       {/if}
   {/snippet}
 
-  {#each children as child (child.id)}
-    {@const collapsed = isStackSectionCollapsed(group, child.id)}
-    {#if editLayout}
-      <section
-        class="flex min-h-0 flex-col overflow-hidden rounded-md border border-slate-200/80 bg-white/40 dark:border-gray-600/60 dark:bg-gray-900/30"
-        data-testid="stack-section"
-        data-section-id={child.id}
-        use:droppable={{
-          container: groupChildSlotContainer(group.id, child.id),
-          direction: "horizontal",
-          callbacks: stackDropCb,
-          attributes: dndDropAttrs,
-        }}
-        data-dnd-container={groupChildSlotContainer(group.id, child.id)}
-        data-editor-group-surface-drop="true"
-      >
-        {@render stackSectionInner(child, collapsed)}
-      </section>
-    {:else}
-      <section
-        class="flex min-h-0 flex-col overflow-hidden rounded-md border border-slate-200/80 bg-white/40 dark:border-gray-600/60 dark:bg-gray-900/30"
-        data-testid="stack-section"
-        data-section-id={child.id}
-      >
-        {@render stackSectionInner(child, collapsed)}
-      </section>
-    {/if}
+  {#each children as child, sectionIndex (child.id)}
+    {@const collapsed = sectionCollapsed(child.id)}
+    <section
+      class="flex min-h-0 flex-col overflow-hidden {sectionIndex > 0
+        ? 'border-t border-slate-200/50 dark:border-gray-600/40'
+        : ''}"
+      data-testid="stack-section"
+      data-section-id={child.id}
+    >
+      {@render stackSectionInner(child, collapsed)}
+    </section>
   {/each}
   {#if editLayout}
     <div
-      class="flex shrink-0 flex-wrap items-center gap-1 rounded-md border border-dashed border-slate-300/90 px-2 py-1.5 dark:border-gray-600"
+      class="flex shrink-0 items-center gap-1 pb-0.5"
       data-testid="stack-group-add"
       use:droppable={{
         container: hostGroupAppendDropContainer(group.id),
         direction: "horizontal",
-        callbacks: stackDropCb,
+        callbacks: stackAppendPaletteDropCb,
         attributes: dndDropAttrs,
       }}
       data-dnd-container={groupAppendContainer(group.id)}
       data-editor-group-surface-drop="true"
     >
-      <label class="sr-only" for="stack-add-plugin-{group.id}">Add plugin section</label>
-      <select
-        id="stack-add-plugin-{group.id}"
-        class="max-w-[8rem] rounded border border-slate-200/80 bg-white px-1 py-1 text-[10px] dark:border-gray-600 dark:bg-gray-900"
-        bind:value={addPluginPick}
-        disabled={atMaxSections || palette.length === 0}
-        data-testid="stack-add-plugin-select"
-      >
-        <option value="">+ Section…</option>
-        {#each palette as p (p.id)}
-          <option value={p.id}>{p.name}</option>
-        {/each}
-      </select>
       <button
         type="button"
         class="flex items-center gap-0.5 rounded border border-slate-200/80 bg-white px-1.5 py-1 text-[10px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
-        disabled={!addPluginPick || atMaxSections}
-        data-testid="stack-add-plugin-confirm"
-        onclick={onAddPluginSection}
-      >
-        <Plus class="h-3 w-3" aria-hidden="true" />
-        Plugin
-      </button>
-      <button
-        type="button"
-        class="flex items-center gap-0.5 rounded border border-dashed border-slate-300/90 px-1.5 py-1 text-[10px] font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-gray-600 dark:text-gray-300"
         disabled={atMaxSections}
-        data-testid="stack-add-nested-section"
-        onclick={onAddNestedSection}
+        data-testid="stack-add-section-button"
+        onclick={onAddSection}
       >
         <Plus class="h-3 w-3" aria-hidden="true" />
-        Container
+        Section
       </button>
     </div>
   {/if}
+  </div>
 </div>

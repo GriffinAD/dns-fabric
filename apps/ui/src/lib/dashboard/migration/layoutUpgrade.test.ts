@@ -303,6 +303,83 @@ describe("layoutUpgrade v3", () => {
     }
   });
 
+  it("ensureLayoutV3 wraps tile children of nested vertical-stack groups in pane groups", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "outer",
+          showBorder: true,
+          children: [
+            {
+              kind: "group",
+              id: "stack",
+              showBorder: true,
+              hostControl: "vertical-stack",
+              children: [
+                {
+                  id: "tile-1",
+                  tabLabel: "CPU",
+                  pluginId: "perf.cpu",
+                  hostControl: "single-panel",
+                  displayMode: "full",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const outer = out.items[0];
+    expect(outer?.kind).toBe("group");
+    if (outer?.kind === "group") {
+      const stack = outer.children[0];
+      expect(stack).toMatchObject({ kind: "group", hostControl: "vertical-stack" });
+      if (stack?.kind === "group") {
+        const pane = stack.children[0];
+        expect(pane).toMatchObject({ kind: "group", tabLabel: "CPU" });
+      }
+    }
+  });
+
+  it("ensureLayoutV3 strips vestigial strip grid from stack section children", () => {
+    const out = ensureLayoutV3({
+      version: 3,
+      items: [
+        {
+          kind: "group",
+          id: "stack",
+          showBorder: true,
+          hostControl: "vertical-stack",
+          children: [
+            {
+              kind: "group",
+              id: "pane1",
+              showBorder: true,
+              tabLabel: "Section 1",
+              children: [],
+            },
+            {
+              kind: "group",
+              id: "pane2",
+              showBorder: true,
+              tabLabel: "Section 2",
+              grid: { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+              children: [],
+            },
+          ],
+        },
+      ],
+    });
+    const stack = out.items[0];
+    expect(stack?.kind).toBe("group");
+    if (stack?.kind === "group") {
+      const pane2 = stack.children[1];
+      expect(pane2?.kind === "group" && pane2.grid).toBeUndefined();
+    }
+  });
+
   it("ensureLayoutV3 strips vestigial strip grid from tab pane children", () => {
     const out = ensureLayoutV3({
       version: 3,

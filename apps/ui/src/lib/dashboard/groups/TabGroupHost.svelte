@@ -21,7 +21,14 @@
     tabGroupTabsContainer,
     tabStripCellPayload,
   } from "../interactions/dashboardSveltedndTypes";
-  import { editorDndDragAttrs as dndDragAttrs, editorDndDropAttrs as dndDropAttrs } from "../interactions/editorChrome";
+  import {
+    TAB_CONTROL_BODY,
+    TAB_CONTROL_FRAME,
+    TAB_CONTROL_PANE,
+    TAB_CONTROL_SURFACE_BG,
+    editorDndDragAttrs as dndDragAttrs,
+    editorDndDropAttrs as dndDropAttrs,
+  } from "../interactions/editorChrome";
   import { dedupeById } from "../layout/layoutTree";
   import type { DashboardGroup, DashboardTile, GroupChild } from "../types";
   import { isDashboardGroupNode, MAX_TAB_GROUP_CHILDREN } from "../types";
@@ -44,6 +51,7 @@
     setActiveTab,
     tabStripLabel,
   } from "./tabGroupOps";
+  import { measureTabControlOutline } from "./tabControlOutline";
 
   let {
     group,
@@ -85,6 +93,54 @@
     return activeTabChild(group);
   });
   const atMaxTabs = $derived(children.length >= MAX_TAB_GROUP_CHILDREN);
+
+  let frameEl = $state<HTMLDivElement | undefined>(undefined);
+  let paneEl = $state<HTMLDivElement | undefined>(undefined);
+  let outlinePath = $state("");
+  let outlineViewW = $state(0);
+  let outlineViewH = $state(0);
+
+  function syncTabControlOutline() {
+    if (!frameEl || !paneEl) return;
+    const frame = frameEl.getBoundingClientRect();
+    const tabNode = frameEl.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    const measured = measureTabControlOutline(
+      frame,
+      paneEl.getBoundingClientRect(),
+      tabNode?.getBoundingClientRect() ?? null,
+    );
+    if (!measured) {
+      outlinePath = "";
+      outlineViewW = 0;
+      outlineViewH = 0;
+      return;
+    }
+    outlinePath = measured.path;
+    outlineViewW = measured.viewW;
+    outlineViewH = measured.viewH;
+  }
+
+  $effect(() => {
+    if (!frameEl || !paneEl) return;
+    active;
+    children;
+    editLayout;
+    const ro = new ResizeObserver(() => syncTabControlOutline());
+    ro.observe(frameEl);
+    ro.observe(paneEl);
+    const mo = new MutationObserver(() => syncTabControlOutline());
+    mo.observe(frameEl, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["aria-selected", "class"],
+    });
+    queueMicrotask(syncTabControlOutline);
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
+  });
 
   let renamingId = $state<string | null>(null);
   let renameDraft = $state("");
@@ -217,30 +273,53 @@
 </script>
 
 <div
-  class="flex h-full min-h-0 w-full min-w-0 flex-col gap-2"
+  class="tab-control-host flex h-full min-h-0 w-full min-w-0 flex-col overflow-visible"
   data-dashboard-tab-group={group.id}
   data-testid="tab-group-host"
 >
-  <div
-    class="flex min-w-0 flex-nowrap items-end gap-1 overflow-x-auto border-b border-slate-200/80 pb-px dark:border-gray-600/60"
-    role="tablist"
-    aria-label="Tabs for {group.id}"
-    use:droppable={editLayout
-      ? {
-          container: tabGroupTabsContainer(group.id),
-          direction: "horizontal",
-          callbacks: tabStripPaletteDropCb,
-          attributes: dndDropAttrs,
-        }
-      : readOnlyStripDroppable}
-    data-dnd-container={editLayout ? tabGroupTabsContainer(group.id) : readOnlyStripDroppable.container}
-    data-testid="tab-group-strip"
-  >
+  <div class={TAB_CONTROL_FRAME} bind:this={frameEl}>
+    {#if outlinePath && outlineViewW > 0 && outlineViewH > 0}
+      <div class="tab-control-outline-shadow" aria-hidden="true" data-testid="tab-control-outline-shadow">
+        <svg
+          class="tab-control-outline-svg"
+          viewBox="0 0 {outlineViewW} {outlineViewH}"
+          preserveAspectRatio="xMinYMin meet"
+        >
+          <path class="tab-control-outline-silhouette" d={outlinePath} />
+        </svg>
+      </div>
+      <svg
+        class="tab-control-outline-border"
+        viewBox="0 0 {outlineViewW} {outlineViewH}"
+        preserveAspectRatio="xMinYMin meet"
+        aria-hidden="true"
+        data-testid="tab-control-outline"
+      >
+        <path class="tab-control-outline-path" d={outlinePath} />
+      </svg>
+    {/if}
+    <div class={TAB_CONTROL_BODY}>
+    <div
+      class="tab-group-strip relative z-[2] flex w-full min-w-0 shrink-0 flex-nowrap items-end gap-1 pl-0 pr-0 {editLayout ? 'pt-8' : 'pt-0'}"
+      role="tablist"
+      aria-label="Tabs for {group.id}"
+      use:droppable={editLayout
+        ? {
+            container: tabGroupTabsContainer(group.id),
+            direction: "horizontal",
+            callbacks: tabStripPaletteDropCb,
+            attributes: dndDropAttrs,
+          }
+        : readOnlyStripDroppable}
+      data-dnd-container={editLayout ? tabGroupTabsContainer(group.id) : readOnlyStripDroppable.container}
+      data-testid="tab-group-strip"
+    >
+    <div class="tab-group-strip-scroll">
     {#each children as child (child.id)}
       {@const activeId = active?.id}
       {@const isActive = child.id === activeId}
       <div
-        class="group/tab flex shrink-0 items-center"
+        class="group/tab flex shrink-0 items-end"
         use:droppable={editLayout
           ? {
               container: groupChildSlotContainer(group.id, child.id),
@@ -271,9 +350,9 @@
             role="tab"
             tabindex="0"
             aria-selected={isActive}
-            class="flex max-w-[12rem] cursor-pointer items-center gap-1 rounded-t-md border border-b-0 px-2 py-1.5 text-xs font-medium transition-colors {isActive
-              ? 'border-slate-200/90 bg-white text-slate-900 dark:border-gray-500/50 dark:bg-gray-900 dark:text-gray-100'
-              : 'border-transparent bg-slate-50/80 text-slate-600 hover:bg-slate-100/90 dark:bg-gray-900/40 dark:text-gray-400 dark:hover:bg-gray-800/60'}"
+            class="flex max-w-[12rem] cursor-pointer items-center gap-1 px-2 py-1.5 text-xs font-medium transition-colors {isActive
+              ? `relative z-[2] -mb-px rounded-t-sm text-slate-900 dark:text-gray-100 ${TAB_CONTROL_SURFACE_BG}`
+              : 'text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-300'}"
             data-testid="tab-strip-item"
             data-tab-id={child.id}
             onclick={() => selectTab(child.id)}
@@ -327,6 +406,7 @@
         {/if}
       </div>
     {/each}
+    </div>
     {#if editLayout}
       <div
         class="flex shrink-0 items-center gap-1 pb-0.5 pl-1"
@@ -352,14 +432,16 @@
         </button>
       </div>
     {/if}
-  </div>
+    </div>
 
-  <div
-    class="tab-group-pane pointer-events-auto relative z-10 flex min-h-32 min-w-0 flex-1 flex-col overflow-hidden"
-    role="tabpanel"
-    aria-label={active ? tabStripLabel(active) : "Tab content"}
-    data-testid="tab-group-pane"
-  >
+    <div
+      class="tab-group-pane relative z-[1] pointer-events-auto min-h-32 flex-1 {TAB_CONTROL_PANE} {TAB_CONTROL_SURFACE_BG}"
+      role="tabpanel"
+      aria-label={active ? tabStripLabel(active) : "Tab content"}
+      data-testid="tab-group-pane"
+      bind:this={paneEl}
+    >
+    <div class="tab-control-pane-inner">
     {#if active}
       {#if isDashboardGroupNode(active)}
         {@const nested = active}
@@ -413,5 +495,8 @@
         </div>
       {/if}
     {/if}
+    </div>
+    </div>
+  </div>
   </div>
 </div>

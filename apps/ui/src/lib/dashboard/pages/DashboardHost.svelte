@@ -17,6 +17,7 @@
     reorderRootLayoutItemsPreservingSlotOrigins,
   } from "../grid/gridPlacement";
   import TabGroupHost from "../groups/TabGroupHost.svelte";
+  import VerticalStackGroupHost from "../groups/VerticalStackGroupHost.svelte";
   import { addStackChild } from "../groups/verticalStackGroupOps";
   import { addTabChild } from "../groups/tabGroupOps";
   import DashboardReadNestedHost from "./DashboardReadNestedHost.svelte";
@@ -37,6 +38,11 @@
   import type { DashboardDropContext } from "../interactions/dashboardSveltedndApply";
   import { parseDragPayload, parseDropContainer, type DashboardDragPayload } from "../interactions/dashboardSveltedndTypes";
   import { editorGroupInPlay, editorTileInPlay } from "../interactions/editorSelection";
+  import {
+    DASHBOARD_GROUP_PANEL_SHELL,
+    DASHBOARD_HOST_CONTROL_GROUP_SHELL,
+    DASHBOARD_TAB_CONTROL_GROUP_SHELL,
+  } from "../interactions/editorChrome";
   import { dedupeById, findGroupByIdInItems, mapLayoutReplaceGroupById } from "../layout/layoutTree";
   import { noWrapReadRowGroups } from "../layout/readModeLayout";
   import { stripScrollportObserve } from "../layout/stripWidth";
@@ -353,9 +359,14 @@
         {#if it.kind === "group"}
           <div
             class="box-border min-h-0 w-full !max-w-full min-w-0 flex-1 self-stretch {it.showBorder !== false
-              ? 'overflow-hidden rounded-lg border border-slate-200/70 bg-transparent py-1.5 shadow-[-2px_5px_14px_-3px_rgba(15,23,42,0.07),0_1px_1px_0_rgba(15,23,42,0.04)] dark:border-gray-500/30 dark:shadow-[-2px_6px_20px_-4px_rgba(0,0,0,0.45)]'
+              ? it.hostControl === 'tab-control'
+                ? DASHBOARD_TAB_CONTROL_GROUP_SHELL
+                : it.hostControl === 'vertical-stack'
+                  ? DASHBOARD_HOST_CONTROL_GROUP_SHELL
+                  : DASHBOARD_GROUP_PANEL_SHELL
               : ''}"
             data-dashboard-group={it.id}
+            data-host-control={it.hostControl}
             style={it.grid ? gridAreaStyle(it.grid) : ""}
             aria-label="Group {it.id}"
           >
@@ -372,6 +383,19 @@
                   {@render renderTile(t)}
                 {/snippet}
               </TabGroupHost>
+            {:else if it.hostControl === "vertical-stack"}
+              <VerticalStackGroupHost
+                group={it}
+                {editLayout}
+                onGroupChange={onTabGroupChange}
+                {plugins}
+                {onEditTile}
+                onEditGroup={onEditGroup}
+              >
+                {#snippet tileContent(t)}
+                  {@render renderTile(t)}
+                {/snippet}
+              </VerticalStackGroupHost>
             {:else if it.innerWrap === true}
               {@const Gr = groupOuterColSpan(it)}
               {@const tilesOnly = dedupeById(it.children).filter(

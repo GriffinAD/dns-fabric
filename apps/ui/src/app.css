@@ -137,6 +137,15 @@ html[data-color-preset="gray"] {
     box-shadow: var(--dashboard-shell-elevated-shadow, var(--editor-layout-resting-shadow)) !important;
   }
 
+  .editor-root-container-shell.editor-layout-elevated:has([data-dashboard-stack-group]),
+  .editor-root-container-shell.editor-layout-elevated:has([data-dashboard-tab-group]),
+  [data-testid="editor-tile"][data-editor-group="true"].editor-layout-elevated:has([data-dashboard-stack-group]),
+  [data-testid="editor-tile"][data-editor-group="true"].editor-layout-elevated:has([data-dashboard-tab-group]) {
+    box-shadow: none !important;
+    --tw-shadow: 0 0 #0000 !important;
+    border-color: transparent !important;
+  }
+
   [data-dashboard-editor="drop-zone"] > [data-dashboard-editor="tile-row"].editor-layout-elevated:not([data-editor-group]),
   [data-testid="editor-drop-zone"] > [data-testid="editor-tile"].editor-layout-elevated:not([data-editor-group]),
   [data-dashboard-tile-grid] > [data-tile-id].editor-layout-elevated {
@@ -532,6 +541,94 @@ html[data-color-preset="gray"] {
   .dark .editor-surface-in-play {
     outline-color: var(--color-primary-400);
   }
+
+  /*
+   * Folder tab control: SVG border (stroke) + CSS filter shadow on a behind silhouette.
+   * Shadow is on a wrapper div, not inside the SVG; no rectangular box-shadow on the frame.
+   */
+  .tab-control-outline-shadow {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    filter: var(--dashboard-tile-elevated-filter);
+  }
+
+  .tab-control-outline-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .tab-control-outline-silhouette {
+    fill: #fff;
+    stroke: none;
+  }
+
+  .dark .tab-control-outline-silhouette {
+    fill: rgb(17 24 39);
+  }
+
+  .tab-control-outline-border {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .tab-control-outline-path {
+    fill: none;
+    stroke: rgb(203 213 225);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .dark .tab-control-outline-path {
+    stroke: rgb(75 85 99 / 0.85);
+  }
+
+  .tab-control-pane {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    border: none;
+    border-radius: 0 0 0.5rem 0.5rem;
+    background-color: #fff;
+  }
+
+  .dark .tab-control-pane {
+    background-color: rgb(17 24 39);
+  }
+
+  .tab-group-strip-scroll {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 0.25rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+  }
+
+  .tab-control-pane-inner {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: 0 0 0.5rem 0.5rem;
+  }
+
+  /* Nested tab controls: do not clip frame shadow or rounded pane corners. */
+  [data-dashboard-stack-group] section:has([data-dashboard-tab-group]),
+  [data-dashboard-stack-group] .stack-section-body:has([data-dashboard-tab-group]) {
+    overflow: visible;
+  }
 }
 
 /*
@@ -547,12 +644,20 @@ html[data-color-preset="gray"] {
  * Parent grid chrome sets `container-type: inline-size`.
  */
 :root {
-  --dashboard-shell-elevated-shadow:
-    -2px 5px 14px -3px rgb(15 23 42 / 0.07), 0 1px 1px 0 rgb(15 23 42 / 0.04);
+  /* Plugin tiles (`[data-scope="card"]`) — canonical dashboard elevation. */
+  --dashboard-tile-elevated-shadow:
+    0 1px 2px rgb(15 23 42 / 0.05), 0 6px 16px rgb(15 23 42 / 0.08),
+    0 18px 44px rgb(15 23 42 / 0.1);
+  --dashboard-tile-elevated-filter: drop-shadow(0 1px 2px rgb(15 23 42 / 0.05))
+    drop-shadow(0 6px 16px rgb(15 23 42 / 0.08)) drop-shadow(0 18px 44px rgb(15 23 42 / 0.1));
+  --dashboard-shell-elevated-shadow: var(--dashboard-tile-elevated-shadow);
 }
 
 .dark {
-  --dashboard-shell-elevated-shadow: -2px 6px 20px -4px rgb(0 0 0 / 0.45);
+  --dashboard-tile-elevated-shadow: 0 1px 4px rgb(2 6 23 / 0.3), 0 8px 18px rgb(2 6 23 / 0.36);
+  --dashboard-tile-elevated-filter: drop-shadow(0 1px 4px rgb(2 6 23 / 0.3))
+    drop-shadow(0 8px 18px rgb(2 6 23 / 0.36));
+  --dashboard-shell-elevated-shadow: var(--dashboard-tile-elevated-shadow);
 }
 
 [data-dashboard-editor="grid-chrome"],
@@ -862,22 +967,18 @@ html[data-color-preset="gray"] {
   }
 
   :root:not(.dark) [data-dashboard-tile-grid] [data-row-panel],
-  :root:not(.dark) [data-dashboard-tile-grid] [data-dashboard-group] {
+  :root:not(.dark)
+    [data-dashboard-tile-grid]
+    [data-dashboard-group]:not([data-host-control="tab-control"]):not([data-host-control="vertical-stack"]) {
     background-color: #fff !important;
     border: 1px solid rgb(203 213 225) !important; /* slate-300 */
-    box-shadow:
-      0 1px 2px rgb(15 23 42 / 0.05),
-      0 6px 16px rgb(15 23 42 / 0.08),
-      0 18px 44px rgb(15 23 42 / 0.1) !important;
+    box-shadow: var(--dashboard-tile-elevated-shadow) !important;
   }
 
   :root:not(.dark) [data-scope="card"] {
     background-color: #fff !important;
     border: 1px solid rgb(203 213 225) !important; /* slate-300 */
-    box-shadow:
-      0 1px 2px rgb(15 23 42 / 0.04),
-      0 4px 12px rgb(15 23 42 / 0.07),
-      0 14px 36px rgb(15 23 42 / 0.09) !important;
+    box-shadow: var(--dashboard-tile-elevated-shadow) !important;
   }
 
   /*
@@ -885,9 +986,21 @@ html[data-color-preset="gray"] {
    * Nested cards inside row/group containers remain flat via the in-row-panel rule.
    */
   .dark [data-dashboard-tile-grid] [data-scope="card"] {
-    box-shadow:
-      0 1px 4px rgb(2 6 23 / 0.3),
-      0 8px 18px rgb(2 6 23 / 0.36) !important;
+    box-shadow: var(--dashboard-tile-elevated-shadow) !important;
+  }
+
+  .dashboard-tile-elevated-surface {
+    box-shadow: var(--dashboard-tile-elevated-shadow);
+  }
+
+  /* Tab/stack hosts own border + shadow; grid wrapper must stay inert. */
+  [data-dashboard-tile-grid] [data-dashboard-group][data-host-control="tab-control"],
+  [data-dashboard-tile-grid] [data-dashboard-group][data-host-control="vertical-stack"] {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    --tw-shadow: 0 0 #0000 !important;
+    overflow: visible !important;
   }
 
   /* Cards inside row/group containers stay flat in all themes. */

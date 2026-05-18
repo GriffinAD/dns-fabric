@@ -1,7 +1,6 @@
-import type { DisplayMode } from "../../api/types";
 import type { DashboardGroup, DashboardTile, GroupChild } from "../types";
-import { MAX_TAB_GROUP_CHILDREN } from "../types";
-import { tabStripLabel } from "./tabGroupOps";
+import { isDashboardGroupNode, MAX_TAB_GROUP_CHILDREN } from "../types";
+import { tabStripLabel, wrapTabTileInPaneGroup } from "./tabGroupOps";
 
 export const MAX_STACK_GROUP_CHILDREN = MAX_TAB_GROUP_CHILDREN;
 
@@ -12,7 +11,6 @@ export function stackSectionLabel(child: GroupChild): string {
 export type AddStackChildOpts = {
   pluginId: string;
   sectionLabel: string;
-  displayMode?: DisplayMode;
 };
 
 export type AddStackSectionOpts = {
@@ -64,6 +62,35 @@ function mapChild(
   return { ...group, children };
 }
 
+/** Stack section panes are not nowrap-strip siblings; strip `grid` on pane groups is vestigial. */
+function clearStackPaneStripGrid(pane: DashboardGroup): { child: DashboardGroup; changed: boolean } {
+  if (
+    pane.hostControl === "tab-control" ||
+    pane.hostControl === "vertical-stack" ||
+    pane.grid == null
+  ) {
+    return { child: pane, changed: false };
+  }
+  const { grid: _grid, ...rest } = pane;
+  return { child: rest, changed: true };
+}
+
+/** Legacy layouts may store a plugin tile as the section child; upgrade to a pane group. */
+export function normalizeStackChildPaneGroups(group: DashboardGroup): DashboardGroup {
+  assertVerticalStackGroup(group);
+  let changed = false;
+  const children = group.children.map((child) => {
+    if (!isDashboardGroupNode(child)) {
+      changed = true;
+      return wrapTabTileInPaneGroup(child);
+    }
+    const cleared = clearStackPaneStripGrid(child);
+    if (cleared.changed) changed = true;
+    return cleared.child;
+  });
+  return changed ? withChildren(group, children) : group;
+}
+
 export function isStackSectionCollapsed(group: DashboardGroup, childId: string): boolean {
   return collapsedSet(group).has(childId);
 }
@@ -88,23 +115,28 @@ export function toggleStackSectionCollapsed(
   };
 }
 
+/** Palette append on the stack strip: new empty section pane labelled after the plugin. */
 export function addStackChild(group: DashboardGroup, opts: AddStackChildOpts): DashboardGroup {
   assertVerticalStackGroup(group);
   if (group.children.length >= MAX_STACK_GROUP_CHILDREN) {
     throw new Error(`vertical-stack group has the maximum of ${MAX_STACK_GROUP_CHILDREN} sections`);
   }
   const ids = childIds(group.children);
-  const id = uniqueChildId(`stack-${opts.pluginId.replace(/[^a-z0-9]+/gi, "-")}`, ids);
-  const tile: DashboardTile = {
-    id,
-    pluginId: opts.pluginId,
+  const paneId = uniqueChildId(
+    `stack-pane-${opts.pluginId.replace(/[^a-z0-9]+/gi, "-")}`,
+    ids,
+  );
+  const pane: DashboardGroup = {
+    kind: "group",
+    id: paneId,
+    showBorder: true,
     tabLabel: opts.sectionLabel,
-    hostControl: "single-panel",
-    displayMode: opts.displayMode ?? "full",
+    children: [],
   };
-  return withChildren(group, [...group.children, tile]);
+  return withChildren(group, [...group.children, pane]);
 }
 
+/** Append an empty section pane (container surface inside the stack). */
 export function addStackSection(
   group: DashboardGroup,
   opts: AddStackSectionOpts = {},
@@ -122,7 +154,7 @@ export function addStackSection(
     kind: "group",
     id,
     showBorder: true,
-    tabLabel: opts.sectionLabel ?? "Section",
+    tabLabel: opts.sectionLabel ?? `Section ${group.children.length + 1}`,
     children: [],
   };
   return withChildren(group, [...group.children, nested]);

@@ -50,6 +50,39 @@ describe("TabGroupHost", () => {
     expect(labels.map((el) => el.textContent)).toEqual(["Alpha", "Beta"]);
   });
 
+  it("renders SVG outline when layout boxes are measurable", async () => {
+    const domRect = (left: number, top: number, width: number, height: number): DOMRect =>
+      ({
+        left,
+        top,
+        width,
+        height,
+        right: left + width,
+        bottom: top + height,
+        x: left,
+        y: top,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.classList.contains("tab-control-frame")) return domRect(0, 0, 400, 240);
+      if (this.getAttribute("role") === "tabpanel") return domRect(0, 40, 400, 200);
+      if (this.getAttribute("role") === "tab" && this.getAttribute("aria-selected") === "true") {
+        return domRect(0, 8, 72, 32);
+      }
+      return domRect(0, 0, 0, 0);
+    });
+
+    render(TabGroupHostHarness, { props: { group: tabGroupFixture() } });
+    await vi.waitFor(() => {
+      const path = document.querySelector('[data-testid="tab-control-outline"] path');
+      if (!path?.getAttribute("d")?.startsWith("M ")) throw new Error("outline missing");
+    });
+    vi.restoreAllMocks();
+  });
+
   it("switching tabs changes visible data-tile-id", async () => {
     render(TabGroupHostHarness, { props: { group: tabGroupFixture() } });
     expect(document.querySelector('[data-tile-id="tile-a"]')).toBeTruthy();
