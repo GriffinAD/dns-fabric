@@ -10,7 +10,8 @@ function stripLegacyFromGroupChildren(children: GroupChild[]): GroupChild[] {
   for (const c of children) {
     if (isDashboardGroupNode(c)) {
       const inner = stripLegacyFromGroupChildren(c.children);
-      if (inner.length === 0) continue;
+      /* Tab/stack section panes are often empty until the operator drops tiles. */
+      if (inner.length === 0 && !c.tabLabel) continue;
       out.push({ ...c, children: inner });
     } else if (!LEGACY_PERF_SUMMARY_PLUGIN_IDS.has(c.pluginId)) {
       out.push(c);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { E2E_TAB_GROUP_V3_LAYOUT } from "../../../../tests/e2e/fixtures/editorGridFixture";
 import { MAX_DASHBOARD_GROUP_DEPTH } from "../types";
 import { parseDashboardLayoutZod } from "./layoutZod";
 
@@ -193,6 +194,12 @@ describe("parseDashboardLayoutZod", () => {
         ],
       }),
     ).toBeNull();
+  });
+
+  it("accepts e2e tab-control fixture layout", () => {
+    const parsed = parseDashboardLayoutZod(E2E_TAB_GROUP_V3_LAYOUT);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.items[0]).toMatchObject({ id: "tabs-e2e", hostControl: "tab-control" });
   });
 
   it("accepts tab-control group with tile and nested group children", () => {

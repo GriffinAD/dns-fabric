@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { E2E_TAB_GROUP_V3_LAYOUT } from "../../../../tests/e2e/fixtures/editorGridFixture";
 import { stripLegacyPerfSummaryTiles } from "./stripLegacyPerfSummary";
 import type { DashboardLayoutV2, DashboardLayoutV3 } from "../types";
 
@@ -57,6 +58,11 @@ describe("stripLegacyPerfSummaryTiles", () => {
     const out = stripLegacyPerfSummaryTiles(layout);
     expect(out.version).toBe(3);
     expect(out.items.length).toBe(0);
+  });
+
+  it("keeps empty tab pane groups (tabLabel) inside tab-control hosts", () => {
+    const out = stripLegacyPerfSummaryTiles(E2E_TAB_GROUP_V3_LAYOUT);
+    expect(out.items.some((i) => i.kind === "group" && i.id === "tabs-e2e")).toBe(true);
   });
 
   it("keeps nested group when stripping removes only legacy tiles inside it", () => {

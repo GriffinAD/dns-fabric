@@ -1,86 +1,13 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 
-import {
-  seedEditorLayoutInLocalStorageBeforeNavigation,
-  seedTabGroupLayoutInLocalStorageBeforeNavigation,
-} from "./fixtures/editorGridFixture";
+import { seedEditorLayoutInLocalStorageBeforeNavigation } from "./fixtures/editorGridFixture";
+import { simulateSveltedndDrop } from "./fixtures/sveltedndDrop";
 
 async function readRootEditorTileIds(zone: Locator): Promise<string[]> {
   return zone.evaluate((el) =>
     Array.from(el.querySelectorAll(':scope > [data-testid="editor-tile"]'))
       .map((e) => e.getAttribute("data-tile-id"))
       .filter((id): id is string => id != null),
-  );
-}
-
-/**
- * Fire HTML5 drag events with a sveltednd JSON payload. Playwright `dragTo` does not reliably
- * drive @thisux/sveltednd drops; this matches the library's `text/plain` dragData contract.
- */
-async function simulateSveltedndDrop(
-  page: Page,
-  sourceSelector: string,
-  handleSelector: string,
-  targetSelector: string,
-  dragData: { k: string; i?: string; g?: string },
-  dropBand: "before" | "center" | "after" = "center",
-): Promise<void> {
-  const dragDataJson = JSON.stringify(dragData);
-  await page.evaluate(
-    ({ sourceSelector, handleSelector, targetSelector, dragDataJson, dropBand }) => {
-      const source = document.querySelector<HTMLElement>(sourceSelector);
-      const handle = document.querySelector<HTMLElement>(handleSelector);
-      const target = document.querySelector<HTMLElement>(targetSelector);
-      if (!source || !handle || !target) {
-        throw new Error("simulateSveltedndDrop: missing source, handle, or target");
-      }
-      const rect = target.getBoundingClientRect();
-      const cx =
-        dropBand === "before"
-          ? rect.left + 12
-          : dropBand === "after"
-            ? rect.right - 12
-            : rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const gripRect = handle.getBoundingClientRect();
-      const px = gripRect.left + gripRect.width / 2;
-      const py = gripRect.top + gripRect.height / 2;
-      handle.dispatchEvent(
-        new PointerEvent("pointerdown", {
-          bubbles: true,
-          cancelable: true,
-          clientX: px,
-          clientY: py,
-          pointerId: 1,
-          pointerType: "mouse",
-          buttons: 1,
-        }),
-      );
-      const dt = new DataTransfer();
-      dt.setData("text/plain", dragDataJson);
-      dt.effectAllowed = "copy";
-      source.dispatchEvent(
-        new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer: dt, clientX: px, clientY: py }),
-      );
-      for (const type of ["dragenter", "dragover"] as const) {
-        const ev = new DragEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          dataTransfer: dt,
-          clientX: cx,
-          clientY: cy,
-        });
-        target.dispatchEvent(ev);
-        document.dispatchEvent(ev);
-      }
-      target.dispatchEvent(
-        new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt, clientX: cx, clientY: cy }),
-      );
-      source.dispatchEvent(
-        new DragEvent("dragend", { bubbles: true, cancelable: true, dataTransfer: dt, clientX: cx, clientY: cy }),
-      );
-    },
-    { sourceSelector, handleSelector, targetSelector, dragDataJson, dropBand },
   );
 }
 
@@ -199,76 +126,6 @@ test("tile settings parent: move tile from container to dashboard root", async (
   expect(stored.items.some((i) => i.kind === "tile" && i.id === "tile-perf-ram")).toBe(true);
   const groupStatus = stored.items.find((i) => i.kind === "group" && i.id === "group-status");
   expect(groupStatus?.children?.some((c) => c.id === "tile-perf-ram")).toBe(false);
-});
-
-test("palette drop on tab pane empty adds a tile inside the tab container", async ({ page }) => {
-  await seedTabGroupLayoutInLocalStorageBeforeNavigation(page);
-  await page.goto("/");
-  await page.getByRole("button", { name: "Edit layout" }).click();
-  const pane = page.getByTestId("tab-group-pane");
-  await expect(pane.getByTestId("editor-group-nowrap-empty")).toBeVisible();
-  await simulateSveltedndDrop(
-    page,
-    '.inline-flex[data-palette-drag-plugin-id="dhcp.reservations"]',
-    '[data-palette-drag-plugin-id="dhcp.reservations"] [data-testid="palette-chip-drag"]',
-    '[data-testid="editor-group-nowrap-empty"]',
-    { k: "pp", i: "dhcp.reservations" },
-  );
-  await expect(pane.getByRole("heading", { name: "Static reservations" })).toBeVisible({
-    timeout: 8000,
-  });
-  const raw = await page.evaluate(() => localStorage.getItem("kea-fabric-dashboard-layout"));
-  expect(raw).toBeTruthy();
-  const stored = JSON.parse(raw!) as {
-    version: number;
-    items: { kind: string; id: string; hostControl?: string; children?: { kind?: string; children?: { pluginId?: string }[] }[] }[];
-  };
-  const tabsGroup = stored.items.find((i) => i.kind === "group" && i.id === "tabs-e2e");
-  const paneGroup = tabsGroup?.children?.[0];
-  expect(paneGroup && "children" in paneGroup && paneGroup.children?.some((c) => c.pluginId === "dhcp.reservations")).toBe(
-    true,
-  );
-});
-
-test("palette drop on tab strip adds a tab", async ({ page }) => {
-  await seedTabGroupLayoutInLocalStorageBeforeNavigation(page);
-  await page.goto("/");
-  await page.getByRole("button", { name: "Edit layout" }).click();
-  const strip = page.getByTestId("tab-group-strip");
-  await expect(strip).toBeVisible();
-  const tabsBefore = await strip.getByTestId("tab-strip-item").count();
-  await simulateSveltedndDrop(
-    page,
-    '.inline-flex[data-palette-drag-plugin-id="dhcp.reservations"]',
-    '[data-palette-drag-plugin-id="dhcp.reservations"] [data-testid="palette-chip-drag"]',
-    '[data-dnd-container="g:tabs-e2e:tabs"]',
-    { k: "pp", i: "dhcp.reservations" },
-  );
-  await expect(strip.getByTestId("tab-strip-item")).toHaveCount(tabsBefore + 1, { timeout: 8000 });
-  await expect(strip.getByTestId("tab-strip-label").filter({ hasText: "Static reservations" })).toBeVisible();
-  const raw = await page.evaluate(() => localStorage.getItem("kea-fabric-dashboard-layout"));
-  expect(raw).toBeTruthy();
-  const stored = JSON.parse(raw!) as {
-    version: number;
-    items: {
-      kind: string;
-      id: string;
-      hostControl?: string;
-      children?: Array<
-        | { pluginId?: string }
-        | { children?: Array<{ pluginId?: string }> }
-      >;
-    }[];
-  };
-  const tabsGroup = stored.items.find((i) => i.kind === "group" && i.id === "tabs-e2e");
-  expect(tabsGroup?.hostControl).toBe("tab-control");
-  const hasReservationsTab = tabsGroup?.children?.some((c) => {
-    if ("children" in c && Array.isArray(c.children)) {
-      return c.children.some((t) => t.pluginId === "dhcp.reservations");
-    }
-    return "pluginId" in c && c.pluginId === "dhcp.reservations";
-  });
-  expect(hasReservationsTab).toBe(true);
 });
 
 test("palette drag adds tile to editor grid", async ({ page }) => {

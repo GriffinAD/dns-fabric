@@ -169,14 +169,24 @@
     onDrop: (state: DragDropState<DashboardDragPayload>) => {
       const drag = parseDragPayload(state.draggedItem);
       const slot = parseDropContainer(state.targetContainer);
-      if (isPaletteDragPayload(drag) && slot?.kind !== "groupAppend") return;
+      if (isPaletteDragPayload(drag)) {
+        if (slot?.kind === "groupTabs" || slot?.kind === "groupAppend") {
+          layoutDropCb?.onDrop(state);
+        }
+        return;
+      }
       tabStripDropCb.onDrop(state);
     },
     onDragOver: (state: DragDropState<DashboardDragPayload>) => {
       const drag = parseDragPayload(state.draggedItem);
       const slot = parseDropContainer(state.targetContainer);
-      if (isPaletteDragPayload(drag) && slot?.kind !== "groupAppend") {
-        state.invalidDrop = true;
+      if (isPaletteDragPayload(drag)) {
+        if (slot?.kind === "groupTabs" || slot?.kind === "groupAppend") {
+          state.invalidDrop = false;
+          layoutDropCb?.onDragOver(state);
+        } else {
+          state.invalidDrop = true;
+        }
         return;
       }
       tabStripDropCb.onDragOver(state);
